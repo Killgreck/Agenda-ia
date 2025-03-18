@@ -3,10 +3,12 @@ Este es el repositorio oficial del proyecto agenda ia
  
 # Directorio de la aplicación
 
-- **Back/**: Contiene el backend de la aplicación, incluyendo controladores, modelos, servicios y esquemas.
-  - **Controllers/**: Maneja las solicitudes HTTP y la lógica de negocio.
-  - **Models/**: Define las estructuras de datos y la lógica de negocio.
-  - **Service/**: Proporciona servicios para manejar la lógica de negocio.
+- **Back/**: Backend de la aplicación
+- **Models/**: Modelos de datos (Evento, Calendario, Usuario, Agenda)
+- **Controllers/**: Controladores para manejar solicitudes HTTP
+- **Service/**: Servicios para la lógica de negocio, incluyendo IA
+- **Schemas/**: Esquemas de validación de datos
+- **Repository/**: Acceso a datos
 ## Características
 
 - Gestión completa de eventos y calendarios
