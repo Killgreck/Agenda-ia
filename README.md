@@ -7,6 +7,14 @@ Este es el repositorio oficial del proyecto agenda ia
   - **Controllers/**: Maneja las solicitudes HTTP y la lógica de negocio.
   - **Models/**: Define las estructuras de datos y la lógica de negocio.
   - **Service/**: Proporciona servicios para manejar la lógica de negocio.
+## Características
+
+- Gestión completa de eventos y calendarios
+- Detección de conflictos entre eventos
+- Sugerencias inteligentes de horarios mediante IA
+- Optimización automática de agenda
+- Evaluación de eficiencia
+- Sistema de notificaciones
 
 Estructura de Directorios
 
