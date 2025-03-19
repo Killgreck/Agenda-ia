@@ -73,3 +73,21 @@ back/
 │   └── usuario_service.py
 
 └── __init__.py 
+## Guía de Instalación
+
+### Requisitos Previos
+- Python 3.8 o superior
+- pip (gestor de paquetes de Python)
+
+### Pasos de Instalación
+
+1. Clonar el repositorio:
+Crear un entorno virtual (opcional pero recomendado):
+python -m venv venv
+Activar el entorno virtual:
+En Windows:
+venv\Scripts\activate
+En Linux/MacOS:
+source venv/bin/activate
+Instalar las dependencias:
+pip install -r requirements.txt
