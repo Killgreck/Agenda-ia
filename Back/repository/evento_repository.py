@@ -1,4 +1,5 @@
-class EventoRepository:
-    def create(self, evento):
-        # Database operations
-        pass
+from .base_repository import BaseRepository
+
+class EventoRepository(BaseRepository):
+    def __init__(self):
+        super().__init__('eventos')
