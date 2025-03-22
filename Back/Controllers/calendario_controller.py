@@ -1,11 +1,5 @@
-from fastapi import APIRouter, Depends
-from ..Service.calendario_service import CalendarioService
+from ..repository.calendario_repository import CalendarioRepository
 
-router = APIRouter()
-calendario_service = CalendarioService()
-
-@router.post("/calendarios/")
-async def create_calendario(calendario: CalendarioSchema):
-    return calendario_service.create_calendario(calendario)
-
-# Add other CRUD endpoints
+class CalendarioController:
+    def __init__(self):
+        self.repository = CalendarioRepository()

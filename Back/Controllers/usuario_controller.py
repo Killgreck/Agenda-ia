@@ -1,11 +1,5 @@
-from fastapi import APIRouter, Depends
-from ..Service.usuario_service import UsuarioService
+from ..repository.usuario_repository import UsuarioRepository
 
-router = APIRouter()
-usuario_service = UsuarioService()
-
-@router.post("/usuarios/")
-async def create_usuario(usuario: UsuarioSchema):
-    return usuario_service.create_usuario(usuario)
-
-# Add other CRUD endpoints
+class UsuarioController:
+    def __init__(self):
+        self.repository = UsuarioRepository()
