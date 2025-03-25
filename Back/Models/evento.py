@@ -49,3 +49,12 @@ class Evento:
         # Convertir a datetime y verificar superposición
         # [Implementación similar a CRUD.py]
         return False
+
+    def get_year(self):
+        return self.fecha.year if self.fecha else None
+
+    def get_month(self):
+        return self.fecha.month if self.fecha else None
+
+    def get_weekday(self):
+        return self.fecha.weekday() if self.fecha else None
