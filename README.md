@@ -76,6 +76,42 @@ back/
 ## Guía de Instalación
 
 ### Requisitos Previos
+
+## Características
+- Filtrado de eventos por año, mes y día de la semana
+- Entrenamiento personalizado del modelo de IA
+
+## Uso del Sistema de IA
+
+### Filtrado de Eventos
+El sistema permite filtrar eventos por:
+- Año
+- Mes
+- Día de la semana
+
+Ejemplo:
+```python
+# Filtrar eventos del año 2025
+eventos_2025 = evento_controller.filtrar_eventos(eventos, año=2025)
+
+# Filtrar eventos de marzo
+eventos_marzo = evento_controller.filtrar_eventos(eventos, mes=3)
+
+# Filtrar eventos de los lunes
+eventos_lunes = evento_controller.filtrar_eventos(eventos, dia_semana=0)
+```
+
+### Entrenamiento del Modelo de IA
+Para iniciar el entrenamiento del modelo de IA:
+
+```python
+from Back.Controllers.motor_ia_controller import MotorIAController
+
+# Iniciar entrenamiento
+motor_controller = MotorIAController()
+resultado = motor_controller.iniciar_entrenamiento()
+print(resultado["mensaje"])
+```
 - Python 3.8 o superior
 - pip (gestor de paquetes de Python)
 
