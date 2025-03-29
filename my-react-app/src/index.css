@@ -1,68 +1,106 @@
+/* 🏯 Samurai Root Settings */
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(to bottom right, #1b1b1b, #3d3d3d);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  box-sizing: border-box; /* 🔥 Evita desbordes y la raya blanca */
 }
 
+/* ⚔️ Samurai Links */
 a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+  font-weight: 600;
+  color: #bf3a3a; /* Rojo Samurai */
+  text-decoration: none;
+  transition: color 0.3s ease;
 }
 a:hover {
-  color: #535bf2;
+  color: #8a2b2b; /* Oscuro Samurai */
 }
 
+/* 🐉 Samurai Body */
 body {
   margin: 0;
+  padding: 0;
   display: flex;
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  box-sizing: border-box; /* 🔥 Asegura que no haya desbordamientos */
+  overflow-x: hidden; /* 🔥 Oculta la raya blanca */
+  animation: warriorGlow 20s infinite alternate;
 }
 
+/* 🎌 Samurai Glow Animation */
+@keyframes warriorGlow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+/* 🏯 Samurai Titles */
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
+  color: #bf3a3a;
+  text-shadow: 2px 2px 8px #8a2b2b;
+  text-align: center;
 }
 
+/* 🗡️ Samurai Buttons */
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  padding: 0.8em 1.5em;
+  font-size: 1.1em;
+  font-weight: 600;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background: linear-gradient(145deg, #8a2b2b, #bf3a3a);
+  color: white;
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: transform 0.3s, box-shadow 0.3s;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: #bf3a3a;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(191, 58, 58, 0.5);
 }
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 4px auto #8a2b2b;
 }
 
+/* 🔥 Light Mode Adjustments */
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
-    background-color: #ffffff;
+    background: #ffffff;
   }
   a:hover {
-    color: #747bff;
+    color: #8a2b2b;
   }
   button {
-    background-color: #f9f9f9;
+    background: linear-gradient(145deg, #f9f9f9, #bf3a3a);
+    color: black;
   }
+}
+
+/* 📏 Samurai Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #1b1b1b;
+}
+::-webkit-scrollbar-thumb {
+  background: #8a2b2b;
+  border-radius: 10px;
 }

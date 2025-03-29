@@ -28,99 +28,32 @@ export function Preferences() {
   };
 
   return (
-    <div
-      style={{
-        padding: "40px",
-        backgroundColor: "#FAFAFA",
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        gap: "32px",
-      }}
-    >
-      <h2
-        style={{ fontSize: "36px", fontWeight: "300", color: "#2E2E2E" }}
-      >
-        🔧 Entrena tu agente IA
-      </h2>
+    <div className="preferences-container">
+      <h2 className="preferences-title">🔧 Entrena tu agente IA</h2>
 
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          borderRadius: "12px",
-          padding: "20px",
-          backgroundColor: "#FFFFFF",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
-        }}
-      >
+      <div className="chat-box">
         {messages.map((msg, index) => (
           <div
             key={index}
-            style={{
-              marginBottom: "12px",
-              textAlign: msg.sender === "user" ? "right" : "left",
-            }}
+            className={`chat-message ${msg.sender === "user" ? "user-message" : "bot-message"}`}
           >
-            <span
-              style={{
-                display: "inline-block",
-                padding: "10px 16px",
-                borderRadius: "12px",
-                backgroundColor: msg.sender === "user" ? "#4A90E2" : "#EAEAEA",
-                color: msg.sender === "user" ? "white" : "#333333",
-              }}
-            >
-              {msg.text}
-            </span>
+            {msg.text}
           </div>
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: "12px" }}>
+      <div className="input-container">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Escribe un mensaje..."
-          style={{
-            flex: 1,
-            padding: "14px",
-            borderRadius: "12px",
-            border: "1px solid #4A90E2",
-            outline: "none",
-            fontSize: "16px",
-          }}
+          className="input-japan"
         />
-        <button
-          onClick={handleSendMessage}
-          style={{
-            padding: "14px 28px",
-            backgroundColor: "#4A90E2",
-            color: "white",
-            border: "none",
-            borderRadius: "12px",
-            cursor: "pointer",
-          }}
-        >
-          ➤ Enviar
-        </button>
+        <button className="button-japan" onClick={handleSendMessage}>➤ Enviar</button>
       </div>
 
-      <button
-        onClick={() => navigate("/weekly")}
-        style={{
-          padding: "14px 28px",
-          backgroundColor: "#FFFFFF",
-          color: "#4A90E2",
-          border: "1px solid #4A90E2",
-          borderRadius: "12px",
-          cursor: "pointer",
-          transition: "background 0.3s",
-        }}
-      >
-        ⬅️ Volver
-      </button>
+      <button className="button-japan-outline" onClick={() => navigate("/weekly")}>⬅️ Volver</button>
     </div>
   );
 }

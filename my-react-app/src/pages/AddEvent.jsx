@@ -56,112 +56,56 @@ export function AddEvent() {
   };
 
   return (
-    <div
-      style={{
-        padding: "40px",
-        backgroundColor: "#FAFAFA",
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        gap: "32px",
-      }}
-    >
-      <h2
-        style={{ fontSize: "36px", fontWeight: "300", color: "#2E2E2E" }}
-      >
-        📌 ¿Qué quieres añadir a tu itinerario?
-      </h2>
+    <div className="add-event-container">
+      <h2 className="add-event-title">📌 ¿Qué quieres añadir a tu itinerario?</h2>
 
       <input
+        className="input-japan"
         placeholder="Describe tu evento..."
         value={event}
         onChange={(e) => setEvent(e.target.value)}
-        style={{
-          padding: "16px",
-          borderRadius: "12px",
-          border: "none",
-          backgroundColor: "#FFFFFF",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
-          outline: "none",
-          fontSize: "16px",
-        }}
       />
 
-      <div style={{ display: "flex", gap: "20px" }}>
+      <div className="add-event-select">
         <select
+          className="input-japan"
           value={day}
           onChange={(e) => setDay(e.target.value)}
-          style={{
-            padding: "12px",
-            borderRadius: "12px",
-            border: "1px solid #4A90E2",
-            cursor: "pointer",
-          }}
         >
           {days.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
+            <option key={d} value={d}>{d}</option>
           ))}
         </select>
 
         <select
+          className="input-japan"
           value={hour}
           onChange={(e) => setHour(e.target.value)}
-          style={{
-            padding: "12px",
-            borderRadius: "12px",
-            border: "1px solid #4A90E2",
-            cursor: "pointer",
-          }}
         >
           {hours.map((h) => (
-            <option key={h} value={h}>
-              {h}
-            </option>
+            <option key={h} value={h}>{h}</option>
           ))}
         </select>
       </div>
 
-      <div style={{ display: "flex", gap: "20px" }}>
-        <button
-          onClick={handleAddOrEditEvent}
-          style={{
-            padding: "14px 28px",
-            backgroundColor: "#4A90E2",
-            color: "white",
-            border: "none",
-            borderRadius: "12px",
-            cursor: "pointer",
-            transition: "background 0.3s",
-          }}
-        >
+      <div className="add-event-buttons">
+        <button className="button-japan" onClick={handleAddOrEditEvent}>
           {editIndex !== null ? "✏️ Editar" : "➕ Agregar"}
         </button>
 
-        <button
-          onClick={() => navigate("/weekly")}
-          style={{
-            padding: "14px 28px",
-            backgroundColor: "#FFFFFF",
-            color: "#4A90E2",
-            border: "1px solid #4A90E2",
-            borderRadius: "12px",
-            cursor: "pointer",
-            transition: "background 0.3s",
-          }}
-        >
+        <button className="button-japan-outline" onClick={() => navigate("/weekly")}>
           ⬅️ Salir
         </button>
       </div>
 
-      <h3 style={{ fontSize: "28px", fontWeight: "300", color: "#2E2E2E" }}>🗓️ Eventos Programados</h3>
-      <ul>
+      <h3 className="add-event-subtitle">🗓️ Eventos Programados</h3>
+
+      <ul className="add-event-list">
         {events.map((e, index) => (
-          <li key={index} style={{ marginBottom: "10px" }}>
+          <li key={index} className="add-event-item">
             {e.event} - {e.day} a las {e.hour}
-            <button onClick={() => handleEdit(index)} style={{ marginLeft: "10px" }}>✏️ Editar</button>
-            <button onClick={() => handleDelete(index)} style={{ marginLeft: "10px" }}>❌ Eliminar</button>
+            <button className="button-japan-small" onClick={() => handleEdit(index)}>✏️ Editar</button>
+            <button className="button-japan-small" onClick={() => handleDelete(index)}>❌ Eliminar</button>
           </li>
         ))}
       </ul>

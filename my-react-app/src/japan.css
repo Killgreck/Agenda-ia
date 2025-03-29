@@ -1,0 +1,180 @@
+/* ⚔️ Japan Samurai Style CSS - Corregido ⚔️ */
+
+/* Global settings - Samurai theme */
+html, body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Noto Sans JP", sans-serif;
+  background: linear-gradient(to bottom right, #1b1b1b, #3d3d3d);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden; /* Elimina barras blancas */
+  color: #ffffff; /* Texto claro */
+  animation: warriorGlow 20s infinite alternate;
+}
+
+/* Asegura que todo respete el box-sizing */
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+/* Samurai glow animation */
+@keyframes warriorGlow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+/* Main container for all views */
+.japan-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  border-radius: 16px;
+  background: #262626;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8);
+  border: 3px solid #8a2b2b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Samurai headers */
+.japan-title {
+  font-size: 48px;
+  font-weight: bold;
+  color: #ff4d4d; /* Rojo más brillante */
+  text-align: center;
+  margin-bottom: 40px;
+  text-shadow: 2px 2px 12px #8a2b2b;
+}
+
+/* Samurai primary button */
+.button-japan {
+  padding: 16px 32px;
+  background: linear-gradient(145deg, #8a2b2b, #bf3a3a);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.button-japan:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(191, 58, 58, 0.5);
+}
+
+/* Samurai outline button */
+.button-japan-outline {
+  padding: 16px 32px;
+  background: transparent;
+  color: #ff4d4d;
+  border: 2px solid #ff4d4d;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 18px;
+}
+
+.button-japan-outline:hover {
+  background: #3d3d3d;
+  transform: scale(1.05);
+}
+
+/* Samurai input fields */
+.input-japan {
+  padding: 14px;
+  font-size: 16px;
+  border: 2px solid #8a2b2b;
+  border-radius: 12px;
+  outline: none;
+  transition: border 0.3s;
+  background: #1b1b1b;
+  color: #ffffff;
+}
+
+.input-japan:focus {
+  border-color: #ff4d4d;
+}
+
+/* Samurai modal */
+.modal-japan {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #262626;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9);
+  z-index: 999;
+  border: 2px solid #8a2b2b;
+}
+
+/* Samurai table */
+.table-japan-container {
+  overflow-x: auto;
+  border-radius: 16px;
+}
+
+.table-japan {
+  width: 100%;
+  border-collapse: collapse;
+  background: #262626;
+  color: #ffffff;
+}
+
+.table-japan th, .table-japan td {
+  padding: 12px;
+  text-align: center;
+  border-bottom: 2px solid #8a2b2b;
+}
+
+/* Samurai event tags */
+.event-japan {
+  background: #8a2b2b;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  margin: 4px 0;
+  animation: floatTag 3s ease-in-out infinite;
+}
+
+/* Floating event effect */
+@keyframes floatTag {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0); }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1b1b1b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #8a2b2b;
+  border-radius: 10px;
+}
+
+/* Enlaces (URLs) destacados */
+a {
+  color: #ff4d4d; /* Rojo brillante */
+  text-decoration: underline;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #ff6666;
+}
+

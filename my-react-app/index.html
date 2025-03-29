@@ -1,13 +1,52 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendario IA</title>
+
+  <!-- Asegura la ruta correcta del CSS -->
+  <link rel="stylesheet" href="./src/japan.css" />
+
+  <!-- Ícono de la pestaña -->
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+  <!-- Corrección del centrado y eliminación del fondo blanco -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow-x: hidden; /* Evitar desbordamientos horizontales */
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center; /* Centrar horizontalmente */
+      align-items: center; /* Centrar verticalmente */
+      background: linear-gradient(to bottom right, #1b1b1b, #3d3d3d); /* Fondo Samurai */
+    }
+
+    * {
+      box-sizing: inherit;
+    }
+
+    #root {
+      width: 100%;
+      max-width: 1200px; /* Limita el ancho máximo */
+      min-height: 100vh; /* Asegura que ocupe la pantalla completa */
+      display: flex;
+      justify-content: center; /* Centra el contenido dentro del root */
+      align-items: center;
+    }
+  </style>
+
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
 </html>
+

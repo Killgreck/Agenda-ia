@@ -5,13 +5,14 @@ import AddEvent from "./pages/AddEvent";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import TrainAI from "./pages/TrainAI";
-import Preferences from "./pages/Preferences"
-import "./App.css";
+import Preferences from "./pages/Preferences";
+import "./japan.css";
+import "./index.css";
 
 function App() {
   return (
     <Router>
-      <div style={{ fontFamily: "Arial, sans-serif", backgroundColor: "#FAFAFA", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ fontFamily: "Arial, sans-serif", backgroundColor: "#1b1b1b", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Routes>
           <Route path="/settings" element={<Settings />} />
           <Route path="/preferences" element={<Preferences />} />
