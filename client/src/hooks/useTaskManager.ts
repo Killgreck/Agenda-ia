@@ -62,8 +62,10 @@ export function useTasks(options?: UseTasksOptions) {
   // Create a new task
   const { mutateAsync: createTask, isPending: isCreatingTask } = useMutation({
     mutationFn: async (newTask: InsertTask) => {
-      const response = await apiRequest('POST', '/api/tasks', newTask);
-      return response.json();
+      return await apiRequest<Task>('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify(newTask)
+      });
     },
     onSuccess: () => {
       // Invalidate all task queries to refresh data across all components
@@ -76,8 +78,10 @@ export function useTasks(options?: UseTasksOptions) {
   // Update a task
   const { mutateAsync: updateTask, isPending: isUpdatingTask } = useMutation({
     mutationFn: async ({ id, ...updates }: { id: number } & Partial<InsertTask>) => {
-      const response = await apiRequest('PATCH', `/api/tasks/${id}`, updates);
-      return response.json();
+      return await apiRequest<Task>(`/api/tasks/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates)
+      });
     },
     onSuccess: () => {
       // Invalidate all task queries to refresh data across all components
@@ -90,7 +94,9 @@ export function useTasks(options?: UseTasksOptions) {
   // Delete a task
   const { mutateAsync: deleteTask, isPending: isDeletingTask } = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest('DELETE', `/api/tasks/${id}`);
+      await apiRequest(`/api/tasks/${id}`, {
+        method: 'DELETE'
+      });
       return id;
     },
     onSuccess: () => {
@@ -121,8 +127,10 @@ export function useCheckin() {
   // Submit a new check-in
   const { mutateAsync: submitCheckin, isPending: isCheckingIn } = useMutation({
     mutationFn: async (checkIn: InsertCheckIn) => {
-      const response = await apiRequest('POST', '/api/check-ins', checkIn);
-      return response.json();
+      return await apiRequest<CheckIn>('/api/check-ins', {
+        method: 'POST',
+        body: JSON.stringify(checkIn)
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/check-ins'] });
