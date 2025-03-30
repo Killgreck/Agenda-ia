@@ -816,10 +816,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Title is required' });
       }
       
-      // Import the generateTaskSuggestion function from abacusLLM
-      const { generateTaskSuggestion } = require('./abacusLLM');
-      
       // Call the Abacus LLM to generate a suggestion
+      // We're using the imported function from line 20
       const suggestion = await generateTaskSuggestion(title, description);
       
       // Return the suggestion
