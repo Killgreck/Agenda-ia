@@ -1,3 +1,6 @@
+
+from .evento import Evento
+from .agenda import Agenda
 class Usuario:
     def __init__(self, nombre, correo, tipo_cuenta="estandar", nombre_calendario="Principal"):
         self.nombre = nombre
@@ -16,3 +19,4 @@ class Usuario:
         return self.agenda.obtener_eventos()
 
     # [Añadir más métodos relevantes]
+    #Agregar evento que devuelva los eventos por año, dia de la semana y mes 

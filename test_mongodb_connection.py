@@ -24,7 +24,7 @@ def test_direct_connection():
     # Enviar un ping para confirmar una conexión exitosa
     try:
         client.admin.command('ping')
-        print("¡Conexión exitosa a MongoDB Atlas!")
+        print("¡Conexión exitosa a MongoDB Atlas!",client.admin.command('ping'))
         return True
     except Exception as e:
         print(f"Error al conectar a MongoDB Atlas: {e}")
