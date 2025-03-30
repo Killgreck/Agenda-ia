@@ -3,12 +3,13 @@ import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import CalendarView from "@/components/CalendarView";
 import AIAssistant from "@/components/AIAssistant";
+import DetailedReport from "@/components/DetailedReport";
 import TaskModal from "@/components/TaskModal";
 import PostponeModal from "@/components/PostponeModal";
 import { Task, InsertTask } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, BarChart, CheckSquare, Calendar, MessageSquare } from "lucide-react";
+import { CheckCircle, BarChart, CheckSquare, Calendar, MessageSquare, LineChart } from "lucide-react";
 import { useStats } from "@/hooks/useStats";
 import { useCheckin, useTasks } from "@/hooks/useTaskManager";
 import { Button } from "@/components/ui/button";
@@ -135,6 +136,10 @@ export default function Dashboard() {
               <MessageSquare className="h-4 w-4" />
               AI Assistant
             </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-1">
+              <LineChart className="h-4 w-4" />
+              Reports
+            </TabsTrigger>
           </TabsList>
           
           {/* Home Tab - Shows statistics, upcoming tasks, and daily check-in */}
@@ -211,10 +216,13 @@ export default function Dashboard() {
                   <Button 
                     variant="link" 
                     className="mt-2 px-0 text-xs text-primary font-medium"
-                    onClick={() => toast({
-                      title: "Coming Soon",
-                      description: "Detailed reports will be available soon!",
-                    })}
+                    onClick={() => {
+                      // Find and click the reports tab
+                      const reportsTab = document.querySelector('[value="reports"]') as HTMLElement;
+                      if (reportsTab) {
+                        reportsTab.click();
+                      }
+                    }}
                   >
                     View detailed report
                   </Button>
@@ -293,6 +301,15 @@ export default function Dashboard() {
             <Card className="h-full">
               <CardContent className="p-0 h-full">
                 <AIAssistant />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Reports Tab */}
+          <TabsContent value="reports" className="h-[calc(100vh-160px)] overflow-auto">
+            <Card className="h-full">
+              <CardContent className="p-6 h-full">
+                <DetailedReport />
               </CardContent>
             </Card>
           </TabsContent>
