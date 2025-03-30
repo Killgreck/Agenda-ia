@@ -462,7 +462,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
   
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[80vh] overflow-hidden">
+      <DialogContent className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-auto p-0 max-h-[70vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0">
           <DialogTitle className="text-lg font-medium text-gray-800">
             {viewOnly ? "View Task" : taskToEdit ? "Edit Task" : "Create New Task"}
@@ -477,8 +477,8 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
           </Button>
         </DialogHeader>
         
-        <div className="overflow-y-auto flex-grow pb-4 custom-scrollbar">
-          <form onSubmit={viewOnly ? (e) => { e.preventDefault(); } : handleSubmit(onSubmit)} className="p-4">
+        <div className="overflow-y-auto flex-grow custom-scrollbar px-4 pt-4" style={{ maxHeight: 'calc(70vh - 140px)' }}>
+          <form onSubmit={viewOnly ? (e) => { e.preventDefault(); } : handleSubmit(onSubmit)} id="task-form">
             <div className="mb-4">
             <Label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
               Task Title
@@ -1150,44 +1150,71 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
             </Alert>
           )}
           
-          <div className="flex justify-between p-4 border-t border-gray-200">
+          {/* AI suggestion button moved to fixed footer */}
+          <div className="mb-4">
+            {/* Empty space to ensure form content doesn't get hidden behind the fixed footer */}
+            <div className="h-6"></div>
+          </div>
+        </form>
+        </div>
+
+        {/* Fixed footer with action buttons */}
+        <div className="border-t border-gray-200 p-4 flex justify-between items-center bg-white">
+          {/* AI button on the left side */}
+          <div>
             {!viewOnly && (
-              <div className="flex items-center text-sm text-accent">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center text-accent"
-                  onClick={handleAskAI}
-                  disabled={isAskingAi}
-                >
-                  <LightbulbIcon className="h-4 w-4 mr-1" />
-                  Ask AI for suggestions
-                </Button>
-              </div>
-            )}
-            <div className={viewOnly ? "w-full flex justify-center" : ""}>
               <Button
                 type="button"
-                variant="outline"
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg mr-2 hover:bg-gray-300"
-                onClick={onClose}
+                variant="ghost"
+                size="sm"
+                className="flex items-center text-accent"
+                onClick={handleAskAI}
+                disabled={isAskingAi}
               >
-                {viewOnly ? "Close" : "Cancel"}
+                <LightbulbIcon className="h-4 w-4 mr-1" />
+                Ask AI for suggestions
               </Button>
-              {!viewOnly && (
-                <Button
+            )}
+          </div>
+          
+          {/* Action buttons on the right side */}
+          <div className="flex gap-2">
+            {viewOnly ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={onClose}
+                >
+                  Close
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={() => {
+                    // Logic to open in edit mode would go here
+                    onClose();
+                  }}
+                >
+                  Edit
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={onClose}
+                >
+                  Cancel
+                </Button>
+                <Button 
                   type="submit"
-                  variant="default"
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
+                  form="task-form"
                   disabled={isCreatingTask}
                 >
                   {isCreatingTask ? "Saving..." : "Save Task"}
                 </Button>
-              )}
-            </div>
+              </>
+            )}
           </div>
-        </form>
         </div>
       </DialogContent>
     </Dialog>
