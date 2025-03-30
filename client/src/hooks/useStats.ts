@@ -75,14 +75,24 @@ export function useStats() {
   };
 
   // Get current week's statistics
+  // Get user ID from localStorage
+  const authStorageStr = localStorage.getItem('auth-storage');
+  const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { user: { id: 0 } } };
+  const userId = authStorage?.state?.user?.id || 0;
+  
   const { data: currentWeekData, isLoading, error } = useQuery({
-    queryKey: ['/api/statistics/week'],
+    queryKey: ['/api/statistics/week', userId],
     queryFn: async () => {
       try {
         const { startDate, endDate } = getCurrentWeekDates();
         
+        // Get user ID from localStorage
+        const authStorageStr = localStorage.getItem('auth-storage');
+        const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { user: { id: 0 } } };
+        const userId = authStorage?.state?.user?.id || 0;
+        
         // First try to fetch existing stats for the week
-        const response = await fetch(`/api/statistics/week?start=${startDate.toISOString()}&end=${endDate.toISOString()}`);
+        const response = await fetch(`/api/statistics/week?start=${startDate.toISOString()}&end=${endDate.toISOString()}&userId=${userId}`);
         
         // If found, return the data
         if (response.ok) {
@@ -94,7 +104,7 @@ export function useStats() {
         await generateWeeklyReport(startDate, endDate);
         
         // Retry fetching
-        const retryResponse = await fetch(`/api/statistics/week?start=${startDate.toISOString()}&end=${endDate.toISOString()}`);
+        const retryResponse = await fetch(`/api/statistics/week?start=${startDate.toISOString()}&end=${endDate.toISOString()}&userId=${userId}`);
         if (retryResponse.ok) {
           return calculateRates(await retryResponse.json());
         }
@@ -157,10 +167,10 @@ export function useStats() {
   
   // Get historical statistics
   const { data: historicalData } = useQuery({
-    queryKey: ['/api/statistics'],
+    queryKey: ['/api/statistics', userId],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/statistics');
+        const response = await fetch(`/api/statistics?userId=${userId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch historical statistics');
         }
