@@ -20,26 +20,26 @@ export interface IStorage {
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined>;
   deleteTask(id: number): Promise<boolean>;
   getTask(id: number): Promise<Task | undefined>;
-  getTasks(filters?: { startDate?: Date; endDate?: Date }): Promise<Task[]>;
+  getTasks(filters?: { startDate?: Date; endDate?: Date; userId?: number }): Promise<Task[]>;
   
   // Check-in operations
   createCheckIn(checkIn: InsertCheckIn): Promise<CheckIn>;
-  getCheckIns(startDate: Date, endDate: Date): Promise<CheckIn[]>;
-  getLatestCheckIn(): Promise<CheckIn | undefined>;
+  getCheckIns(startDate: Date, endDate: Date, userId?: number): Promise<CheckIn[]>;
+  getLatestCheckIn(userId?: number): Promise<CheckIn | undefined>;
   
   // Chat operations
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
-  getChatMessages(limit?: number): Promise<ChatMessage[]>;
+  getChatMessages(limit?: number, userId?: number): Promise<ChatMessage[]>;
   
   // AI Suggestion operations
   createAiSuggestion(suggestion: InsertAiSuggestion): Promise<AiSuggestion>;
   updateAiSuggestion(id: number, accepted: boolean): Promise<AiSuggestion | undefined>;
-  getAiSuggestions(limit?: number): Promise<AiSuggestion[]>;
+  getAiSuggestions(limit?: number, userId?: number): Promise<AiSuggestion[]>;
   
   // Statistics operations
   createStatistics(stats: InsertStatistic): Promise<Statistic>;
-  getStatisticsForWeek(weekStart: Date, weekEnd: Date): Promise<Statistic | undefined>;
-  getLatestStatistics(limit?: number): Promise<Statistic[]>;
+  getStatisticsForWeek(weekStart: Date, weekEnd: Date, userId?: number): Promise<Statistic | undefined>;
+  getLatestStatistics(limit?: number, userId?: number): Promise<Statistic[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -326,15 +326,27 @@ export class DatabaseStorage implements IStorage {
     return task || undefined;
   }
 
-  async getTasks(filters?: { startDate?: Date; endDate?: Date }): Promise<Task[]> {
+  async getTasks(filters?: { startDate?: Date; endDate?: Date; userId?: number }): Promise<Task[]> {
     let query = db.select().from(tasks);
+    let conditions = [];
     
     if (filters) {
+      // Apply date filters
       if (filters.startDate) {
-        query = query.where(gte(tasks.date, filters.startDate));
+        conditions.push(gte(tasks.date, filters.startDate));
       }
       if (filters.endDate) {
-        query = query.where(lte(tasks.date, filters.endDate));
+        conditions.push(lte(tasks.date, filters.endDate));
+      }
+      
+      // Apply user filter if provided
+      if (filters.userId) {
+        conditions.push(eq(tasks.userId, filters.userId));
+      }
+      
+      // Apply all conditions if there are any
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
       }
     }
     
@@ -355,24 +367,36 @@ export class DatabaseStorage implements IStorage {
     return checkIn;
   }
 
-  async getCheckIns(startDate: Date, endDate: Date): Promise<CheckIn[]> {
+  async getCheckIns(startDate: Date, endDate: Date, userId?: number): Promise<CheckIn[]> {
+    let conditions = [
+      gte(checkIns.date, startDate),
+      lte(checkIns.date, endDate)
+    ];
+    
+    // Add user filter if provided
+    if (userId) {
+      conditions.push(eq(checkIns.userId, userId));
+    }
+    
     return await db
       .select()
       .from(checkIns)
-      .where(
-        and(
-          gte(checkIns.date, startDate),
-          lte(checkIns.date, endDate)
-        )
-      );
+      .where(and(...conditions));
   }
 
-  async getLatestCheckIn(): Promise<CheckIn | undefined> {
-    const [latestCheckIn] = await db
-      .select()
-      .from(checkIns)
+  async getLatestCheckIn(userId?: number): Promise<CheckIn | undefined> {
+    let query = db.select().from(checkIns);
+    
+    // Filter by userId if provided
+    if (userId) {
+      query = query.where(eq(checkIns.userId, userId));
+    }
+    
+    // Sort by date and limit to 1
+    const [latestCheckIn] = await query
       .orderBy(desc(checkIns.date))
       .limit(1);
+      
     return latestCheckIn || undefined;
   }
 
@@ -390,12 +414,19 @@ export class DatabaseStorage implements IStorage {
     return message;
   }
 
-  async getChatMessages(limit?: number): Promise<ChatMessage[]> {
+  async getChatMessages(limit?: number, userId?: number): Promise<ChatMessage[]> {
     // Build basic query
     let baseQuery = db
       .select()
-      .from(chatMessages)
-      .orderBy(asc(chatMessages.timestamp));
+      .from(chatMessages);
+      
+    // Filter by userId if provided
+    if (userId) {
+      baseQuery = baseQuery.where(eq(chatMessages.userId, userId));
+    }
+    
+    // Add ordering
+    baseQuery = baseQuery.orderBy(asc(chatMessages.timestamp));
     
     // Execute with limit if specified
     if (limit) {
@@ -429,12 +460,19 @@ export class DatabaseStorage implements IStorage {
     return updatedSuggestion || undefined;
   }
 
-  async getAiSuggestions(limit?: number): Promise<AiSuggestion[]> {
+  async getAiSuggestions(limit?: number, userId?: number): Promise<AiSuggestion[]> {
     // Build basic query
     let baseQuery = db
       .select()
-      .from(aiSuggestions)
-      .orderBy(desc(aiSuggestions.timestamp));
+      .from(aiSuggestions);
+      
+    // Filter by userId if provided
+    if (userId) {
+      baseQuery = baseQuery.where(eq(aiSuggestions.userId, userId));
+    }
+    
+    // Add ordering
+    baseQuery = baseQuery.orderBy(desc(aiSuggestions.timestamp));
     
     // Execute with limit if specified
     if (limit) {
@@ -459,25 +497,38 @@ export class DatabaseStorage implements IStorage {
     return stats;
   }
 
-  async getStatisticsForWeek(weekStart: Date, weekEnd: Date): Promise<Statistic | undefined> {
+  async getStatisticsForWeek(weekStart: Date, weekEnd: Date, userId?: number): Promise<Statistic | undefined> {
+    let conditions = [
+      eq(statistics.weekStart, weekStart),
+      eq(statistics.weekEnd, weekEnd)
+    ];
+    
+    // Add user filter if provided
+    if (userId) {
+      conditions.push(eq(statistics.userId, userId));
+    }
+    
     const [weekStats] = await db
       .select()
       .from(statistics)
-      .where(
-        and(
-          eq(statistics.weekStart, weekStart),
-          eq(statistics.weekEnd, weekEnd)
-        )
-      );
+      .where(and(...conditions));
+      
     return weekStats || undefined;
   }
 
-  async getLatestStatistics(limit?: number): Promise<Statistic[]> {
+  async getLatestStatistics(limit?: number, userId?: number): Promise<Statistic[]> {
     // Build basic query
     let baseQuery = db
       .select()
-      .from(statistics)
-      .orderBy(desc(statistics.weekEnd));
+      .from(statistics);
+      
+    // Filter by userId if provided
+    if (userId) {
+      baseQuery = baseQuery.where(eq(statistics.userId, userId));
+    }
+    
+    // Add ordering
+    baseQuery = baseQuery.orderBy(desc(statistics.weekEnd));
     
     // Execute with limit if specified
     if (limit) {

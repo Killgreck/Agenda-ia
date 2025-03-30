@@ -2,9 +2,33 @@ import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzl
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Keep the users table at the top since other tables reference it
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  email: text("email").unique(),
+  name: text("name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
+  email: true,
+  name: true,
+}).extend({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email("Invalid email address").optional(),
+});
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+
 // Tasks table
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description"),
   date: timestamp("date").notNull(),
@@ -30,6 +54,7 @@ const baseInsertTaskSchema = createInsertSchema(tasks).omit({
 
 // Extend it to handle string date inputs that will be converted to timestamps in the database
 export const insertTaskSchema = baseInsertTaskSchema.extend({
+  userId: z.number().int().positive(),
   date: z.string(),
   endDate: z.string().optional(),
   recurrenceStartDate: z.string().optional(),
@@ -39,6 +64,7 @@ export const insertTaskSchema = baseInsertTaskSchema.extend({
 // Check-ins table
 export const checkIns = pgTable("check_ins", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
   date: timestamp("date").notNull(),
   productivityRating: integer("productivity_rating").notNull(), // 1-5
   notes: text("notes"),
@@ -51,12 +77,14 @@ const baseInsertCheckInSchema = createInsertSchema(checkIns).omit({
 
 // Extend it to handle string date input
 export const insertCheckInSchema = baseInsertCheckInSchema.extend({
+  userId: z.number().int().positive(),
   date: z.string(),
 });
 
 // Chat messages table
 export const chatMessages = pgTable("chat_messages", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
   content: text("content").notNull(),
   timestamp: timestamp("timestamp").notNull(),
   sender: text("sender").notNull(), // 'user' or 'ai'
@@ -69,12 +97,14 @@ const baseInsertChatMessageSchema = createInsertSchema(chatMessages).omit({
 
 // Extend it to handle string timestamp input
 export const insertChatMessageSchema = baseInsertChatMessageSchema.extend({
+  userId: z.number().int().positive(),
   timestamp: z.string(),
 });
 
 // AI suggestions table
 export const aiSuggestions = pgTable("ai_suggestions", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
   suggestion: text("suggestion").notNull(),
   timestamp: timestamp("timestamp").notNull(),
   accepted: boolean("accepted").default(false).notNull(),
@@ -89,12 +119,14 @@ const baseInsertAiSuggestionSchema = createInsertSchema(aiSuggestions).omit({
 
 // Extend it to handle string timestamp input
 export const insertAiSuggestionSchema = baseInsertAiSuggestionSchema.extend({
+  userId: z.number().int().positive(),
   timestamp: z.string(),
 });
 
 // Statistics table for weekly reports
 export const statistics = pgTable("statistics", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
   weekStart: timestamp("week_start").notNull(),
   weekEnd: timestamp("week_end").notNull(),
   tasksCompleted: integer("tasks_completed").notNull(),
@@ -111,6 +143,7 @@ const baseInsertStatisticsSchema = createInsertSchema(statistics).omit({
 
 // Extend it to handle string date inputs
 export const insertStatisticsSchema = baseInsertStatisticsSchema.extend({
+  userId: z.number().int().positive(),
   weekStart: z.string(),
   weekEnd: z.string(),
 });
@@ -130,18 +163,3 @@ export type InsertAiSuggestion = z.infer<typeof insertAiSuggestionSchema>;
 
 export type Statistic = typeof statistics.$inferSelect;
 export type InsertStatistic = z.infer<typeof insertStatisticsSchema>;
-
-// Keep the users table as it was originally defined
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-});
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
