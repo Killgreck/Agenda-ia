@@ -251,33 +251,53 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createTask(insertTask: InsertTask): Promise<Task> {
-    const [task] = await db
-      .insert(tasks)
-      .values({
+    // Convert date strings to Date objects for PostgreSQL
+    const cleanedTask = {
         ...insertTask,
+        // Convert the required date field from string to Date
+        date: new Date(insertTask.date),
+        
+        // Handle optional fields with null fallbacks
         description: insertTask.description ?? null,
-        endDate: insertTask.endDate ?? null,
+        endDate: insertTask.endDate ? new Date(insertTask.endDate) : null,
         priority: insertTask.priority || "medium",
         location: insertTask.location ?? null,
         reminder: insertTask.reminder || [],
         recurringDays: insertTask.recurringDays || [],
         holidayCountry: insertTask.holidayCountry ?? null,
         recurrenceType: insertTask.recurrenceType ?? null,
-        recurrenceStartDate: insertTask.recurrenceStartDate ?? null,
-        recurrenceEndDate: insertTask.recurrenceEndDate ?? null
-      })
+        recurrenceStartDate: insertTask.recurrenceStartDate ? new Date(insertTask.recurrenceStartDate) : null,
+        recurrenceEndDate: insertTask.recurrenceEndDate ? new Date(insertTask.recurrenceEndDate) : null
+    };
+
+    const [task] = await db
+      .insert(tasks)
+      .values(cleanedTask)
       .returning();
     return task;
   }
 
   async updateTask(id: number, taskUpdate: Partial<InsertTask>): Promise<Task | undefined> {
-    // Remove undefined values to prevent type issues
+    // Remove undefined values and convert date strings to Date objects
     const cleanedUpdate: Record<string, any> = {};
+    
     Object.entries(taskUpdate).forEach(([key, value]) => {
       if (value !== undefined) {
-        if (value === null || Array.isArray(value) || typeof value !== 'object') {
-          cleanedUpdate[key] = value;
-        } else {
+        // Handle date conversions for specific fields
+        if (key === 'date' && value) {
+          cleanedUpdate[key] = new Date(value);
+        } 
+        else if (key === 'endDate' && value) {
+          cleanedUpdate[key] = new Date(value);
+        }
+        else if (key === 'recurrenceStartDate' && value) {
+          cleanedUpdate[key] = new Date(value);
+        }
+        else if (key === 'recurrenceEndDate' && value) {
+          cleanedUpdate[key] = new Date(value);
+        }
+        else {
+          // For non-date fields, use the value as is
           cleanedUpdate[key] = value;
         }
       }
@@ -322,9 +342,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCheckIn(insertCheckIn: InsertCheckIn): Promise<CheckIn> {
+    // Convert date string to Date object
+    const cleanedCheckIn = {
+      ...insertCheckIn,
+      date: new Date(insertCheckIn.date)
+    };
+
     const [checkIn] = await db
       .insert(checkIns)
-      .values(insertCheckIn)
+      .values(cleanedCheckIn)
       .returning();
     return checkIn;
   }
@@ -351,9 +377,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
+    // Convert timestamp string to Date object
+    const cleanedMessage = {
+      ...insertMessage,
+      timestamp: new Date(insertMessage.timestamp)
+    };
+
     const [message] = await db
       .insert(chatMessages)
-      .values(insertMessage)
+      .values(cleanedMessage)
       .returning();
     return message;
   }
@@ -374,12 +406,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAiSuggestion(insertSuggestion: InsertAiSuggestion): Promise<AiSuggestion> {
+    // Convert timestamp string to Date object
+    const cleanedSuggestion = {
+      ...insertSuggestion,
+      timestamp: new Date(insertSuggestion.timestamp),
+      metadata: insertSuggestion.metadata ?? null
+    };
+
     const [suggestion] = await db
       .insert(aiSuggestions)
-      .values({
-        ...insertSuggestion,
-        metadata: insertSuggestion.metadata ?? null
-      })
+      .values(cleanedSuggestion)
       .returning();
     return suggestion;
   }
@@ -409,9 +445,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createStatistics(insertStats: InsertStatistic): Promise<Statistic> {
+    // Convert date strings to Date objects
+    const cleanedStats = {
+      ...insertStats,
+      weekStart: new Date(insertStats.weekStart),
+      weekEnd: new Date(insertStats.weekEnd)
+    };
+
     const [stats] = await db
       .insert(statistics)
-      .values(insertStats)
+      .values(cleanedStats)
       .returning();
     return stats;
   }
