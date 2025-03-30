@@ -92,12 +92,12 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
           isAllDay: false,
           reminder: [15, 60], // Default reminders: 15 min and 1 hour before
           isRecurring: false,
-          recurringDays: [],
+          recurringDays: ["monday", "wednesday", "friday"], // Default to MWF for weekly recurrence
           skipHolidays: false,
-          holidayCountry: "",
+          holidayCountry: "US",
           recurrenceType: "weekly",
           recurrenceStartDate: new Date().toISOString().split('T')[0],
-          recurrenceEndDate: "",
+          recurrenceEndDate: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0], // Default to 30 days ahead
         }
   });
   
@@ -105,39 +105,64 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
   
   const onSubmit = async (data: TaskFormValues) => {
     try {
-      // Combine date and time
-      const dateObj = new Date(data.date);
-      if (!isAllDay && data.time) {
-        const [hours, minutes] = data.time.split(':').map(Number);
-        dateObj.setHours(hours, minutes);
-      } else {
-        dateObj.setHours(0, 0, 0, 0);
-      }
-      
-      // Process end date if provided
+      let dateObj: Date;
       let endDateObj: Date | undefined;
-      if (data.endDate) {
-        endDateObj = new Date(data.endDate);
-        if (!isAllDay && data.endTime) {
-          const [hours, minutes] = data.endTime.split(':').map(Number);
-          endDateObj.setHours(hours, minutes);
+      
+      // Handle different date logic for recurring vs single events
+      if (data.isRecurring) {
+        // For recurring events, use the recurrence start/end dates
+        if (!data.recurrenceStartDate) {
+          toast({
+            title: "Missing Information",
+            description: "Please select a start date for the recurring event.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Use recurrence start date as the main date
+        dateObj = new Date(data.recurrenceStartDate);
+        
+        // Time handling
+        if (!isAllDay && data.time) {
+          const [hours, minutes] = data.time.split(':').map(Number);
+          dateObj.setHours(hours, minutes);
         } else {
-          endDateObj.setHours(23, 59, 59, 999);
+          dateObj.setHours(0, 0, 0, 0);
+        }
+        
+        // Process recurrence end date if provided
+        if (data.recurrenceEndDate) {
+          endDateObj = new Date(data.recurrenceEndDate);
+          if (!isAllDay && data.endTime) {
+            const [hours, minutes] = data.endTime.split(':').map(Number);
+            endDateObj.setHours(hours, minutes);
+          } else {
+            endDateObj.setHours(23, 59, 59, 999);
+          }
+        }
+      } else {
+        // For single events, use the regular date fields
+        dateObj = new Date(data.date);
+        if (!isAllDay && data.time) {
+          const [hours, minutes] = data.time.split(':').map(Number);
+          dateObj.setHours(hours, minutes);
+        } else {
+          dateObj.setHours(0, 0, 0, 0);
+        }
+        
+        // Process regular end date if provided
+        if (data.endDate) {
+          endDateObj = new Date(data.endDate);
+          if (!isAllDay && data.endTime) {
+            const [hours, minutes] = data.endTime.split(':').map(Number);
+            endDateObj.setHours(hours, minutes);
+          } else {
+            endDateObj.setHours(23, 59, 59, 999);
+          }
         }
       }
-      
-      // Process recurrence dates if provided
-      let recurrenceStartDateObj: Date | undefined;
-      let recurrenceEndDateObj: Date | undefined;
-      
-      if (data.isRecurring && data.recurrenceStartDate) {
-        recurrenceStartDateObj = new Date(data.recurrenceStartDate);
-      }
-      
-      if (data.isRecurring && data.recurrenceEndDate) {
-        recurrenceEndDateObj = new Date(data.recurrenceEndDate);
-      }
-      
+
       // Create task object
       const taskData: InsertTask = {
         title: data.title,
@@ -154,8 +179,8 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
         skipHolidays: data.skipHolidays,
         holidayCountry: data.holidayCountry || undefined,
         recurrenceType: data.recurrenceType,
-        recurrenceStartDate: recurrenceStartDateObj,
-        recurrenceEndDate: recurrenceEndDateObj,
+        recurrenceStartDate: data.isRecurring ? dateObj : undefined,
+        recurrenceEndDate: data.isRecurring ? endDateObj : undefined,
       };
       
       await createTask(taskData);
@@ -185,15 +210,22 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
   const [selectedCountry, setSelectedCountry] = useState<string>(watch("holidayCountry") || "");
   
   // Update holiday check when date or country changes
+  const recurrenceStartDate = watch("recurrenceStartDate");
+  
   useEffect(() => {
-    if (selectedDate && selectedCountry) {
+    // Check holidays based on whether it's recurring or not
+    if (isRecurring && recurrenceStartDate && selectedCountry) {
+      const dateObj = new Date(recurrenceStartDate);
+      const holidayCheck = isHoliday(dateObj, selectedCountry);
+      setHolidayInfo(holidayCheck);
+    } else if (selectedDate && selectedCountry) {
       const dateObj = new Date(selectedDate);
       const holidayCheck = isHoliday(dateObj, selectedCountry);
       setHolidayInfo(holidayCheck);
     } else {
       setHolidayInfo({ isHoliday: false });
     }
-  }, [selectedDate, selectedCountry]);
+  }, [selectedDate, recurrenceStartDate, selectedCountry, isRecurring]);
   
   const handleAskAI = async () => {
     const title = watch("title");
@@ -289,6 +321,227 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
             />
           </div>
           
+          {/* Recurring Event Settings - moved to top */}
+          <div className="mb-4 border-t pt-4">
+            <Controller
+              name="isRecurring"
+              control={control}
+              render={({ field }) => (
+                <div className="flex items-center mb-2">
+                  <Checkbox 
+                    id="isRecurring" 
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <Label htmlFor="isRecurring" className="ml-2 text-sm font-medium text-gray-700 flex items-center">
+                    <CalendarDays className="h-4 w-4 mr-1" />
+                    Recurring event
+                  </Label>
+                </div>
+              )}
+            />
+            
+            {isRecurring && (
+              <div className="mt-2 ml-7">
+                {/* Recurrence Type Selection */}
+                <div className="mb-4">
+                  <Label htmlFor="recurrenceType" className="block text-sm font-medium text-gray-700 mb-1">
+                    Recurrence Type
+                  </Label>
+                  <Controller
+                    name="recurrenceType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select 
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger className="w-full border border-gray-300 rounded-lg">
+                          <SelectValue placeholder="Select recurrence type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                
+                {/* Date Range Selection for Recurring Events */}
+                <div className="mb-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="recurrenceStartDate" className="block text-sm font-medium text-gray-700 mb-1">
+                        Starts On
+                      </Label>
+                      <Controller
+                        name="recurrenceStartDate"
+                        control={control}
+                        render={({ field }) => (
+                          <Input 
+                            {...field} 
+                            id="recurrenceStartDate"
+                            type="date" 
+                            className="w-full border border-gray-300 rounded-lg" 
+                          />
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="recurrenceEndDate" className="block text-sm font-medium text-gray-700 mb-1">
+                        Ends On
+                      </Label>
+                      <Controller
+                        name="recurrenceEndDate"
+                        control={control}
+                        render={({ field }) => (
+                          <Input 
+                            {...field} 
+                            id="recurrenceEndDate"
+                            type="date" 
+                            className="w-full border border-gray-300 rounded-lg" 
+                          />
+                        )}
+                      />
+                    </div>
+                  </div>
+                  
+                  {!isAllDay && (
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <Label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-1">
+                          Start Time
+                        </Label>
+                        <Controller
+                          name="time"
+                          control={control}
+                          render={({ field }) => (
+                            <Input 
+                              {...field} 
+                              id="time"
+                              type="time" 
+                              className="w-full border border-gray-300 rounded-lg" 
+                            />
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-1">
+                          End Time
+                        </Label>
+                        <Controller
+                          name="endTime"
+                          control={control}
+                          render={({ field }) => (
+                            <Input 
+                              {...field} 
+                              id="endTime"
+                              type="time" 
+                              className="w-full border border-gray-300 rounded-lg" 
+                            />
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {recurrenceType === "weekly" && (
+                  <>
+                    <Label className="block text-sm font-medium text-gray-700 mb-1">
+                      Repeat on these days
+                    </Label>
+                    <div className="grid grid-cols-7 gap-1 mt-1">
+                      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => (
+                        <Controller
+                          key={day}
+                          name="recurringDays"
+                          control={control}
+                          render={({ field }) => {
+                            const dayName = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"][index];
+                            const isSelected = field.value?.includes(dayName);
+                            
+                            return (
+                              <Button
+                                type="button"
+                                variant={isSelected ? "default" : "outline"}
+                                className={`text-xs ${isSelected ? 'bg-primary text-white' : 'bg-white text-gray-700'} p-1 h-8`}
+                                onClick={() => {
+                                  const newValue = [...(field.value || [])];
+                                  if (isSelected) {
+                                    const index = newValue.indexOf(dayName);
+                                    if (index !== -1) newValue.splice(index, 1);
+                                  } else {
+                                    newValue.push(dayName);
+                                  }
+                                  field.onChange(newValue);
+                                }}
+                              >
+                                {day}
+                              </Button>
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+                
+                {/* Holiday settings */}
+                <div className="mt-4">
+                  <Controller
+                    name="skipHolidays"
+                    control={control}
+                    render={({ field }) => (
+                      <div className="flex items-center">
+                        <Checkbox 
+                          id="skipHolidays" 
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor="skipHolidays" className="ml-2 text-sm text-gray-700">
+                          Skip public holidays
+                        </Label>
+                      </div>
+                    )}
+                  />
+                  
+                  {skipHolidays && (
+                    <div className="mt-2">
+                      <Label htmlFor="holidayCountry" className="block text-sm font-medium text-gray-700 mb-1">
+                        Holiday Calendar
+                      </Label>
+                      <Controller
+                        name="holidayCountry"
+                        control={control}
+                        render={({ field }) => (
+                          <Select 
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              setSelectedCountry(value);
+                            }}
+                            value={field.value || ""}
+                            defaultValue={field.value || ""}
+                          >
+                            <SelectTrigger className="w-full border border-gray-300 rounded-lg">
+                              <SelectValue placeholder="Select country" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="US">United States</SelectItem>
+                              <SelectItem value="CO">Colombia</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          
           <div className="mb-4">
             <Controller
               name="isAllDay"
@@ -308,88 +561,92 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <Label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
-                Date
-              </Label>
-              <Controller
-                name="date"
-                control={control}
-                render={({ field }) => (
-                  <Input 
-                    {...field} 
-                    id="date"
-                    type="date" 
-                    className="w-full border border-gray-300 rounded-lg" 
+          {!isRecurring && (
+            <>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <Label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
+                    Date
+                  </Label>
+                  <Controller
+                    name="date"
+                    control={control}
+                    render={({ field }) => (
+                      <Input 
+                        {...field} 
+                        id="date"
+                        type="date" 
+                        className="w-full border border-gray-300 rounded-lg" 
+                      />
+                    )}
                   />
-                )}
-              />
-              {errors.date && (
-                <p className="text-xs text-red-500 mt-1">{errors.date.message}</p>
-              )}
-            </div>
-            
-            {!isAllDay && (
-              <div>
-                <Label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Time
-                </Label>
-                <Controller
-                  name="time"
-                  control={control}
-                  render={({ field }) => (
-                    <Input 
-                      {...field} 
-                      id="time"
-                      type="time" 
-                      className="w-full border border-gray-300 rounded-lg" 
-                    />
+                  {errors.date && (
+                    <p className="text-xs text-red-500 mt-1">{errors.date.message}</p>
                   )}
-                />
+                </div>
+                
+                {!isAllDay && (
+                  <div>
+                    <Label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Time
+                    </Label>
+                    <Controller
+                      name="time"
+                      control={control}
+                      render={({ field }) => (
+                        <Input 
+                          {...field} 
+                          id="time"
+                          type="time" 
+                          className="w-full border border-gray-300 rounded-lg" 
+                        />
+                      )}
+                    />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <Label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-                End Date (optional)
-              </Label>
-              <Controller
-                name="endDate"
-                control={control}
-                render={({ field }) => (
-                  <Input 
-                    {...field} 
-                    id="endDate"
-                    type="date" 
-                    className="w-full border border-gray-300 rounded-lg" 
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <Label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+                    End Date (optional)
+                  </Label>
+                  <Controller
+                    name="endDate"
+                    control={control}
+                    render={({ field }) => (
+                      <Input 
+                        {...field} 
+                        id="endDate"
+                        type="date" 
+                        className="w-full border border-gray-300 rounded-lg" 
+                      />
+                    )}
                   />
-                )}
-              />
-            </div>
-            
-            {!isAllDay && (
-              <div>
-                <Label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-1">
-                  End Time
-                </Label>
-                <Controller
-                  name="endTime"
-                  control={control}
-                  render={({ field }) => (
-                    <Input 
-                      {...field} 
-                      id="endTime"
-                      type="time" 
-                      className="w-full border border-gray-300 rounded-lg" 
+                </div>
+                
+                {!isAllDay && (
+                  <div>
+                    <Label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-1">
+                      End Time
+                    </Label>
+                    <Controller
+                      name="endTime"
+                      control={control}
+                      render={({ field }) => (
+                        <Input 
+                          {...field} 
+                          id="endTime"
+                          type="time" 
+                          className="w-full border border-gray-300 rounded-lg" 
+                        />
+                      )}
                     />
-                  )}
-                />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
           
           <div className="mb-4">
             <Label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1">
