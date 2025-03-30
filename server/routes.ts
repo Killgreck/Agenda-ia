@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -6,14 +6,192 @@ import {
   insertCheckInSchema, 
   insertChatMessageSchema, 
   insertAiSuggestionSchema, 
-  insertStatisticsSchema 
+  insertStatisticsSchema,
+  insertUserSchema
 } from "@shared/schema";
 import axios from "axios";
 import { WebSocketServer } from "ws";
 import schedule from "node-schedule";
+import session from "express-session";
+import { randomBytes } from "crypto";
+import bcrypt from "bcryptjs";
+import MemoryStore from "memorystore";
+
+// Extend express-session declarations
+declare module 'express-session' {
+  interface SessionData {
+    userId: number;
+    username: string;
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+
+  // Initialize session store
+  const SessionStore = MemoryStore(session);
+  
+  // Setup session middleware
+  app.use(session({
+    secret: process.env.SESSION_SECRET || randomBytes(32).toString('hex'),
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    },
+    store: new SessionStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    })
+  }));
+  
+  // Authentication Middleware
+  const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+    if (req.session && req.session.userId) {
+      return next();
+    }
+    
+    res.status(401).json({ 
+      success: false, 
+      message: "Authentication required" 
+    });
+  };
+  
+  // Authentication routes
+  app.post("/api/auth/signup", async (req: Request, res: Response) => {
+    try {
+      const { username, password, email, name } = req.body;
+      
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Username already exists"
+        });
+      }
+      
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+      
+      // Create the user
+      const userData = {
+        username,
+        password: hashedPassword,
+        email: email || null,
+        name: name || null
+      };
+      
+      const validatedUserData = insertUserSchema.parse(userData);
+      const user = await storage.createUser(validatedUserData);
+      
+      // Set user session
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      
+      res.status(201).json({
+        success: true,
+        message: "User created successfully",
+        user: userWithoutPassword
+      });
+    } catch (error: any) {
+      console.error("Error in signup:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+  
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      
+      // Find user
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid username or password"
+        });
+      }
+      
+      // Verify password
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid username or password"
+        });
+      }
+      
+      // Set user session
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      
+      res.json({
+        success: true,
+        message: "Login successful",
+        user: userWithoutPassword
+      });
+    } catch (error: any) {
+      console.error("Error in login:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+  
+  app.post("/api/auth/logout", (req: Request, res: Response) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Logout failed"
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: "Logged out successfully"
+      });
+    });
+  });
+  
+  app.get("/api/auth/status", (req: Request, res: Response) => {
+    if (req.session && req.session.userId) {
+      storage.getUser(req.session.userId)
+        .then(user => {
+          if (user) {
+            // Remove password from response
+            const { password: _, ...userWithoutPassword } = user;
+            
+            res.json({
+              isAuthenticated: true,
+              user: userWithoutPassword
+            });
+          } else {
+            // User not found in database but has session
+            req.session.destroy(() => {});
+            res.json({ isAuthenticated: false });
+          }
+        })
+        .catch(err => {
+          console.error("Error checking auth status:", err);
+          res.json({ isAuthenticated: false });
+        });
+    } else {
+      res.json({ isAuthenticated: false });
+    }
+  });
   
   // Setup WebSocket for real-time communications
   const wss = new WebSocketServer({ 
@@ -62,15 +240,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   
   // Tasks API
-  app.post("/api/tasks", async (req: Request, res: Response) => {
+  app.post("/api/tasks", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.body.userId || 1; // Default to user 1 for testing, should be from authenticated session
+      const userId = req.session.userId;
       
       // Parse and validate the request body
       // The schema expects date fields as strings in ISO format
       const rawData = {
         ...req.body,
-        userId, // Include the user ID
+        userId, // Include the user ID from session
         // Ensure all date fields are strings (they may already be ISO strings from client)
         date: req.body.date ? req.body.date.toString() : undefined,
         endDate: req.body.endDate ? req.body.endDate.toString() : undefined,
@@ -161,11 +339,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/tasks", async (req: Request, res: Response) => {
+  app.get("/api/tasks", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
-      const userId = req.query.userId ? parseInt(req.query.userId as string) : 1; // Default to user 1 for testing
+      const userId = req.session.userId;
       
       const tasks = await storage.getTasks({ startDate, endDate, userId });
       res.json(tasks);

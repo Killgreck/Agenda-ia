@@ -7,23 +7,40 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
-  method: string,
+export async function apiRequest<T = any>(
   url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
-
+  options?: RequestInit
+): Promise<T> {
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    ...(options?.headers || {})
+  };
+  
+  const config: RequestInit = {
+    ...options,
+    headers: defaultHeaders,
+    credentials: 'include' // Important for session cookies
+  };
+  
+  const res = await fetch(url, config);
+  
+  // Handle unauthorized redirects
+  if (res.status === 401 && !url.includes('/api/auth')) {
+    window.location.href = '/auth';
+    return {} as T;
+  }
+  
   await throwIfResNotOk(res);
-  return res;
+  
+  // For empty responses (e.g. 204 No Content)
+  if (res.status === 204) {
+    return {} as T;
+  }
+  
+  return await res.json() as T;
 }
 
-type UnauthorizedBehavior = "returnNull" | "throw";
+type UnauthorizedBehavior = "returnNull" | "throw" | "redirect";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
@@ -33,8 +50,13 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    if (res.status === 401) {
+      if (unauthorizedBehavior === "returnNull") {
+        return null;
+      } else if (unauthorizedBehavior === "redirect") {
+        window.location.href = '/auth';
+        return null;
+      }
     }
 
     await throwIfResNotOk(res);
