@@ -7,12 +7,22 @@ import { useTasks } from "@/hooks/useTaskManager";
 import { type ChatMessage } from "@/types/chat";
 import { useLocalMessages } from "@/hooks/useLocalMessages";
 
+// Define adapter function to convert between message formats if needed
+const adaptMessage = (message: any): ChatMessage => {
+  return {
+    id: message.id || Date.now(),
+    content: message.content,
+    timestamp: message.timestamp,
+    sender: message.sender === 'user' ? 'user' : message.sender === 'ai' ? 'ai' : 'system'
+  };
+};
+
 export default function AIAssistant() {
   const [message, setMessage] = useState("");
   const [apiError, setApiError] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { messages: aiMessages, sendMessage, isTyping } = useAI();
-  const { messages, setMessages, addUserMessage, addAIMessage } = useLocalMessages(aiMessages);
+  const { messages, addUserMessage, addAIMessage } = useLocalMessages(aiMessages);
   
   // Auto-scroll chat to bottom when messages change
   useEffect(() => {

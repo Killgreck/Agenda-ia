@@ -1,12 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChatMessage } from '@/types/chat';
+
+// Define adapter function to convert any message to the correct ChatMessage format
+const adaptMessage = (message: any): ChatMessage => {
+  return {
+    id: message.id || Date.now(),
+    content: message.content,
+    timestamp: message.timestamp || new Date().toISOString(),
+    sender: message.sender === 'user' ? 'user' : message.sender === 'ai' ? 'ai' : 'system'
+  };
+};
 
 /**
  * Custom hook to manage message state for the AI Assistant
  * This allows us to manipulate messages directly when API is unavailable
  */
-export function useLocalMessages(initialMessages: ChatMessage[] = []) {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+export function useLocalMessages(initialMessages: any[] = []) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  
+  // Process initial messages when they change (from useAI)
+  useEffect(() => {
+    if (initialMessages && initialMessages.length > 0) {
+      const adaptedMessages = initialMessages.map(msg => adaptMessage(msg));
+      setMessages(adaptedMessages);
+    }
+  }, [initialMessages]);
 
   /**
    * Add a user message to the chat
