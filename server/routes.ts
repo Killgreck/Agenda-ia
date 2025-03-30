@@ -65,13 +65,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tasks", async (req: Request, res: Response) => {
     try {
       // Parse and validate the request body
-      // Pre-process the date fields to ensure they are Date objects
+      // The schema expects date fields as strings in ISO format
       const rawData = {
         ...req.body,
-        date: req.body.date ? new Date(req.body.date) : undefined,
-        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
-        recurrenceStartDate: req.body.recurrenceStartDate ? new Date(req.body.recurrenceStartDate) : undefined,
-        recurrenceEndDate: req.body.recurrenceEndDate ? new Date(req.body.recurrenceEndDate) : undefined
+        // Ensure all date fields are strings (they may already be ISO strings from client)
+        date: req.body.date ? req.body.date.toString() : undefined,
+        endDate: req.body.endDate ? req.body.endDate.toString() : undefined,
+        recurrenceStartDate: req.body.recurrenceStartDate ? req.body.recurrenceStartDate.toString() : undefined,
+        recurrenceEndDate: req.body.recurrenceEndDate ? req.body.recurrenceEndDate.toString() : undefined
       };
       
       const parseResult = insertTaskSchema.safeParse(rawData);
@@ -188,13 +189,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const taskId = parseInt(req.params.id);
       
-      // Pre-process date fields for update
+      // Pre-process date fields for update - ensure they remain as strings
       const taskUpdate = {
         ...req.body,
-        date: req.body.date ? new Date(req.body.date) : undefined,
-        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
-        recurrenceStartDate: req.body.recurrenceStartDate ? new Date(req.body.recurrenceStartDate) : undefined,
-        recurrenceEndDate: req.body.recurrenceEndDate ? new Date(req.body.recurrenceEndDate) : undefined
+        date: req.body.date ? req.body.date.toString() : undefined,
+        endDate: req.body.endDate ? req.body.endDate.toString() : undefined,
+        recurrenceStartDate: req.body.recurrenceStartDate ? req.body.recurrenceStartDate.toString() : undefined,
+        recurrenceEndDate: req.body.recurrenceEndDate ? req.body.recurrenceEndDate.toString() : undefined
       };
       
       const updatedTask = await storage.updateTask(taskId, taskUpdate);
@@ -233,10 +234,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check-ins API
   app.post("/api/check-ins", async (req: Request, res: Response) => {
     try {
-      // Pre-process date field
+      // Pre-process date field as string
       const rawData = {
         ...req.body,
-        date: req.body.date ? new Date(req.body.date) : undefined
+        date: req.body.date ? req.body.date.toString() : undefined
       };
       
       const checkInData = insertCheckInSchema.parse(rawData);
@@ -285,10 +286,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat API
   app.post("/api/chat-messages", async (req: Request, res: Response) => {
     try {
-      // Pre-process timestamp field
+      // Pre-process timestamp field as string
+      const now = new Date();
       const rawData = {
         ...req.body,
-        timestamp: req.body.timestamp ? new Date(req.body.timestamp) : new Date()
+        timestamp: req.body.timestamp ? req.body.timestamp.toString() : now.toISOString()
       };
       
       const messageData = insertChatMessageSchema.parse(rawData);
@@ -303,10 +305,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Simulate API call to Deepsek AI
           // In production, replace this with actual API call to Deepsek
           setTimeout(async () => {
-            // Create AI response
+            // Create AI response with timestamp as string (ISO format)
+            const now = new Date();
             const aiResponseData = {
               content: generateAIResponse(messageData.content),
-              timestamp: new Date(),
+              timestamp: now.toISOString(),
               sender: 'ai'
             };
             
@@ -339,10 +342,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Suggestions API
   app.post("/api/ai-suggestions", async (req: Request, res: Response) => {
     try {
-      // Pre-process timestamp field
+      // Pre-process timestamp field as string
+      const now = new Date();
       const rawData = {
         ...req.body,
-        timestamp: req.body.timestamp ? new Date(req.body.timestamp) : new Date()
+        timestamp: req.body.timestamp ? req.body.timestamp.toString() : now.toISOString()
       };
       
       const suggestionData = insertAiSuggestionSchema.parse(rawData);
@@ -394,11 +398,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Statistics API
   app.post("/api/statistics", async (req: Request, res: Response) => {
     try {
-      // Pre-process date fields
+      // Pre-process date fields as strings
       const rawData = {
         ...req.body,
-        weekStart: req.body.weekStart ? new Date(req.body.weekStart) : undefined,
-        weekEnd: req.body.weekEnd ? new Date(req.body.weekEnd) : undefined
+        weekStart: req.body.weekStart ? req.body.weekStart.toString() : undefined,
+        weekEnd: req.body.weekEnd ? req.body.weekEnd.toString() : undefined
       };
       
       const statisticsData = insertStatisticsSchema.parse(rawData);
@@ -479,8 +483,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let statistics;
       const statsData = {
-        weekStart: start,
-        weekEnd: end,
+        weekStart: start.toISOString(),
+        weekEnd: end.toISOString(),
         tasksCompleted: completedTasks.length,
         tasksTotal: tasks.length,
         avgProductivity,

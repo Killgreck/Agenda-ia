@@ -44,8 +44,14 @@ export const checkIns = pgTable("check_ins", {
   notes: text("notes"),
 });
 
-export const insertCheckInSchema = createInsertSchema(checkIns).omit({
+// Create the base check-in insert schema
+const baseInsertCheckInSchema = createInsertSchema(checkIns).omit({
   id: true,
+});
+
+// Extend it to handle string date input
+export const insertCheckInSchema = baseInsertCheckInSchema.extend({
+  date: z.string(),
 });
 
 // Chat messages table
@@ -56,8 +62,14 @@ export const chatMessages = pgTable("chat_messages", {
   sender: text("sender").notNull(), // 'user' or 'ai'
 });
 
-export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+// Create the base chat message insert schema
+const baseInsertChatMessageSchema = createInsertSchema(chatMessages).omit({
   id: true,
+});
+
+// Extend it to handle string timestamp input
+export const insertChatMessageSchema = baseInsertChatMessageSchema.extend({
+  timestamp: z.string(),
 });
 
 // AI suggestions table
@@ -70,8 +82,14 @@ export const aiSuggestions = pgTable("ai_suggestions", {
   metadata: json("metadata"), // Any additional context
 });
 
-export const insertAiSuggestionSchema = createInsertSchema(aiSuggestions).omit({
+// Create the base AI suggestion insert schema
+const baseInsertAiSuggestionSchema = createInsertSchema(aiSuggestions).omit({
   id: true,
+});
+
+// Extend it to handle string timestamp input
+export const insertAiSuggestionSchema = baseInsertAiSuggestionSchema.extend({
+  timestamp: z.string(),
 });
 
 // Statistics table for weekly reports
@@ -86,8 +104,15 @@ export const statistics = pgTable("statistics", {
   aiSuggestionsTotal: integer("ai_suggestions_total").notNull(),
 });
 
-export const insertStatisticsSchema = createInsertSchema(statistics).omit({
+// Create the base statistics insert schema
+const baseInsertStatisticsSchema = createInsertSchema(statistics).omit({
   id: true,
+});
+
+// Extend it to handle string date inputs
+export const insertStatisticsSchema = baseInsertStatisticsSchema.extend({
+  weekStart: z.string(),
+  weekEnd: z.string(),
 });
 
 // Export types
