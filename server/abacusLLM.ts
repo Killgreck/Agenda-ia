@@ -114,36 +114,80 @@ export async function callAbacusLLM(userMessage: string): Promise<string> {
     // Create a more contextual response based on the user's message
     const userMessageLower = userMessage.toLowerCase();
     
+    // Detect language (simple detection for English vs Spanish)
+    const isSpanish = userMessageLower.includes('quiero') || 
+                      userMessageLower.includes('agendar') || 
+                      userMessageLower.includes('calendario') ||
+                      userMessageLower.includes('lunes') ||
+                      userMessageLower.includes('martes') || 
+                      userMessageLower.includes('miércoles') || 
+                      userMessageLower.includes('jueves') || 
+                      userMessageLower.includes('viernes');
+    
     // Message about scheduling or creating events
     if (userMessageLower.includes('schedule') || userMessageLower.includes('calendar') || 
         userMessageLower.includes('event') || userMessageLower.includes('appointment') ||
-        userMessageLower.includes('add to my') || userMessageLower.includes('create')) {
-      return "I'd be happy to help you schedule that! What day and time works best for you? I can add it to your calendar with any details you'd like to include.";
+        userMessageLower.includes('add to my') || userMessageLower.includes('create') ||
+        userMessageLower.includes('agendar') || userMessageLower.includes('calendario') ||
+        userMessageLower.includes('agregar') || userMessageLower.includes('crear')) {
+      
+      if (isSpanish) {
+        return "¡Con gusto te ayudo a agendar eso! ¿Qué día y horario te funciona mejor? Puedo agregarlo a tu calendario con todos los detalles que desees incluir.";
+      } else {
+        return "I'd be happy to help you schedule that! What day and time works best for you? I can add it to your calendar with any details you'd like to include.";
+      }
     }
     
     // Message about productivity or time management
     else if (userMessageLower.includes('productivity') || userMessageLower.includes('efficient') || 
              userMessageLower.includes('focus') || userMessageLower.includes('manage time') ||
-             userMessageLower.includes('distracted')) {
-      return "Great question about productivity! Research shows that time-blocking your calendar and scheduling focus sessions of 90-120 minutes can significantly improve your efficiency. Would you like me to suggest some time blocks for your calendar?";
+             userMessageLower.includes('distracted') || userMessageLower.includes('productividad') ||
+             userMessageLower.includes('eficiente') || userMessageLower.includes('concentración')) {
+      
+      if (isSpanish) {
+        return "¡Gran pregunta sobre productividad! Los estudios muestran que bloquear tiempo en tu calendario y programar sesiones de enfoque de 90-120 minutos puede mejorar significativamente tu eficiencia. ¿Te gustaría que te sugiera algunos bloques de tiempo para tu calendario?";
+      } else {
+        return "Great question about productivity! Research shows that time-blocking your calendar and scheduling focus sessions of 90-120 minutes can significantly improve your efficiency. Would you like me to suggest some time blocks for your calendar?";
+      }
     }
     
     // Message about task reminders or deadlines
     else if (userMessageLower.includes('remind') || userMessageLower.includes('forget') || 
-             userMessageLower.includes('deadline') || userMessageLower.includes('due date')) {
-      return "I can help you set up reminders! For important deadlines, I recommend setting multiple reminders: 1 week before, 3 days before, and the day before. This creates a natural planning cycle. Would you like me to set these up for you?";
+             userMessageLower.includes('deadline') || userMessageLower.includes('due date') ||
+             userMessageLower.includes('recordar') || userMessageLower.includes('olvidar') ||
+             userMessageLower.includes('fecha límite') || userMessageLower.includes('vencimiento')) {
+      
+      if (isSpanish) {
+        return "¡Puedo ayudarte a configurar recordatorios! Para fechas límite importantes, recomiendo establecer múltiples recordatorios: 1 semana antes, 3 días antes y el día anterior. Esto crea un ciclo natural de planificación. ¿Te gustaría que configure estos recordatorios para ti?";
+      } else {
+        return "I can help you set up reminders! For important deadlines, I recommend setting multiple reminders: 1 week before, 3 days before, and the day before. This creates a natural planning cycle. Would you like me to set these up for you?";
+      }
     }
     
     // Message about recommendations
     else if (userMessageLower.includes('recommend') || userMessageLower.includes('suggest') || 
-             userMessageLower.includes('advice') || userMessageLower.includes('should i')) {
-      return "I'd be happy to provide a recommendation! Based on productivity research, I'd suggest considering your energy levels when scheduling tasks - morning for creative work, afternoon for meetings, and routine tasks for end of day. Does that align with your natural rhythm?";
+             userMessageLower.includes('advice') || userMessageLower.includes('should i') ||
+             userMessageLower.includes('recomienda') || userMessageLower.includes('sugiere') ||
+             userMessageLower.includes('consejo') || userMessageLower.includes('debería')) {
+      
+      if (isSpanish) {
+        return "¡Me encantaría darte una recomendación! Basado en investigaciones sobre productividad, te sugiero considerar tus niveles de energía al programar tareas - mañana para trabajo creativo, tarde para reuniones y tareas rutinarias para el final del día. ¿Esto se alinea con tu ritmo natural?";
+      } else {
+        return "I'd be happy to provide a recommendation! Based on productivity research, I'd suggest considering your energy levels when scheduling tasks - morning for creative work, afternoon for meetings, and routine tasks for end of day. Does that align with your natural rhythm?";
+      }
     }
     
     // Exercise or wellness related
     else if (userMessageLower.includes('exercise') || userMessageLower.includes('workout') || 
-             userMessageLower.includes('gym') || userMessageLower.includes('health')) {
-      return "Exercise is a fantastic productivity booster! Research shows that scheduling workouts at consistent times (like Monday/Wednesday/Friday mornings) helps establish the habit. Would you like me to suggest some workout time slots in your calendar?";
+             userMessageLower.includes('gym') || userMessageLower.includes('health') ||
+             userMessageLower.includes('ejercicio') || userMessageLower.includes('entrenamiento') ||
+             userMessageLower.includes('gimnasio') || userMessageLower.includes('salud')) {
+      
+      if (isSpanish) {
+        return "¡El ejercicio es un fantástico impulsor de productividad! Las investigaciones muestran que programar entrenamientos en horarios consistentes (como lunes/miércoles/viernes por la mañana) ayuda a establecer el hábito. ¿Te gustaría que te sugiera algunos horarios de entrenamiento en tu calendario?";
+      } else {
+        return "Exercise is a fantastic productivity booster! Research shows that scheduling workouts at consistent times (like Monday/Wednesday/Friday mornings) helps establish the habit. Would you like me to suggest some workout time slots in your calendar?";
+      }
     }
     
     // Default response as a fallback

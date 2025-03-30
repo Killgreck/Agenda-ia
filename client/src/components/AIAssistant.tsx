@@ -4,12 +4,15 @@ import { useAI } from "@/hooks/useAI";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTasks } from "@/hooks/useTaskManager";
+import { type ChatMessage } from "@/types/chat";
+import { useLocalMessages } from "@/hooks/useLocalMessages";
 
 export default function AIAssistant() {
   const [message, setMessage] = useState("");
   const [apiError, setApiError] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const { messages, sendMessage, isTyping } = useAI();
+  const { messages: aiMessages, sendMessage, isTyping } = useAI();
+  const { messages, setMessages, addUserMessage, addAIMessage } = useLocalMessages(aiMessages);
   
   // Auto-scroll chat to bottom when messages change
   useEffect(() => {
@@ -41,7 +44,31 @@ export default function AIAssistant() {
     const isWorkoutRelated = cleanMessage.toLowerCase().includes('gym') || 
                             cleanMessage.toLowerCase().includes('workout') || 
                             cleanMessage.toLowerCase().includes('exercise') ||
-                            cleanMessage.toLowerCase().includes('three times a week');
+                            cleanMessage.toLowerCase().includes('three times a week') ||
+                            cleanMessage.toLowerCase().includes('gimnasio') ||
+                            cleanMessage.toLowerCase().includes('ejercicio');
+    
+    // Check if this message is related to scheduling/calendar
+    const isSchedulingRelated = cleanMessage.toLowerCase().includes('schedule') || 
+                               cleanMessage.toLowerCase().includes('calendar') || 
+                               cleanMessage.toLowerCase().includes('appointment') ||
+                               cleanMessage.toLowerCase().includes('meeting') ||
+                               cleanMessage.toLowerCase().includes('agendar') ||
+                               cleanMessage.toLowerCase().includes('calendario') ||
+                               cleanMessage.toLowerCase().includes('reunión') ||
+                               cleanMessage.toLowerCase().includes('cita');
+    
+    // Check for Spanish language
+    const isSpanish = cleanMessage.toLowerCase().includes('quiero') || 
+                      cleanMessage.toLowerCase().includes('agendar') || 
+                      cleanMessage.toLowerCase().includes('calendario') ||
+                      cleanMessage.toLowerCase().includes('gimnasio') ||
+                      cleanMessage.toLowerCase().includes('ejercicio') ||
+                      cleanMessage.toLowerCase().includes('reunión') ||
+                      cleanMessage.toLowerCase().includes('cita') ||
+                      cleanMessage.toLowerCase().includes('hola') ||
+                      cleanMessage.toLowerCase().includes('gracias') ||
+                      cleanMessage.toLowerCase().includes('por favor');
     
     // Check for API error condition before sending
     const hasApiError = messages.some(msg => 
@@ -50,32 +77,39 @@ export default function AIAssistant() {
       msg.content.includes("connection is restored") ||
       msg.content.includes("once I'm back online"));
     
-    // If we have detected an API error and this is a workout-related message,
-    // use our enhanced local response instead of sending to the API
-    if (hasApiError && isWorkoutRelated) {
-      // Add user message to the UI
-      const userMessage = {
-        id: Date.now(),
-        content: cleanMessage,
-        timestamp: new Date().toISOString(),
-        sender: 'user' as const
-      };
-      
+    // If we have detected an API error and this is a specific type of message we can handle locally
+    if (hasApiError) {
       // First add the user message
-      setMessages(prev => [...prev, userMessage]);
+      addUserMessage(cleanMessage);
       
-      // Small delay to simulate processing
-      setTimeout(() => {
-        // Then add a contextual gym-specific response
-        const gymResponse = {
-          id: Date.now() + 1,
-          content: "For your gym routine three times a week, I recommend scheduling on Monday, Wednesday, and Friday at consistent times, ideally morning (6-8 AM) or evening (5-7 PM) when energy levels are optimal. Would you like me to add these recurring sessions to your calendar?",
-          timestamp: new Date().toISOString(),
-          sender: 'ai' as const
-        };
+      // Handle different message types with contextual responses
+      if (isWorkoutRelated) {
+        // Create contextual gym-related response based on language
+        const gymResponse = isSpanish
+          ? "Para tu rutina de gimnasio tres veces por semana, recomiendo programar en lunes, miércoles y viernes en horarios consistentes, idealmente por la mañana (6-8 AM) o por la tarde (5-7 PM) cuando los niveles de energía son óptimos. ¿Te gustaría que agregue estas sesiones recurrentes a tu calendario?"
+          : "For your gym routine three times a week, I recommend scheduling on Monday, Wednesday, and Friday at consistent times, ideally morning (6-8 AM) or evening (5-7 PM) when energy levels are optimal. Would you like me to add these recurring sessions to your calendar?";
         
-        setMessages(prev => [...prev, gymResponse]);
-      }, 1500);
+        // Add AI response with a small delay
+        addAIMessage(gymResponse, 1500);
+      } 
+      else if (isSchedulingRelated) {
+        // Create contextual scheduling-related response based on language
+        const schedulingResponse = isSpanish
+          ? "Puedo ayudarte a programar eventos en tu calendario. Por favor, proporciona los detalles como el título, la fecha, la hora y si es un evento recurrente. Por ejemplo: 'Programar una reunión de equipo el lunes a las 10 AM'."
+          : "I can help you schedule events on your calendar. Please provide details like title, date, time, and whether it's a recurring event. For example: 'Schedule a team meeting on Monday at 10 AM'.";
+        
+        // Add AI response with a small delay
+        addAIMessage(schedulingResponse, 1500);
+      }
+      else {
+        // Generic fallback response based on language
+        const fallbackResponse = isSpanish
+          ? "Lo siento, estoy teniendo problemas para conectarme al servicio de IA en este momento. Puedo ayudarte con tareas básicas como programación de eventos y recomendaciones de ejercicios. ¿En qué más puedo ayudarte?"
+          : "I'm sorry, I'm having trouble connecting to the AI service right now. I can help with basic tasks like event scheduling and exercise recommendations. What else can I assist you with?";
+        
+        // Add AI response with a small delay
+        addAIMessage(fallbackResponse, 1500);
+      }
     } else {
       // Use normal API-based flow for all other cases
       sendMessage(cleanMessage);
