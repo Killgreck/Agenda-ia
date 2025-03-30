@@ -89,16 +89,18 @@ export function useAI() {
     // Get user ID for the welcome message
     const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
     
-    // Add welcome message
-    const welcomeMessage: ChatMessage = {
-      id: 0,
-      content: "Hello! I'm your AI calendar assistant. I can help schedule tasks, set reminders, and optimize your day. What would you like to do today?",
-      timestamp: new Date().toISOString(),
-      sender: 'ai',
-      userId // Adding userId for the welcome message
-    };
-    setMessages([welcomeMessage]);
-  }, []);
+    // Add welcome message only if messages array is empty
+    if (messages.length === 0) {
+      const welcomeMessage: ChatMessage = {
+        id: 0,
+        content: "Hi there! I'm your calendar assistant and scheduling coach. I'd be happy to help you manage your schedule or provide productivity tips. What can I help you with today?",
+        timestamp: new Date().toISOString(),
+        sender: 'ai',
+        userId // Adding userId for the welcome message
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [messages.length]);
   
   // Mutation to send message
   const { mutateAsync: sendMessageMutation } = useMutation({

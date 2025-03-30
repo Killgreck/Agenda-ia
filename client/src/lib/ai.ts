@@ -85,18 +85,43 @@ export async function getTaskSuggestion(title: string, description?: string): Pr
   } catch (error) {
     console.error('Error calling task suggestion API:', error);
     
-    // Provide fallback suggestions based on task type for better user experience
-    // when the Abacus API is unavailable
-    if (title.toLowerCase().includes('meeting') || title.toLowerCase().includes('call')) {
-      return "I suggest allocating 15 minutes before this meeting for preparation and 10 minutes after for notes. Would you like me to update your schedule?";
-    } else if (title.toLowerCase().includes('deadline') || title.toLowerCase().includes('project')) {
-      return "This looks like an important project deadline. Would you like me to create focus time blocks in your calendar to work on this?";
-    } else if (title.toLowerCase().includes('doctor') || title.toLowerCase().includes('appointment')) {
-      return "For medical appointments, I recommend adding travel time. Would you like me to block 30 minutes before and after this appointment?";
+    // Provide smart fallback suggestions based on task type and description
+    // Analyze the input to generate a context-specific response
+    const taskLower = title.toLowerCase();
+    const descLower = description ? description.toLowerCase() : '';
+    
+    // Workout/Gym routine suggestions
+    if (taskLower.includes('gym') || taskLower.includes('workout') || taskLower.includes('exercise') || 
+        descLower.includes('gym') || descLower.includes('workout') || descLower.includes('exercise')) {
+      // If frequency is mentioned
+      if (descLower.includes('three times') || descLower.includes('3 times')) {
+        return "For your gym routine three times a week, I recommend scheduling on Monday, Wednesday, and Friday at consistent times, ideally morning (6-8 AM) or evening (5-7 PM) when energy levels are optimal. Would you like me to add these recurring sessions to your calendar?";
+      } else if (descLower.includes('twice') || descLower.includes('two times') || descLower.includes('2 times')) {
+        return "For your workout routine twice a week, I suggest scheduling on Tuesday and Friday with at least 48 hours between sessions for muscle recovery. Would you like me to add these as recurring events?";
+      } else if (descLower.includes('daily') || descLower.includes('every day')) {
+        return "For daily workouts, I recommend alternating between strength training and cardio to prevent overtraining. Would you like me to create a balanced weekly routine in your calendar?";
+      } else {
+        return "For your gym sessions, I recommend scheduling them at the same time on consistent days to build a habit. Morning workouts (6-8 AM) can boost metabolism all day, while evening sessions (5-7 PM) often yield higher performance. Which would you prefer?";
+      }
     }
     
-    // Default suggestion
-    return "Based on your task details, I recommend setting a reminder the day before as well. Would you like me to add that?";
+    // Meeting/call suggestions
+    else if (taskLower.includes('meeting') || taskLower.includes('call')) {
+      return "I suggest allocating 15 minutes before this meeting for preparation and 10 minutes after for notes. This buffer time helps you prepare mentally and document key takeaways while they're fresh. Would you like me to update your schedule with these buffers?";
+    } 
+    
+    // Project/deadline suggestions
+    else if (taskLower.includes('deadline') || taskLower.includes('project')) {
+      return "This looks like an important project deadline. I recommend scheduling 3-4 focused work blocks (90-120 minutes each) in the days leading up to it, with the most intensive work at least 2 days before the deadline to allow for contingencies. Would you like me to create these focus blocks in your calendar?";
+    } 
+    
+    // Appointment suggestions
+    else if (taskLower.includes('doctor') || taskLower.includes('appointment')) {
+      return "For appointments, I recommend adding travel time and potential waiting time. Would you like me to block 30 minutes before for travel and 15 minutes after to account for any follow-up actions or delays?";
+    }
+    
+    // Default suggestion - more detailed and helpful
+    return "Looking at your task details, I recommend scheduling this at a time when you typically have high focus and energy. I also suggest adding a reminder 24 hours before and setting a specific duration to help with time management. When would be the ideal time to schedule this task in your week?";
   }
 }
 

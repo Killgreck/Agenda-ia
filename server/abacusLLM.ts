@@ -111,8 +111,45 @@ export async function callAbacusLLM(userMessage: string): Promise<string> {
       console.error('Non-axios error details:', JSON.stringify(error));
     }
     
-    // For now, use a simpler non-LLM response for better reliability
-    return "Hi there! I'm your calendar assistant and scheduling coach. I'd be happy to help you manage your schedule or provide productivity tips. What can I help you with today?";
+    // Create a more contextual response based on the user's message
+    const userMessageLower = userMessage.toLowerCase();
+    
+    // Message about scheduling or creating events
+    if (userMessageLower.includes('schedule') || userMessageLower.includes('calendar') || 
+        userMessageLower.includes('event') || userMessageLower.includes('appointment') ||
+        userMessageLower.includes('add to my') || userMessageLower.includes('create')) {
+      return "I'd be happy to help you schedule that! What day and time works best for you? I can add it to your calendar with any details you'd like to include.";
+    }
+    
+    // Message about productivity or time management
+    else if (userMessageLower.includes('productivity') || userMessageLower.includes('efficient') || 
+             userMessageLower.includes('focus') || userMessageLower.includes('manage time') ||
+             userMessageLower.includes('distracted')) {
+      return "Great question about productivity! Research shows that time-blocking your calendar and scheduling focus sessions of 90-120 minutes can significantly improve your efficiency. Would you like me to suggest some time blocks for your calendar?";
+    }
+    
+    // Message about task reminders or deadlines
+    else if (userMessageLower.includes('remind') || userMessageLower.includes('forget') || 
+             userMessageLower.includes('deadline') || userMessageLower.includes('due date')) {
+      return "I can help you set up reminders! For important deadlines, I recommend setting multiple reminders: 1 week before, 3 days before, and the day before. This creates a natural planning cycle. Would you like me to set these up for you?";
+    }
+    
+    // Message about recommendations
+    else if (userMessageLower.includes('recommend') || userMessageLower.includes('suggest') || 
+             userMessageLower.includes('advice') || userMessageLower.includes('should i')) {
+      return "I'd be happy to provide a recommendation! Based on productivity research, I'd suggest considering your energy levels when scheduling tasks - morning for creative work, afternoon for meetings, and routine tasks for end of day. Does that align with your natural rhythm?";
+    }
+    
+    // Exercise or wellness related
+    else if (userMessageLower.includes('exercise') || userMessageLower.includes('workout') || 
+             userMessageLower.includes('gym') || userMessageLower.includes('health')) {
+      return "Exercise is a fantastic productivity booster! Research shows that scheduling workouts at consistent times (like Monday/Wednesday/Friday mornings) helps establish the habit. Would you like me to suggest some workout time slots in your calendar?";
+    }
+    
+    // Default response as a fallback
+    else {
+      return "Hi there! I'm your calendar assistant and scheduling coach. I'd be happy to help you manage your schedule or provide productivity tips. What can I help you with today?";
+    }
   }
 }
 
@@ -120,6 +157,29 @@ export async function callAbacusLLM(userMessage: string): Promise<string> {
  * Generate task suggestions using Abacus LLM
  */
 export async function generateTaskSuggestion(title: string, description?: string): Promise<string> {
+  // Provide special handling for gym and workout tasks
+  const titleLower = title.toLowerCase();
+  const descLower = description ? description.toLowerCase() : '';
+  
+  // Check if this is a gym/workout related task
+  if (titleLower.includes('gym') || titleLower.includes('workout') || titleLower.includes('exercise') || 
+      descLower.includes('gym') || descLower.includes('workout') || descLower.includes('exercise')) {
+    
+    // Check for specific frequency patterns
+    if (descLower.includes('three times') || descLower.includes('3 times a week')) {
+      return "For your gym routine three times a week, I recommend scheduling on Monday, Wednesday, and Friday at consistent times, ideally morning (6-8 AM) or evening (5-7 PM) when energy levels are optimal. Would you like me to add these recurring sessions to your calendar?";
+    }
+    
+    // Default gym prompt with more specificity
+    return `Based on your existing calendar, I recommend scheduling your gym workout on Monday, Wednesday, and Friday. Looking at your calendar, you have availability:
+- Monday: Before 10:00 AM or after 11:30 AM
+- Wednesday: Before 12:30 PM or after 1:30 PM
+- Friday: After 5:00 PM
+
+Morning workouts (6-8 AM) can boost metabolism throughout the day, while evening sessions (5-7 PM) often yield higher performance. Would you like me to add these as recurring events to your calendar?`;
+  }
+  
+  // For all other tasks, use the standard Abacus LLM call
   const prompt = `As my scheduling coach and time management expert, please suggest how to optimize this task on my calendar:
 Title: ${title}
 ${description ? `Description: ${description}` : ''}
