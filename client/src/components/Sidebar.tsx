@@ -8,6 +8,7 @@ import { useCheckin } from "@/hooks/useTaskManager";
 import { useStats } from "@/hooks/useStats";
 import { Task } from "@shared/schema";
 import { useTasks } from "@/hooks/useTaskManager";
+import { TaskMenu } from "@/components/ui/task-menu";
 
 export default function Sidebar() {
   const { toast } = useToast();
@@ -20,7 +21,7 @@ export default function Sidebar() {
     setSelectedRating(rating);
     
     submitCheckin({
-      date: new Date(),
+      date: new Date().toISOString(),
       productivityRating: rating,
       notes: ""
     });
@@ -186,9 +187,17 @@ export default function Sidebar() {
                         </>
                       )}
                     </div>
-                    <Button variant="ghost" size="sm" className="text-primary hover:text-primary-dark h-6 w-6 p-0">
-                      ⋯
-                    </Button>
+                    <TaskMenu 
+                      task={task} 
+                      onEdit={(taskToEdit) => {
+                        // Show task modal with edit mode
+                        // This will be implemented in a future update
+                        toast({
+                          title: "Task Edit",
+                          description: `Editing task "${taskToEdit.title}"`
+                        });
+                      }} 
+                    />
                   </div>
                 </CardContent>
               </Card>

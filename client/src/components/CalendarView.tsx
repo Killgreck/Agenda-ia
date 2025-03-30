@@ -11,6 +11,7 @@ import { Task } from "@shared/schema";
 import { useAiSuggestions } from "@/hooks/useAI";
 import { useToast } from "@/hooks/use-toast";
 import { useTasks } from "@/hooks/useTaskManager";
+import { TaskMenu } from "@/components/ui/task-menu";
 
 type CalendarViewProps = {
   onDayClick?: (date: Date) => void;
@@ -364,10 +365,22 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
                           dayTasks.map((task: Task) => (
                             <div 
                               key={`week-task-${task.id}`} 
-                              className={`p-2 rounded-md text-sm ${getPriorityClass(task.priority)}`}
+                              className={`p-2 rounded-md text-sm ${getPriorityClass(task.priority)} relative`}
                               onClick={() => onDayClick?.(currentDay)}
                             >
-                              <div className="font-medium">{task.title}</div>
+                              <div className="flex justify-between items-start">
+                                <div className="font-medium">{task.title}</div>
+                                <TaskMenu 
+                                  task={task} 
+                                  onEdit={(taskToEdit) => {
+                                    toast({
+                                      title: "Task Edit",
+                                      description: `Editing task "${taskToEdit.title}"`
+                                    });
+                                  }} 
+                                  className="absolute top-1 right-1"
+                                />
+                              </div>
                               {task.isAllDay ? (
                                 <div className="text-xs">All day</div>
                               ) : (
@@ -415,10 +428,22 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
                             hourTasks.map((task: Task) => (
                               <div 
                                 key={`day-task-${task.id}`} 
-                                className={`p-2 mb-1 rounded-md text-sm ${getPriorityClass(task.priority)}`}
+                                className={`p-2 mb-1 rounded-md text-sm ${getPriorityClass(task.priority)} relative`}
                                 onClick={() => onDayClick?.(currentDate)}
                               >
-                                <div className="font-medium">{task.title}</div>
+                                <div className="flex justify-between items-start">
+                                  <div className="font-medium">{task.title}</div>
+                                  <TaskMenu 
+                                    task={task} 
+                                    onEdit={(taskToEdit) => {
+                                      toast({
+                                        title: "Task Edit",
+                                        description: `Editing task "${taskToEdit.title}"`
+                                      });
+                                    }} 
+                                    className="absolute top-1 right-1"
+                                  />
+                                </div>
                                 {!task.isAllDay && (
                                   <div className="text-xs">
                                     {new Date(task.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
