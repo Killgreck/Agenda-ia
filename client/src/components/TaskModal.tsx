@@ -112,45 +112,69 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
       
       if (!allTasks || allTasks.length === 0) return null;
       
-      // Filter tasks that occur on the same day
+      // Filter tasks that occur on the same day (excluding the current task if editing)
       const tasksOnSameDay = allTasks.filter((task: Task) => {
+        // Skip if we're editing this task (compare by matching fields since ID might not be accessible during edit)
+        if (taskToEdit && task.title === taskToEdit.title && 
+            new Date(task.date).toISOString() === new Date(taskToEdit.date).toISOString()) {
+          return false;
+        }
         const taskDate = new Date(task.date);
         return taskDate.toDateString() === date.toDateString();
       });
       
       if (tasksOnSameDay.length === 0) return null;
       
-      // For all-day events, suggest a different day if there's already an all-day event
+      // For all-day events, reject if there's already an all-day event
       if (isAllDay) {
         const existingAllDayEvents = tasksOnSameDay.filter((task: Task) => task.isAllDay);
         if (existingAllDayEvents.length > 0) {
-          return "There's already an all-day event scheduled. Consider choosing a different day.";
+          return "There's already an all-day event scheduled for this day. Please choose a different day.";
         }
       }
       
       // Check for time conflicts for non-all-day events
       if (!isAllDay) {
+        // Ensure endDate exists - default to 1 hour if not specified
+        const actualEndDate = endDate || new Date(date.getTime() + 60 * 60 * 1000);
+        
         const conflictingTasks = tasksOnSameDay.filter((task: Task) => {
-          if (task.isAllDay) return true; // All-day events conflict with any time of the day
+          // All-day events conflict with any time of the day
+          if (task.isAllDay) return true; 
           
           const taskStart = new Date(task.date);
           const taskEnd = task.endDate ? new Date(task.endDate) : new Date(taskStart.getTime() + 60 * 60 * 1000); // Default 1 hour
           
-          const newEventEnd = endDate || new Date(date.getTime() + 60 * 60 * 1000); // Default 1 hour
+          // Check if there's an overlap: new event starts before existing ends AND new event ends after existing starts
+          const hasOverlap = (date < taskEnd && actualEndDate > taskStart);
           
-          // Check if there's an overlap
-          return (date < taskEnd && newEventEnd > taskStart);
+          // Log conflict detection details for debugging
+          if (hasOverlap) {
+            console.log("Conflict detected:", {
+              newEventStart: date.toLocaleTimeString(),
+              newEventEnd: actualEndDate.toLocaleTimeString(),
+              existingEventStart: taskStart.toLocaleTimeString(),
+              existingEventEnd: taskEnd.toLocaleTimeString(),
+              taskTitle: task.title
+            });
+          }
+          
+          return hasOverlap;
         });
         
         if (conflictingTasks.length > 0) {
+          // Get details about conflicting tasks
+          const conflictDetails = conflictingTasks.map((task: Task) => `"${task.title}" at ${new Date(task.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`).join(", ");
+          
           // Find available time slots
           const availableSlots = findAvailableTimeSlots(tasksOnSameDay, date);
+          
           if (availableSlots.length > 0) {
             const nextSlot = availableSlots[0];
             const formattedTime = nextSlot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            return `There's a time conflict with existing events. Consider scheduling at ${formattedTime} instead.`;
+            return `Time conflict with: ${conflictDetails}. Try scheduling at ${formattedTime} instead.`;
           } else {
-            return "There are time conflicts with existing events. Consider scheduling on another day.";
+            return `Time conflicts with: ${conflictDetails}. Please choose another day.`;
           }
         }
       }
@@ -158,50 +182,118 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
       return null;
     } catch (error) {
       console.error("Error checking time conflicts:", error);
-      return null;
+      return "Error checking for time conflicts. Please try again.";
     }
   };
   
   // Function to find available time slots
   const findAvailableTimeSlots = (tasksOnDay: Task[], preferredDate: Date): Date[] => {
-    // Default business hours: 9 AM to 5 PM
-    const businessHoursStart = 9;
-    const businessHoursEnd = 17;
+    // Default business hours: 8 AM to 6 PM, with a preference to schedule during standard work hours
+    const businessHoursStart = 8;
+    const businessHoursEnd = 18;
+    const preferredStart = 9; // Prefer to suggest slots during core work hours
+    const preferredEnd = 17;
+    
+    // Get duration of the preferred time slot (default to 1 hour)
+    const preferredDuration = 60; // minutes
     
     // Convert tasks to busy time ranges
-    const busyRanges: {start: Date, end: Date}[] = tasksOnDay
+    const busyRanges: {start: Date, end: Date, title: string}[] = tasksOnDay
       .filter(task => !task.isAllDay)
       .map(task => {
         const start = new Date(task.date);
         const end = task.endDate ? new Date(task.endDate) : new Date(start.getTime() + 60 * 60 * 1000);
-        return { start, end };
+        return { start, end, title: task.title };
       });
     
     // Sort by start time
     busyRanges.sort((a, b) => a.start.getTime() - b.start.getTime());
     
-    // Find available slots (at least 30 minutes)
+    // Find available slots (at least for duration of preferred time slot)
     const availableSlots: Date[] = [];
     const day = preferredDate.getDate();
     const month = preferredDate.getMonth();
     const year = preferredDate.getFullYear();
     
-    // Start from business hours start
-    let currentTime = new Date(year, month, day, businessHoursStart, 0);
+    // When looking for available slots, consider the current time if we're scheduling for today
+    const now = new Date();
+    let currentTime: Date;
     
-    for (const range of busyRanges) {
-      // If there's a gap between current time and next busy period, it's available
-      if (range.start.getTime() - currentTime.getTime() >= 30 * 60 * 1000) {
-        availableSlots.push(new Date(currentTime));
+    if (now.getFullYear() === year && now.getMonth() === month && now.getDate() === day) {
+      // We're scheduling for today, start from the current time (rounded up to next half hour)
+      const minutes = now.getMinutes();
+      const roundedMinutes = minutes < 30 ? 30 : 0;
+      const roundedHour = minutes < 30 ? now.getHours() : now.getHours() + 1;
+      
+      if (roundedHour >= businessHoursStart && roundedHour < businessHoursEnd) {
+        currentTime = new Date(year, month, day, roundedHour, roundedMinutes);
+      } else {
+        // If current time is outside business hours, start from business hours
+        currentTime = new Date(year, month, day, businessHoursStart, 0);
       }
-      // Move current time to the end of this busy period
-      currentTime = new Date(Math.max(currentTime.getTime(), range.end.getTime()));
+    } else {
+      // Not today, start from business hours
+      currentTime = new Date(year, month, day, businessHoursStart, 0);
     }
     
-    // Check if there's time available after the last busy period until business hours end
-    const endOfDay = new Date(year, month, day, businessHoursEnd, 0);
-    if (endOfDay.getTime() - currentTime.getTime() >= 30 * 60 * 1000) {
-      availableSlots.push(new Date(currentTime));
+    // Check each 30-minute slot within business hours
+    while (currentTime.getHours() < businessHoursEnd) {
+      const slotEnd = new Date(currentTime.getTime() + preferredDuration * 60 * 1000);
+      
+      // Check if this slot conflicts with any busy range
+      let isConflicting = false;
+      for (const range of busyRanges) {
+        // If there's an overlap
+        if (currentTime < range.end && slotEnd > range.start) {
+          isConflicting = true;
+          // Jump to the end of this busy period
+          currentTime = new Date(range.end);
+          break;
+        }
+      }
+      
+      // If no conflict found, this slot is available
+      if (!isConflicting) {
+        // Prefer slots during core work hours
+        const hour = currentTime.getHours();
+        if (hour >= preferredStart && hour < preferredEnd) {
+          availableSlots.push(new Date(currentTime));
+        } else if (availableSlots.length === 0) {
+          // Add slots outside core hours only if we haven't found any better options
+          availableSlots.push(new Date(currentTime));
+        }
+        
+        // Move to next slot (30-minute increments)
+        currentTime = new Date(currentTime.getTime() + 30 * 60 * 1000);
+      }
+      
+      // Safety check to avoid infinite loops
+      if (availableSlots.length >= 5) break; // Limit to 5 suggestions
+    }
+    
+    // Sort slots by preference (core work hours first)
+    availableSlots.sort((a, b) => {
+      const aHour = a.getHours();
+      const bHour = b.getHours();
+      
+      // Prefer core work hours
+      const aIsCore = aHour >= preferredStart && aHour < preferredEnd;
+      const bIsCore = bHour >= preferredStart && bHour < preferredEnd;
+      
+      if (aIsCore && !bIsCore) return -1;
+      if (!aIsCore && bIsCore) return 1;
+      
+      // If both are in the same category, sort chronologically
+      return a.getTime() - b.getTime();
+    });
+    
+    // Log available time slots for debugging
+    if (availableSlots.length > 0) {
+      console.log("Available time slots found:", 
+        availableSlots.map(slot => slot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+      );
+    } else {
+      console.log("No available time slots found for this day");
     }
     
     return availableSlots;
@@ -344,7 +436,8 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
             description: conflictMessage,
             variant: "destructive",
           });
-          // Continue anyway - just a warning
+          // Prevent creating the task due to scheduling conflict
+          return;
         }
       }
 
