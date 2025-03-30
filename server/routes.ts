@@ -16,6 +16,7 @@ import session from "express-session";
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import MemoryStore from "memorystore";
+import { addDays, format, isSameDay, getDay, isWithinInterval } from "date-fns";
 
 // Extend express-session declarations
 declare module 'express-session' {
@@ -23,6 +24,123 @@ declare module 'express-session' {
     userId: number;
     username: string;
   }
+}
+
+// Generate individual task instances for recurring events
+// Helper function to schedule reminders for tasks
+function scheduleTaskReminders(task: any, broadcastMessage: (message: any) => void) {
+  if (task.reminder && task.reminder.length > 0) {
+    task.reminder.forEach((minutes: number) => {
+      const reminderTime = new Date(task.date);
+      reminderTime.setMinutes(reminderTime.getMinutes() - minutes);
+      
+      // Only schedule if the reminder time is in the future
+      if (reminderTime > new Date()) {
+        schedule.scheduleJob(reminderTime, () => {
+          broadcastMessage({ 
+            type: 'REMINDER', 
+            taskId: task.id,
+            title: task.title,
+            date: task.date,
+            minutesBefore: minutes
+          });
+        });
+      }
+    });
+  }
+}
+
+function generateRecurringTasks(taskData: any): any[] {
+  const tasks: any[] = [];
+  
+  // Convert dates to Date objects
+  const startDate = new Date(taskData.recurrenceStartDate);
+  const endDate = new Date(taskData.recurrenceEndDate);
+  
+  // Get start time and end time
+  const startTime = new Date(taskData.date).toTimeString().substring(0, 8); // Extract HH:MM:SS
+  const endTime = taskData.endDate ? new Date(taskData.endDate).toTimeString().substring(0, 8) : null;
+
+  // For daily recurrence
+  if (taskData.recurrenceType === "daily") {
+    let currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      // Create a new task instance
+      const taskInstance = { ...taskData };
+      
+      // Set the date for this instance
+      if (!taskData.isAllDay) {
+        // Combine date and time
+        const dateStr = format(currentDate, "yyyy-MM-dd");
+        taskInstance.date = new Date(`${dateStr}T${startTime}`).toISOString();
+        
+        if (endTime) {
+          taskInstance.endDate = new Date(`${dateStr}T${endTime}`).toISOString();
+        }
+      } else {
+        // All-day event
+        taskInstance.date = currentDate.toISOString();
+      }
+      
+      // Add to task list
+      tasks.push(taskInstance);
+      
+      // Move to next day
+      currentDate = addDays(currentDate, 1);
+    }
+  }
+  
+  // For weekly recurrence
+  else if (taskData.recurrenceType === "weekly") {
+    const recurringDays = taskData.recurringDays || [];
+    const dayMap: {[key: string]: number} = {
+      "sunday": 0,
+      "monday": 1,
+      "tuesday": 2,
+      "wednesday": 3,
+      "thursday": 4,
+      "friday": 5,
+      "saturday": 6
+    };
+    
+    // Convert recurring days to day numbers (0-6, Sunday-Saturday)
+    const recurringDayNumbers = recurringDays.map((day: string) => dayMap[day]);
+    
+    let currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      const currentDay = getDay(currentDate); // 0-6
+      
+      // Check if current day is in the recurring days
+      if (recurringDayNumbers.includes(currentDay)) {
+        // Create a new task instance
+        const taskInstance = { ...taskData };
+        
+        // Set the date for this instance
+        if (!taskData.isAllDay) {
+          // Combine date and time
+          const dateStr = format(currentDate, "yyyy-MM-dd");
+          taskInstance.date = new Date(`${dateStr}T${startTime}`).toISOString();
+          
+          if (endTime) {
+            taskInstance.endDate = new Date(`${dateStr}T${endTime}`).toISOString();
+          }
+        } else {
+          // All-day event
+          taskInstance.date = currentDate.toISOString();
+        }
+        
+        // Add to task list
+        tasks.push(taskInstance);
+      }
+      
+      // Move to next day
+      currentDate = addDays(currentDate, 1);
+    }
+  }
+  
+  return tasks;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -297,32 +415,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Create the task
+      if (taskData.isRecurring) {
+        // Generate recurring tasks
+        const tasks = generateRecurringTasks(taskData);
+        const createdTasks = [];
+        
+        // Create each task instance
+        for (const task of tasks) {
+          const createdTask = await storage.createTask(task);
+          createdTasks.push(createdTask);
+          
+          // Broadcast new task to connected clients
+          broadcastMessage({ type: 'NEW_TASK', task: createdTask });
+          
+          // Schedule reminder if applicable
+          scheduleTaskReminders(createdTask, broadcastMessage);
+        }
+        
+        // Return the first created task
+        res.status(201).json(createdTasks[0]);
+        return;
+      }
+      
+      // For non-recurring tasks, create a single task
       const createdTask = await storage.createTask(taskData);
       
       // Broadcast new task to connected clients
       broadcastMessage({ type: 'NEW_TASK', task: createdTask });
       
       // Schedule reminder if applicable
-      if (createdTask.reminder && createdTask.reminder.length > 0) {
-        createdTask.reminder.forEach(minutes => {
-          const reminderTime = new Date(createdTask.date);
-          reminderTime.setMinutes(reminderTime.getMinutes() - minutes);
-          
-          // Only schedule if the reminder time is in the future
-          if (reminderTime > new Date()) {
-            schedule.scheduleJob(reminderTime, () => {
-              broadcastMessage({ 
-                type: 'REMINDER', 
-                taskId: createdTask.id,
-                title: createdTask.title,
-                date: createdTask.date,
-                minutesBefore: minutes
-              });
-            });
-          }
-        });
-      }
+      scheduleTaskReminders(createdTask, broadcastMessage);
       
       res.status(201).json(createdTask);
     } catch (error: any) {
