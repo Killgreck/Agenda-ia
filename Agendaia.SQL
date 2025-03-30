@@ -1,0 +1,118 @@
+-- Create database
+CREATE DATABASE calendar_app;
+
+-- Connect to the database (you would run this separately)
+-- \c calendar_app
+
+-- Users table
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    timezone VARCHAR(50) NOT NULL,
+    preferences JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Events table
+CREATE TABLE events (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    location VARCHAR(255),
+    priority INTEGER DEFAULT 0,
+    status VARCHAR(50),
+    recurrence_rule TEXT,
+    is_all_day BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- EventRecurrences table
+CREATE TABLE event_recurrences (
+    id SERIAL PRIMARY KEY,
+    event_id INTEGER REFERENCES events(id),
+    pattern_type VARCHAR(50) NOT NULL,
+    interval INTEGER NOT NULL,
+    until_date TIMESTAMP,
+    count INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- EventReminders table
+CREATE TABLE event_reminders (
+    id SERIAL PRIMARY KEY,
+    event_id INTEGER REFERENCES events(id),
+    reminder_time TIMESTAMP NOT NULL,
+    reminder_type VARCHAR(50) NOT NULL,
+    status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tags table
+CREATE TABLE tags (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    color VARCHAR(7),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- EventTags junction table
+CREATE TABLE event_tags (
+    event_id INTEGER REFERENCES events(id),
+    tag_id INTEGER REFERENCES tags(id),
+    PRIMARY KEY (event_id, tag_id)
+);
+
+-- UserSettings table
+CREATE TABLE user_settings (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) UNIQUE,
+    notification_preferences JSONB,
+    display_preferences JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Analytics table
+CREATE TABLE analytics (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    event_completion_rate FLOAT,
+    productivity_score INTEGER,
+    date DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- AIPreferences table
+CREATE TABLE ai_preferences (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) UNIQUE,
+    learning_patterns JSONB,
+    optimization_rules JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Integrations table
+CREATE TABLE integrations (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    service_name VARCHAR(100) NOT NULL,
+    access_token TEXT,
+    refresh_token TEXT,
+    status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes
+CREATE INDEX idx_events_user_id ON events(user_id);
+CREATE INDEX idx_events_start_time ON events(start_time);
+CREATE INDEX idx_events_end_time ON events(end_time);
+CREATE INDEX idx_analytics_user_id_date ON analytics(user_id, date);

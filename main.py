@@ -8,8 +8,90 @@ from Back.Models.agenda import Agenda
 from Back.Service.motor_ia_service import MotorIAService
 from Back.Service.evaluacion_eficiencia_service import EvaluacionEficienciaService
 from Back.Service.notificacion_service import NotificacionService
-
+from datetime import date, time
+from Back.Controllers.evento_controller import EventoController
+from Back.Models.evento import Evento
 # Clase Usuario con integración de Agenda
+def probar_filtrado_eventos():
+    print("=== Prueba de filtrado de eventos por año, mes y día de la semana ===")
+
+    # Inicializar el controlador
+    controller = EventoController()
+
+    # Crear algunos eventos de ejemplo
+    eventos = [
+        Evento(
+            titulo="Reunión de trabajo",
+            fecha=date(2025, 1, 15),  # Miércoles (2)
+            hora=time(10, 0),
+            descripcion="Reunión con el equipo de desarrollo",
+            ubicacion="Sala de conferencias"
+        ),
+        Evento(
+            titulo="Almuerzo con cliente",
+            fecha=date(2025, 2, 20),  # Jueves (3)
+            hora=time(13, 0),
+            descripcion="Almuerzo con cliente potencial",
+            ubicacion="Restaurante céntrico"
+        ),
+        Evento(
+            titulo="Conferencia anual",
+            fecha=date(2024, 5, 10),  # Viernes (4)
+            hora=time(9, 0),
+            descripcion="Conferencia anual de tecnología",
+            ubicacion="Centro de convenciones"
+        ),
+        Evento(
+            titulo="Reunión de planificación",
+            fecha=date(2025, 5, 5),  # Lunes (0)
+            hora=time(14, 30),
+            descripcion="Planificación del próximo trimestre",
+            ubicacion="Oficina principal"
+        ),
+        Evento(
+            titulo="Taller de innovación",
+            fecha=date(2025, 5, 12),  # Lunes (0)
+            hora=time(15, 0),
+            descripcion="Taller para fomentar la innovación",
+            ubicacion="Sala de capacitación"
+        )
+    ]
+
+    # Guardar los eventos en la base de datos
+    for evento in eventos:
+        controller.repository.create(evento.__dict__)
+
+    print("\n1. Filtrar eventos por año (2025):")
+    eventos_2025 = controller.obtener_eventos_por_filtro(año=2025)
+    for evento in eventos_2025:
+        print(f"- {evento.titulo} ({evento.fecha})")
+
+    print("\n2. Filtrar eventos por mes (Mayo):")
+    eventos_mayo = controller.obtener_eventos_por_filtro(mes=5)
+    for evento in eventos_mayo:
+        print(f"- {evento.titulo} ({evento.fecha})")
+
+    print("\n3. Filtrar eventos por día de la semana (Lunes):")
+    eventos_lunes = controller.obtener_eventos_por_filtro(dia_semana=0)  # 0 = Lunes
+    for evento in eventos_lunes:
+        print(f"- {evento.titulo} ({evento.fecha})")
+
+    print("\n4. Filtrar eventos por año y mes (2025, Mayo):")
+    eventos_2025_mayo = controller.obtener_eventos_por_filtro(año=2025, mes=5)
+    for evento in eventos_2025_mayo:
+        print(f"- {evento.titulo} ({evento.fecha})")
+
+    print("\n5. Filtrar eventos por todos los criterios (2025, Mayo, Lunes):")
+    eventos_completo = controller.obtener_eventos_por_filtro(año=2025, mes=5, dia_semana=0)
+    for evento in eventos_completo:
+        print(f"- {evento.titulo} ({evento.fecha})")
+
+    # Limpiar los eventos de prueba
+    for evento in eventos:
+        controller.repository.collection.delete_one({"id": evento.id})
+
+    print("\nPrueba completada.")
+
 class Usuario:
     def __init__(self, nombre, correo, tipo_cuenta="estandar"):
         self.nombre = nombre
@@ -119,7 +201,9 @@ def main():
         "email"
     )
     notificacion.enviar_notificacion(usuario)
-
+    
+    if __name__ == "__main__":
+        probar_filtrado_eventos()
     # 8. Usar el motor IA para sugerir horarios
     print("\n--- Sugerencias de horarios con IA ---")
     motor = MotorIAService()
