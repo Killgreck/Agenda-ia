@@ -35,6 +35,11 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
   } = useCalendar();
   
   const [view, setView] = useState<'day' | 'week' | 'month' | 'year'>('month');
+  
+  // Debug log when view changes
+  useEffect(() => {
+    console.log("View changed to:", view);
+  }, [view]);
   const { tasks } = useTasks({ month: currentMonth, year: currentYear });
   const { 
     suggestions, 
