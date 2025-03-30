@@ -462,7 +462,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
   
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
+      <DialogContent className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[80vh] overflow-hidden">
         <DialogHeader className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0">
           <DialogTitle className="text-lg font-medium text-gray-800">
             {viewOnly ? "View Task" : taskToEdit ? "Edit Task" : "Create New Task"}
@@ -477,7 +477,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
           </Button>
         </DialogHeader>
         
-        <div className="overflow-y-auto flex-grow">
+        <div className="overflow-y-auto flex-grow pb-4 custom-scrollbar">
           <form onSubmit={viewOnly ? (e) => { e.preventDefault(); } : handleSubmit(onSubmit)} className="p-4">
             <div className="mb-4">
             <Label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
