@@ -23,8 +23,17 @@ export const tasks = pgTable("tasks", {
   recurrenceType: text("recurrence_type"), // 'daily', 'weekly'
 });
 
-export const insertTaskSchema = createInsertSchema(tasks).omit({
+// Create the base insert schema
+const baseInsertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
+});
+
+// Extend it to handle string date inputs that will be converted to timestamps in the database
+export const insertTaskSchema = baseInsertTaskSchema.extend({
+  date: z.string(),
+  endDate: z.string().optional(),
+  recurrenceStartDate: z.string().optional(),
+  recurrenceEndDate: z.string().optional(),
 });
 
 // Check-ins table

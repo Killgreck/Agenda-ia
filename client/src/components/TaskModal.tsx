@@ -352,8 +352,8 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
       const taskData: InsertTask = {
         title: data.title,
         description: data.description || "",
-        date: dateObj,
-        endDate: endDateObj,
+        date: dateObj.toISOString(), // Convert to ISO string for server
+        endDate: endDateObj ? endDateObj.toISOString() : undefined,
         priority: data.priority,
         location: data.location || "",
         isAllDay: data.isAllDay,
@@ -364,8 +364,8 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         skipHolidays: data.skipHolidays,
         holidayCountry: data.holidayCountry || undefined,
         recurrenceType: data.recurrenceType,
-        recurrenceStartDate: data.isRecurring ? dateObj : undefined,
-        recurrenceEndDate: data.isRecurring ? endDateObj : undefined,
+        recurrenceStartDate: data.isRecurring ? dateObj.toISOString() : undefined,
+        recurrenceEndDate: data.isRecurring && endDateObj ? endDateObj.toISOString() : undefined,
       };
       
       await createTask(taskData);
@@ -462,8 +462,8 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
   
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="flex justify-between items-center p-4 border-b border-gray-200">
+      <DialogContent className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
+        <DialogHeader className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0">
           <DialogTitle className="text-lg font-medium text-gray-800">
             {viewOnly ? "View Task" : taskToEdit ? "Edit Task" : "Create New Task"}
           </DialogTitle>
@@ -477,8 +477,9 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
           </Button>
         </DialogHeader>
         
-        <form onSubmit={viewOnly ? (e) => { e.preventDefault(); } : handleSubmit(onSubmit)} className="p-4">
-          <div className="mb-4">
+        <div className="overflow-y-auto flex-grow">
+          <form onSubmit={viewOnly ? (e) => { e.preventDefault(); } : handleSubmit(onSubmit)} className="p-4">
+            <div className="mb-4">
             <Label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
               Task Title
             </Label>
@@ -1187,6 +1188,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
             </div>
           </div>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
