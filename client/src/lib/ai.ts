@@ -8,10 +8,14 @@ export async function sendChatMessage(message: string): Promise<void> {
   const messageData: InsertChatMessage = {
     content: message,
     timestamp: new Date().toISOString(),
-    sender: 'user'
+    sender: 'user',
+    userId: 1 // Default to user 1 if not authenticated
   };
   
-  await apiRequest('POST', '/api/chat-messages', messageData);
+  await apiRequest('/api/chat-messages', {
+    method: 'POST',
+    body: JSON.stringify(messageData)
+  });
 }
 
 /**
@@ -19,8 +23,8 @@ export async function sendChatMessage(message: string): Promise<void> {
  */
 export async function getChatMessages(limit?: number): Promise<any> {
   const url = `/api/chat-messages${limit ? `?limit=${limit}` : ''}`;
-  const response = await apiRequest('GET', url);
-  return response.json();
+  const response = await apiRequest(url);
+  return response;
 }
 
 /**
@@ -32,11 +36,15 @@ export async function createAiSuggestion(suggestion: string, type: string, metad
     timestamp: new Date().toISOString(),
     accepted: false,
     type,
-    metadata
+    metadata,
+    userId: 1 // Default to user 1 if not authenticated
   };
   
-  const response = await apiRequest('POST', '/api/ai-suggestions', suggestionData);
-  return response.json();
+  const response = await apiRequest('/api/ai-suggestions', {
+    method: 'POST',
+    body: JSON.stringify(suggestionData)
+  });
+  return response;
 }
 
 /**
@@ -44,16 +52,19 @@ export async function createAiSuggestion(suggestion: string, type: string, metad
  */
 export async function getAiSuggestions(limit?: number): Promise<any> {
   const url = `/api/ai-suggestions${limit ? `?limit=${limit}` : ''}`;
-  const response = await apiRequest('GET', url);
-  return response.json();
+  const response = await apiRequest(url);
+  return response;
 }
 
 /**
  * Mark an AI suggestion as accepted or rejected
  */
 export async function updateAiSuggestion(id: number, accepted: boolean): Promise<any> {
-  const response = await apiRequest('PATCH', `/api/ai-suggestions/${id}`, { accepted });
-  return response.json();
+  const response = await apiRequest(`/api/ai-suggestions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ accepted })
+  });
+  return response;
 }
 
 /**
@@ -61,26 +72,16 @@ export async function updateAiSuggestion(id: number, accepted: boolean): Promise
  */
 export async function getTaskSuggestion(title: string, description?: string): Promise<string> {
   try {
-    // Use our new dedicated API endpoint for task suggestions
-    const response = await fetch('/api/ai-suggestions/generate', {
+    // Use our dedicated API endpoint for task suggestions
+    const response = await apiRequest('/api/ai-suggestions/generate', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({
         title,
         description: description || ''
       })
     });
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      console.error('Error generating task suggestion:', errorData || response.statusText);
-      throw new Error(errorData?.message || 'Failed to generate task suggestion');
-    }
-    
-    const data = await response.json();
-    return data.suggestion;
+    return response.suggestion;
   } catch (error) {
     console.error('Error calling task suggestion API:', error);
     

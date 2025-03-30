@@ -204,11 +204,8 @@ export function useAI() {
           }
         };
         
-        await fetch('/api/ai-suggestions', {
+        await apiRequest('/api/ai-suggestions', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
           body: JSON.stringify(suggestionData)
         });
         
@@ -235,11 +232,8 @@ export function useAI() {
             }
           };
           
-          await fetch('/api/ai-suggestions', {
+          await apiRequest('/api/ai-suggestions', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
             body: JSON.stringify(fallbackData)
           });
         } catch (dbError) {
