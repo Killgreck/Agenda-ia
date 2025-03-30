@@ -16,6 +16,7 @@ import session from "express-session";
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import MemoryStore from "memorystore";
+import { callAbacusLLM, generateTaskSuggestion, generateWeeklyReportSummary } from "./abacusLLM";
 import { addDays, format, isSameDay, getDay, isWithinInterval } from "date-fns";
 
 // Extend express-session declarations
@@ -627,19 +628,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           // Simulate API call to Deepsek AI
           // In production, replace this with actual API call to Deepsek
-          setTimeout(() => {
-            // Create AI response with timestamp as string (ISO format)
-            const now = new Date();
-            const aiResponseData = {
-              content: generateAIResponse(messageData.content),
-              timestamp: now.toISOString(),
-              sender: 'ai',
-              id: Date.now() + 1 // Simple ID for the response
-            };
-            
-            // Broadcast AI response directly without saving to database
-            broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: aiResponseData });
-          }, 1000);
+          // Use Abacus LLM API to generate a response
+          callAbacusLLM(messageData.content)
+            .then(aiResponse => {
+              // Create AI response with timestamp as string (ISO format)
+              const now = new Date();
+              const aiResponseData = {
+                content: aiResponse,
+                timestamp: now.toISOString(),
+                sender: 'ai',
+                id: Date.now() + 1 // Simple ID for the response
+              };
+              
+              // Broadcast AI response directly without saving to database
+              broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: aiResponseData });
+            })
+            .catch(error => {
+              console.error('Error calling Abacus LLM API:', error);
+              // Send fallback response in case of error
+              const fallbackResponse = {
+                content: "I'm having trouble connecting to my knowledge base at the moment. Please try again in a moment.",
+                timestamp: new Date().toISOString(),
+                sender: 'ai',
+                id: Date.now() + 1
+              };
+              broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: fallbackResponse });
+            });
         } catch (aiError) {
           console.error('Error generating AI response:', aiError);
         }
@@ -836,10 +850,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         statistics = await storage.createStatistics(statsData);
       }
       
-      res.json({ 
-        statistics,
-        report: generateWeeklyReport(statsData)
-      });
+      // Use Abacus LLM to generate a personalized weekly report
+      try {
+        const report = await generateWeeklyReportSummary(statsData);
+        res.json({ 
+          statistics,
+          report
+        });
+      } catch (reportError) {
+        console.error('Error generating AI weekly report:', reportError);
+        // Fallback to the static report if AI fails
+        res.json({ 
+          statistics,
+          report: generateWeeklyReport(statsData)
+        });
+      }
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
