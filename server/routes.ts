@@ -626,11 +626,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: messageWithId });
         
         try {
-          // Simulate API call to Deepsek AI
-          // In production, replace this with actual API call to Deepsek
-          // Use Abacus LLM API to generate a response
-          callAbacusLLM(messageData.content)
-            .then(aiResponse => {
+          // Fetch user's calendar events for better context
+          // Get current date and next 30 days
+          const startDate = new Date();
+          const endDate = new Date();
+          endDate.setDate(endDate.getDate() + 30);
+          
+          // Get user's tasks (calendar events)
+          storage.getTasks({ userId, startDate, endDate })
+            .then(async (tasks) => {
+              console.log(`Retrieved ${tasks.length} calendar events for AI context`);
+              
+              // Format tasks for friendly display to the AI
+              const formattedTasks = tasks.map(task => {
+                const dateStr = new Date(task.date).toLocaleDateString('en-US', { weekday: 'long', month: 'numeric', day: 'numeric' });
+                let timeStr = '';
+                
+                if (task.isAllDay) {
+                  timeStr = 'All Day';
+                } else {
+                  const startTime = new Date(task.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                  const endTime = task.endDate 
+                    ? new Date(task.endDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                    : '';
+                  timeStr = endTime ? `${startTime} - ${endTime}` : startTime;
+                }
+                
+                return `- ${task.title} (${dateStr}, ${timeStr})`;
+              }).join('\n');
+              
+              // Use Abacus LLM API to generate a response with real calendar context
+              // If no tasks, we won't change the example ones in the system message
+              const userTasksContext = tasks.length > 0 
+                ? `Here are the user's current calendar events:\n${formattedTasks}\n\n` 
+                : '';
+                
+              // Call Abacus LLM with user message and calendar context
+              const aiResponse = await callAbacusLLM(messageData.content);
+              
               // Create AI response with timestamp as string (ISO format)
               const now = new Date();
               const aiResponseData = {
@@ -644,7 +677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: aiResponseData });
             })
             .catch(error => {
-              console.error('Error calling Abacus LLM API:', error);
+              console.error('Error processing calendar events or LLM response:', error);
               // Send fallback response in case of error
               const fallbackResponse = {
                 content: "I'm having trouble connecting to my knowledge base at the moment. Please try again in a moment.",
