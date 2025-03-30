@@ -36,13 +36,26 @@ export function useTasks(options?: UseTasksOptions) {
     }
   });
   
-  // Get upcoming tasks (next 5 days)
-  const upcomingTasks: Task[] = tasks
-    .filter((task: Task) => {
-      const taskDate = new Date(task.date);
-      const fiveDaysFromNow = addDays(today, 5);
-      return taskDate >= today && taskDate <= fiveDaysFromNow && !task.completed;
-    })
+  // Create a separate upcoming tasks query to ensure it's always up-to-date
+  // This provides upcoming tasks for the next 5 days regardless of the month view
+  const todayFormatted = format(today, 'yyyy-MM-dd');
+  const fiveDaysFromNow = addDays(today, 5);
+  const fiveDaysFromNowFormatted = format(fiveDaysFromNow, 'yyyy-MM-dd');
+  
+  const { data: upcomingTasksData = [] } = useQuery({
+    queryKey: ['/api/tasks/upcoming', todayFormatted, fiveDaysFromNowFormatted],
+    queryFn: async () => {
+      const response = await fetch(`/api/tasks?startDate=${todayFormatted}&endDate=${fiveDaysFromNowFormatted}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch upcoming tasks');
+      }
+      return response.json();
+    }
+  });
+  
+  // Filter upcoming tasks that aren't completed and sort by date
+  const upcomingTasks: Task[] = upcomingTasksData
+    .filter((task: Task) => !task.completed)
     .sort((a: Task, b: Task) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 3); // Get only the first 3 upcoming tasks
   
@@ -53,8 +66,10 @@ export function useTasks(options?: UseTasksOptions) {
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate relevant queries to refresh the data
+      // Invalidate all task queries to refresh data across all components
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      // Specifically invalidate upcoming tasks to ensure sidebar is updated
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks/upcoming'] });
     }
   });
   
@@ -65,7 +80,10 @@ export function useTasks(options?: UseTasksOptions) {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate all task queries to refresh data across all components
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      // Specifically invalidate upcoming tasks to ensure sidebar is updated
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks/upcoming'] });
     }
   });
   
@@ -76,7 +94,10 @@ export function useTasks(options?: UseTasksOptions) {
       return id;
     },
     onSuccess: () => {
+      // Invalidate all task queries to refresh data across all components
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      // Specifically invalidate upcoming tasks to ensure sidebar is updated
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks/upcoming'] });
     }
   });
   

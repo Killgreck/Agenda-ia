@@ -190,12 +190,15 @@ export default function Sidebar() {
                     <TaskMenu 
                       task={task} 
                       onEdit={(taskToEdit) => {
-                        // Show task modal with edit mode
-                        // This will be implemented in a future update
-                        toast({
-                          title: "Task Edit",
-                          description: `Editing task "${taskToEdit.title}"`
-                        });
+                        if (window.handleTaskEdit) {
+                          window.handleTaskEdit(taskToEdit);
+                        } else {
+                          toast({
+                            title: "Task Edit",
+                            description: "Edit functionality is being initialized. Please try again.",
+                            variant: "destructive"
+                          });
+                        }
                       }} 
                     />
                   </div>
