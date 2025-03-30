@@ -24,7 +24,12 @@ export function useTasks(options?: UseTasksOptions) {
   const startDate = format(monthStart, 'yyyy-MM-dd');
   const endDate = format(monthEnd, 'yyyy-MM-dd');
   
-  // Query tasks for the specified month
+  // Check if authentication has been verified - fetch the auth status from localStorage
+  const authStorageStr = localStorage.getItem('auth-storage');
+  const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { isAuthenticated: false } };
+  const isAuthenticated = authStorage?.state?.isAuthenticated;
+  
+  // Query tasks for the specified month - only run when authenticated
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey: ['/api/tasks', startDate, endDate],
     queryFn: async () => {
@@ -33,7 +38,8 @@ export function useTasks(options?: UseTasksOptions) {
         throw new Error('Failed to fetch tasks');
       }
       return response.json();
-    }
+    },
+    enabled: isAuthenticated // Only run query if authenticated
   });
   
   // Create a separate upcoming tasks query to ensure it's always up-to-date
@@ -50,7 +56,8 @@ export function useTasks(options?: UseTasksOptions) {
         throw new Error('Failed to fetch upcoming tasks');
       }
       return response.json();
-    }
+    },
+    enabled: isAuthenticated // Only run query if authenticated
   });
   
   // Filter upcoming tasks that aren't completed and sort by date
@@ -124,6 +131,11 @@ export function useTasks(options?: UseTasksOptions) {
 export function useCheckin() {
   const queryClient = useQueryClient();
   
+  // Check if authentication has been verified - fetch the auth status from localStorage
+  const authStorageStr = localStorage.getItem('auth-storage');
+  const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { isAuthenticated: false } };
+  const isAuthenticated = authStorage?.state?.isAuthenticated;
+  
   // Submit a new check-in
   const { mutateAsync: submitCheckin, isPending: isCheckingIn } = useMutation({
     mutationFn: async (checkIn: InsertCheckIn) => {
@@ -141,7 +153,7 @@ export function useCheckin() {
   // Get the latest check-in
   const { data: latestCheckIn, isLoading: isLoadingLatest } = useQuery({
     queryKey: ['/api/check-ins/latest'],
-    enabled: false // Only load on demand
+    enabled: isAuthenticated ? true : false // Only load when authenticated
   });
   
   return {

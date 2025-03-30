@@ -20,6 +20,11 @@ export function useAI() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
+  // Check if authentication has been verified - fetch the auth status from localStorage
+  const authStorageStr = localStorage.getItem('auth-storage');
+  const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { isAuthenticated: false } };
+  const isAuthenticated = authStorage?.state?.isAuthenticated;
+  
   // Create a websocket connection
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -79,12 +84,16 @@ export function useAI() {
   
   // Initialize with welcome message since messages aren't persisted anymore
   useEffect(() => {
+    // Get user ID for the welcome message
+    const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
+    
     // Add welcome message
     const welcomeMessage: ChatMessage = {
       id: 0,
       content: "Hello! I'm your AI calendar assistant. I can help schedule tasks, set reminders, and optimize your day. What would you like to do today?",
       timestamp: new Date().toISOString(),
-      sender: 'ai'
+      sender: 'ai',
+      userId // Adding userId for the welcome message
     };
     setMessages([welcomeMessage]);
   }, []);
@@ -92,13 +101,20 @@ export function useAI() {
   // Mutation to send message
   const { mutateAsync: sendMessageMutation } = useMutation({
     mutationFn: async (content: string) => {
+      // Get user ID from auth storage
+      const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
+      
       const messageData: InsertChatMessage = {
         content,
         timestamp: new Date().toISOString(),
-        sender: 'user'
+        sender: 'user',
+        userId
       };
       
-      await apiRequest('POST', '/api/chat-messages', messageData);
+      await apiRequest('/api/chat-messages', {
+        method: 'POST',
+        body: JSON.stringify(messageData)
+      });
       return content;
     },
     onError: (error) => {
@@ -110,10 +126,11 @@ export function useAI() {
     }
   });
   
-  // Query to get AI suggestions
+  // Query to get AI suggestions - only when authenticated
   const { data: suggestionsData = [] } = useQuery({
     queryKey: ['/api/ai-suggestions'],
     refetchOnWindowFocus: false,
+    enabled: isAuthenticated // Only run query if authenticated
   });
   
   // Ensure we have a properly typed array of suggestions
@@ -134,19 +151,26 @@ export function useAI() {
       // In a real app, this would call the actual AI API
       const suggestion = await getTaskSuggestion(taskDetails.title, taskDetails.description);
       
+      // Get user ID from auth storage for the AI suggestion
+      const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
+      
       // Create the AI suggestion in the database
       const suggestionData = {
         suggestion,
         timestamp: new Date().toISOString(),
         accepted: false,
         type: 'task',
+        userId, // Add userId for the suggestion
         metadata: { 
           title: taskDetails.title,
           description: taskDetails.description
         }
       };
       
-      await apiRequest('POST', '/api/ai-suggestions', suggestionData);
+      await apiRequest('/api/ai-suggestions', {
+        method: 'POST',
+        body: JSON.stringify(suggestionData)
+      });
       return suggestion;
     },
     onSuccess: () => {
@@ -164,7 +188,10 @@ export function useAI() {
   // Mutation to update AI suggestion (accept/reject)
   const { mutateAsync: updateSuggestion, isPending: isUpdatingSuggestion } = useMutation({
     mutationFn: async ({ id, accepted }: { id: number, accepted: boolean }) => {
-      await apiRequest('PATCH', `/api/ai-suggestions/${id}`, { accepted });
+      await apiRequest(`/api/ai-suggestions/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ accepted })
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/ai-suggestions'] });
@@ -199,10 +226,16 @@ export function useAI() {
 export function useAiSuggestions() {
   const queryClient = useQueryClient();
   
-  // Query to get AI suggestions
+  // Check if authentication has been verified - fetch the auth status from localStorage
+  const authStorageStr = localStorage.getItem('auth-storage');
+  const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { isAuthenticated: false } };
+  const isAuthenticated = authStorage?.state?.isAuthenticated;
+  
+  // Query to get AI suggestions - only when authenticated
   const { data: suggestionsData = [] } = useQuery({
     queryKey: ['/api/ai-suggestions'],
     refetchOnWindowFocus: false,
+    enabled: isAuthenticated // Only run query if authenticated
   });
   
   // Ensure we have a properly typed array of suggestions
@@ -211,7 +244,10 @@ export function useAiSuggestions() {
   // Mutation to update AI suggestion (accept/reject)
   const { mutateAsync: updateSuggestion, isPending: isAcceptingSuggestion } = useMutation({
     mutationFn: async ({ id, accepted }: { id: number, accepted: boolean }) => {
-      await apiRequest('PATCH', `/api/ai-suggestions/${id}`, { accepted });
+      await apiRequest(`/api/ai-suggestions/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ accepted })
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/ai-suggestions'] });

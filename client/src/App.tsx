@@ -7,6 +7,7 @@ import Dashboard from "@/pages/Dashboard";
 import AuthPage from "@/pages/Auth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
 
 function Router() {
   const { isAuthenticated } = useAuth();
@@ -30,6 +31,13 @@ function Router() {
 }
 
 function App() {
+  const { checkAuthStatus } = useAuth();
+  
+  // Check authentication status when the app loads
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
+  
   return (
     <QueryClientProvider client={queryClient}>
       <Router />
