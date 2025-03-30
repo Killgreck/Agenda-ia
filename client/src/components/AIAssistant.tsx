@@ -32,7 +32,7 @@ export default function AIAssistant() {
   };
 
   return (
-    <aside className="w-full lg:w-80 bg-white border-l border-gray-200 flex-shrink-0 overflow-hidden flex flex-col">
+    <div className="h-full overflow-hidden flex flex-col">
       <div className="p-4 border-b border-gray-200">
         <h2 className="font-semibold text-gray-800 flex items-center">
           <Bot className="text-accent mr-2 h-5 w-5" />
@@ -130,6 +130,6 @@ export default function AIAssistant() {
           </Button>
         </div>
       </div>
-    </aside>
+    </div>
   );
 }
