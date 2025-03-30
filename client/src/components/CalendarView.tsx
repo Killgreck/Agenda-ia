@@ -436,10 +436,9 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
                                   <TaskMenu 
                                     task={task} 
                                     onEdit={(taskToEdit) => {
-                                      toast({
-                                        title: "Task Edit",
-                                        description: `Editing task "${taskToEdit.title}"`
-                                      });
+                                      if (window.handleTaskEdit) {
+                                        window.handleTaskEdit(taskToEdit);
+                                      }
                                     }} 
                                     className="absolute top-1 right-1"
                                   />

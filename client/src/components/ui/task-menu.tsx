@@ -37,23 +37,16 @@ export function TaskMenu({ task, onEdit, className = "" }: TaskMenuProps) {
   };
 
   const handlePostpone = () => {
-    // Clone the task and set a new date (tomorrow)
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    // Keep the same structure as the original task but update the date
-    // Using tomorrow object directly instead of string to avoid type issues
-    const postponedTask = {
-      ...task,
-      date: tomorrow
-    };
-    
-    onEdit(postponedTask);
-    
-    toast({
-      title: "Task postponed",
-      description: "Task has been moved to tomorrow",
-    });
+    // Use the global handleTaskPostpone function to open the postpone modal
+    if (window.handleTaskPostpone) {
+      window.handleTaskPostpone(task);
+    } else {
+      // Fallback if the global function isn't available yet
+      toast({
+        title: "Postpone feature",
+        description: "The postpone feature is being initialized. Please try again.",
+      });
+    }
   };
 
   return (
@@ -70,7 +63,7 @@ export function TaskMenu({ task, onEdit, className = "" }: TaskMenuProps) {
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handlePostpone} className="cursor-pointer">
           <Calendar className="mr-2 h-4 w-4" />
-          Postpone to tomorrow
+          Reschedule Task
         </DropdownMenuItem>
         <DropdownMenuItem 
           onClick={handleDelete} 
