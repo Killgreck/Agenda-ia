@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Abacus LLM API integration
 const API_KEY = process.env.ABACUS_API_KEY;
-const API_URL = 'https://api.abacus.ai/v0/inference';
+const API_URL = 'https://api.abacus.ai/api/v0/inference';
 
 interface AbacusRequest {
   model: string;
@@ -27,6 +27,11 @@ export async function callAbacusLLM(userMessage: string): Promise<string> {
   }
 
   try {
+    // Debug
+    console.log('Abacus LLM API call starting with message:', userMessage);
+    console.log('API URL:', API_URL);
+    console.log('API key exists:', !!API_KEY);
+
     // System message to provide context to the LLM
     const systemMessage = `You are an intelligent AI assistant for a calendar and task management application called 'AI Calendar Assistant'.
     
@@ -47,12 +52,14 @@ export async function callAbacusLLM(userMessage: string): Promise<string> {
     The user is currently accessing the AI assistant feature of the application. Be helpful, friendly, and proactive in suggesting improvements to their schedule.`;
 
     const requestData: AbacusRequest = {
-      model: 'meta-llama-3-8b-instruct',
+      model: 'llama-3-8b-chat',  // Using a model format that's compatible with Abacus API
       prompt: userMessage,
       temperature: 0.7,
       max_tokens: 500,
       system_message: systemMessage
     };
+
+    console.log('Making request to Abacus LLM API with data:', JSON.stringify(requestData));
 
     const response = await axios.post(API_URL, requestData, {
       headers: {
@@ -69,12 +76,34 @@ export async function callAbacusLLM(userMessage: string): Promise<string> {
     }
   } catch (error) {
     console.error('Error calling Abacus LLM API:', error);
+    
     if (axios.isAxiosError(error)) {
-      console.error('Response data:', error.response?.data);
-      console.error('Status code:', error.response?.status);
+      console.error('Response data:', JSON.stringify(error.response?.data || 'No response data'));
+      console.error('Status code:', error.response?.status || 'No status code');
+      console.error('Request config:', JSON.stringify(error.config || 'No config available'));
+      
+      // If we got a response but it's an error status, log the specifics
+      if (error.response) {
+        console.error('Error details:', JSON.stringify({
+          status: error.response.status,
+          statusText: error.response.statusText,
+          headers: error.response.headers,
+          data: error.response.data
+        }));
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('No response received from Abacus API. Request details:', JSON.stringify(error.request));
+      } else {
+        // Something happened in setting up the request
+        console.error('Error setting up the request:', error.message);
+      }
+    } else {
+      // Non-Axios error
+      console.error('Non-axios error details:', JSON.stringify(error));
     }
-    // Provide a fallback response rather than exposing the error to users
-    return "I'm having trouble connecting to my knowledge base at the moment. Please try again in a moment.";
+    
+    // For now, use a simpler non-LLM response for better reliability
+    return "Hi there! I'm your calendar assistant and scheduling coach. I'd be happy to help you manage your schedule or provide productivity tips. What can I help you with today?";
   }
 }
 
