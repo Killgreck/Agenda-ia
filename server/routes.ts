@@ -65,7 +65,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tasks", async (req: Request, res: Response) => {
     try {
       // Parse and validate the request body
-      const parseResult = insertTaskSchema.safeParse(req.body);
+      // Pre-process the date fields to ensure they are Date objects
+      const rawData = {
+        ...req.body,
+        date: req.body.date ? new Date(req.body.date) : undefined,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+        recurrenceStartDate: req.body.recurrenceStartDate ? new Date(req.body.recurrenceStartDate) : undefined,
+        recurrenceEndDate: req.body.recurrenceEndDate ? new Date(req.body.recurrenceEndDate) : undefined
+      };
+      
+      const parseResult = insertTaskSchema.safeParse(rawData);
       
       if (!parseResult.success) {
         // Detailed validation error response with format errors
@@ -178,7 +187,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tasks/:id", async (req: Request, res: Response) => {
     try {
       const taskId = parseInt(req.params.id);
-      const taskUpdate = req.body;
+      
+      // Pre-process date fields for update
+      const taskUpdate = {
+        ...req.body,
+        date: req.body.date ? new Date(req.body.date) : undefined,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+        recurrenceStartDate: req.body.recurrenceStartDate ? new Date(req.body.recurrenceStartDate) : undefined,
+        recurrenceEndDate: req.body.recurrenceEndDate ? new Date(req.body.recurrenceEndDate) : undefined
+      };
       
       const updatedTask = await storage.updateTask(taskId, taskUpdate);
       
@@ -216,7 +233,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check-ins API
   app.post("/api/check-ins", async (req: Request, res: Response) => {
     try {
-      const checkInData = insertCheckInSchema.parse(req.body);
+      // Pre-process date field
+      const rawData = {
+        ...req.body,
+        date: req.body.date ? new Date(req.body.date) : undefined
+      };
+      
+      const checkInData = insertCheckInSchema.parse(rawData);
       const createdCheckIn = await storage.createCheckIn(checkInData);
       
       // Broadcast new check-in
@@ -262,7 +285,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat API
   app.post("/api/chat-messages", async (req: Request, res: Response) => {
     try {
-      const messageData = insertChatMessageSchema.parse(req.body);
+      // Pre-process timestamp field
+      const rawData = {
+        ...req.body,
+        timestamp: req.body.timestamp ? new Date(req.body.timestamp) : new Date()
+      };
+      
+      const messageData = insertChatMessageSchema.parse(rawData);
       const createdMessage = await storage.createChatMessage(messageData);
       
       // If the message is from the user, generate AI response
@@ -310,7 +339,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Suggestions API
   app.post("/api/ai-suggestions", async (req: Request, res: Response) => {
     try {
-      const suggestionData = insertAiSuggestionSchema.parse(req.body);
+      // Pre-process timestamp field
+      const rawData = {
+        ...req.body,
+        timestamp: req.body.timestamp ? new Date(req.body.timestamp) : new Date()
+      };
+      
+      const suggestionData = insertAiSuggestionSchema.parse(rawData);
       const createdSuggestion = await storage.createAiSuggestion(suggestionData);
       
       // Broadcast new suggestion
@@ -359,7 +394,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Statistics API
   app.post("/api/statistics", async (req: Request, res: Response) => {
     try {
-      const statisticsData = insertStatisticsSchema.parse(req.body);
+      // Pre-process date fields
+      const rawData = {
+        ...req.body,
+        weekStart: req.body.weekStart ? new Date(req.body.weekStart) : undefined,
+        weekEnd: req.body.weekEnd ? new Date(req.body.weekEnd) : undefined
+      };
+      
+      const statisticsData = insertStatisticsSchema.parse(rawData);
       const createdStatistics = await storage.createStatistics(statisticsData);
       
       // Broadcast new statistics
