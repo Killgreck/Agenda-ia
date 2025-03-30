@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { X, LightbulbIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, LightbulbIcon, CalendarDays, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,9 @@ import { InsertTask } from "@shared/schema";
 import { useTasks } from "@/hooks/useTaskManager";
 import { useToast } from "@/hooks/use-toast";
 import { useAI } from "@/hooks/useAI";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isHoliday } from "@/utils/holidays";
 
 type TaskModalProps = {
   open: boolean;
@@ -34,6 +37,10 @@ const taskFormSchema = insertTaskSchema.extend({
   endDate: z.string().optional(),
   time: z.string().optional(), // Will be merged with date
   endTime: z.string().optional(), // Will be merged with endDate
+  isRecurring: z.boolean().default(false),
+  recurringDays: z.array(z.string()).default([]),
+  skipHolidays: z.boolean().default(false),
+  holidayCountry: z.string().optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -58,6 +65,10 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
           location: taskToEdit.location || "",
           isAllDay: taskToEdit.isAllDay || false,
           reminder: taskToEdit.reminder || [],
+          isRecurring: taskToEdit.isRecurring || false,
+          recurringDays: taskToEdit.recurringDays || [],
+          skipHolidays: taskToEdit.skipHolidays || false,
+          holidayCountry: taskToEdit.holidayCountry || "",
         }
       : {
           title: "",
@@ -70,6 +81,10 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
           location: "",
           isAllDay: false,
           reminder: [15, 60], // Default reminders: 15 min and 1 hour before
+          isRecurring: false,
+          recurringDays: [],
+          skipHolidays: false,
+          holidayCountry: "",
         }
   });
   
@@ -101,14 +116,18 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
       // Create task object
       const taskData: InsertTask = {
         title: data.title,
-        description: data.description,
+        description: data.description || "",
         date: dateObj,
         endDate: endDateObj,
         priority: data.priority,
-        location: data.location || undefined,
+        location: data.location || "",
         isAllDay: data.isAllDay,
         reminder: data.reminder,
         completed: false,
+        isRecurring: data.isRecurring,
+        recurringDays: data.recurringDays,
+        skipHolidays: data.skipHolidays,
+        holidayCountry: data.holidayCountry || undefined,
       };
       
       await createTask(taskData);
@@ -128,9 +147,28 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
     }
   };
   
+  const isRecurring = watch("isRecurring");
+  const skipHolidays = watch("skipHolidays");
+  const selectedDate = watch("date");
+  
+  // Check if the selected date falls on a holiday
+  const [holidayInfo, setHolidayInfo] = useState<{ isHoliday: boolean; holidayName?: string }>({ isHoliday: false });
+  const [selectedCountry, setSelectedCountry] = useState<string>(watch("holidayCountry") || "");
+  
+  // Update holiday check when date or country changes
+  useEffect(() => {
+    if (selectedDate && selectedCountry) {
+      const dateObj = new Date(selectedDate);
+      const holidayCheck = isHoliday(dateObj, selectedCountry);
+      setHolidayInfo(holidayCheck);
+    } else {
+      setHolidayInfo({ isHoliday: false });
+    }
+  }, [selectedDate, selectedCountry]);
+  
   const handleAskAI = async () => {
     const title = watch("title");
-    const description = watch("description");
+    const description = watch("description") || "";
     
     if (!title) {
       toast({
@@ -162,7 +200,7 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
   
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+      <DialogContent className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex justify-between items-center p-4 border-b border-gray-200">
           <DialogTitle className="text-lg font-medium text-gray-800">
             {taskToEdit ? "Edit Task" : "Create New Task"}
@@ -208,11 +246,15 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
               control={control}
               render={({ field }) => (
                 <Textarea 
-                  {...field} 
                   id="description"
                   className="w-full border border-gray-300 rounded-lg" 
                   rows={3} 
                   placeholder="Task description"
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  value={field.value || ""}
+                  ref={field.ref}
+                  name={field.name}
                 />
               )}
             />
@@ -354,10 +396,14 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
               control={control}
               render={({ field }) => (
                 <Input 
-                  {...field} 
                   id="location"
                   className="w-full border border-gray-300 rounded-lg" 
-                  placeholder="Enter location" 
+                  placeholder="Enter location"
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  value={field.value || ""}
+                  ref={field.ref}
+                  name={field.name}
                 />
               )}
             />
@@ -414,6 +460,128 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
               )}
             />
           </div>
+          
+          {/* Recurring Event Settings */}
+          <div className="mb-4 border-t pt-4">
+            <Controller
+              name="isRecurring"
+              control={control}
+              render={({ field }) => (
+                <div className="flex items-center mb-2">
+                  <Checkbox 
+                    id="isRecurring" 
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <Label htmlFor="isRecurring" className="ml-2 text-sm font-medium text-gray-700 flex items-center">
+                    <CalendarDays className="h-4 w-4 mr-1" />
+                    Recurring event
+                  </Label>
+                </div>
+              )}
+            />
+            
+            {isRecurring && (
+              <div className="mt-2 ml-7">
+                <Label className="block text-sm font-medium text-gray-700 mb-1">
+                  Repeat on these days
+                </Label>
+                <div className="grid grid-cols-7 gap-1 mt-1">
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => (
+                    <Controller
+                      key={day}
+                      name="recurringDays"
+                      control={control}
+                      render={({ field }) => {
+                        const dayName = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"][index];
+                        const isSelected = field.value?.includes(dayName);
+                        
+                        return (
+                          <Button
+                            type="button"
+                            variant={isSelected ? "default" : "outline"}
+                            className={`text-xs ${isSelected ? 'bg-primary text-white' : 'bg-white text-gray-700'} p-1 h-8`}
+                            onClick={() => {
+                              const newValue = [...(field.value || [])];
+                              if (isSelected) {
+                                const index = newValue.indexOf(dayName);
+                                if (index !== -1) newValue.splice(index, 1);
+                              } else {
+                                newValue.push(dayName);
+                              }
+                              field.onChange(newValue);
+                            }}
+                          >
+                            {day}
+                          </Button>
+                        );
+                      }}
+                    />
+                  ))}
+                </div>
+                
+                {/* Holiday settings */}
+                <div className="mt-4">
+                  <Controller
+                    name="skipHolidays"
+                    control={control}
+                    render={({ field }) => (
+                      <div className="flex items-center">
+                        <Checkbox 
+                          id="skipHolidays" 
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor="skipHolidays" className="ml-2 text-sm text-gray-700">
+                          Skip public holidays
+                        </Label>
+                      </div>
+                    )}
+                  />
+                  
+                  {skipHolidays && (
+                    <div className="mt-2">
+                      <Label htmlFor="holidayCountry" className="block text-sm font-medium text-gray-700 mb-1">
+                        Holiday Calendar
+                      </Label>
+                      <Controller
+                        name="holidayCountry"
+                        control={control}
+                        render={({ field }) => (
+                          <Select 
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              setSelectedCountry(value);
+                            }}
+                            value={field.value || ""}
+                            defaultValue={field.value || ""}
+                          >
+                            <SelectTrigger className="w-full border border-gray-300 rounded-lg">
+                              <SelectValue placeholder="Select country" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="US">United States</SelectItem>
+                              <SelectItem value="CO">Colombia</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Holiday warning if date falls on a holiday */}
+          {holidayInfo.isHoliday && (
+            <Alert className="mb-4 bg-amber-50 border-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-sm text-amber-800">
+                This date falls on a holiday: <strong>{holidayInfo.holidayName}</strong>
+              </AlertDescription>
+            </Alert>
+          )}
           
           <div className="flex justify-between p-4 border-t border-gray-200">
             <div className="flex items-center text-sm text-accent">

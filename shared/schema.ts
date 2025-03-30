@@ -14,6 +14,10 @@ export const tasks = pgTable("tasks", {
   location: text("location"),
   isAllDay: boolean("is_all_day").default(false).notNull(),
   reminder: integer("reminder").array(), // minutes before event [15, 60, etc]
+  isRecurring: boolean("is_recurring").default(false).notNull(),
+  recurringDays: text("recurring_days").array(), // days of week: ['monday', 'wednesday', etc]
+  skipHolidays: boolean("skip_holidays").default(false).notNull(),
+  holidayCountry: text("holiday_country"), // 'US', 'CO' for Colombia
 });
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({
