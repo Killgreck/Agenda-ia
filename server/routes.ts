@@ -312,6 +312,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // User profile update route
+  app.patch("/api/user/profile", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      
+      // Get the user
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found"
+        });
+      }
+      
+      // Update fields - only allow permitted fields to be updated
+      const updateData: any = {};
+      const allowedFields = [
+        'email', 'phoneNumber', 'name', 'address', 'city', 'state', 
+        'zipCode', 'country', 'company', 'jobTitle', 'bio', 
+        'birthdate', 'timezone', 'profilePicture', 'darkMode', 
+        'emailNotifications', 'smsNotifications', 
+        'calendarIntegration', 'language'
+      ];
+      
+      allowedFields.forEach(field => {
+        if (req.body[field] !== undefined) {
+          updateData[field] = req.body[field];
+        }
+      });
+      
+      // Basic validation for required fields
+      if (updateData.email === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required"
+        });
+      }
+      
+      if (updateData.phoneNumber === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Phone number is required"
+        });
+      }
+      
+      // Update the user
+      const updatedUser = await storage.updateUser(userId, updateData);
+      
+      if (!updatedUser) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to update user profile"
+        });
+      }
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      
+      res.json({
+        success: true,
+        message: "Profile updated successfully",
+        user: userWithoutPassword
+      });
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+  
   // Setup WebSocket for real-time communications
   const wss = new WebSocketServer({ 
     server: httpServer,

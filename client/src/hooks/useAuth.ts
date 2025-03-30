@@ -7,6 +7,24 @@ interface User {
   username: string;
   name: string | null;
   email: string | null;
+  phoneNumber?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
+  country?: string | null;
+  company?: string | null;
+  jobTitle?: string | null;
+  bio?: string | null;
+  birthdate?: string | null;
+  timezone?: string | null;
+  profilePicture?: string | null;
+  darkMode?: boolean;
+  emailNotifications?: boolean;
+  smsNotifications?: boolean;
+  calendarIntegration?: string | null;
+  language?: string | null;
+  lastLogin?: string | null;
 }
 
 interface AuthResponse {
@@ -14,6 +32,28 @@ interface AuthResponse {
   user?: User;
   message?: string;
   isAuthenticated?: boolean;
+}
+
+interface UpdateProfileData {
+  email?: string;
+  phoneNumber?: string;
+  name?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  company?: string;
+  jobTitle?: string;
+  bio?: string;
+  birthdate?: string;
+  timezone?: string;
+  profilePicture?: string;
+  darkMode?: boolean;
+  emailNotifications?: boolean;
+  smsNotifications?: boolean;
+  calendarIntegration?: string;
+  language?: string;
 }
 
 interface AuthState {
@@ -24,6 +64,7 @@ interface AuthState {
   signup: (username: string, password: string, email?: string, name?: string) => Promise<boolean>;
   logout: () => void;
   checkAuthStatus: () => Promise<boolean>;
+  updateProfile: (data: UpdateProfileData) => Promise<boolean>;
 }
 
 export const useAuth = create<AuthState>()(
@@ -100,6 +141,28 @@ export const useAuth = create<AuthState>()(
           }
         } catch (error) {
           set({ user: null, isAuthenticated: false, isLoading: false });
+          return false;
+        }
+      },
+      
+      updateProfile: async (data: UpdateProfileData) => {
+        set({ isLoading: true });
+        try {
+          const response = await apiRequest<AuthResponse>('/api/user/profile', {
+            method: 'PATCH',
+            body: JSON.stringify(data),
+          });
+
+          if (response && response.success && response.user) {
+            set({ user: response.user, isLoading: false });
+            return true;
+          } else {
+            set({ isLoading: false });
+            return false;
+          }
+        } catch (error) {
+          console.error('Profile update error:', error);
+          set({ isLoading: false });
           return false;
         }
       },

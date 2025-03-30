@@ -14,6 +14,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, userData: Partial<Omit<InsertUser, 'password'>>): Promise<User | undefined>;
   
   // Task operations
   createTask(task: InsertTask): Promise<Task>;
@@ -89,6 +90,15 @@ export class MemStorage implements IStorage {
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+  
+  async updateUser(id: number, userData: Partial<Omit<InsertUser, 'password'>>): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) return undefined;
+    
+    const updatedUser = { ...existingUser, ...userData };
+    this.users.set(id, updatedUser);
+    return updatedUser;
   }
   
   // Task operations
@@ -248,6 +258,30 @@ export class DatabaseStorage implements IStorage {
       .values(insertUser)
       .returning();
     return user;
+  }
+  
+  async updateUser(id: number, userData: Partial<Omit<InsertUser, 'password'>>): Promise<User | undefined> {
+    // Remove undefined values for the update
+    const cleanedUpdate: Record<string, any> = {};
+    
+    Object.entries(userData).forEach(([key, value]) => {
+      if (value !== undefined) {
+        // Handle date conversions for specific fields
+        if (key === 'birthdate' && value) {
+          cleanedUpdate[key] = new Date(value);
+        } else {
+          // For non-date fields, use the value as is
+          cleanedUpdate[key] = value;
+        }
+      }
+    });
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set(cleanedUpdate)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser || undefined;
   }
   
   async createTask(insertTask: InsertTask): Promise<Task> {

@@ -1,4 +1,4 @@
-import { CalendarDays, Plus, Bell, User, LogOut } from "lucide-react";
+import { CalendarDays, Plus, Bell, User, LogOut, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import TaskModal from "./TaskModal";
@@ -76,6 +76,10 @@ export default function Header() {
                     {user.name || user.username}
                   </div>
                 )}
+                <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer">
+                  <UserCircle className="h-4 w-4 mr-2" />
+                  My Profile
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
