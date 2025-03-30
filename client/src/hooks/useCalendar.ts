@@ -103,6 +103,7 @@ export function useCalendar() {
 
   return {
     currentDate,
+    setCurrentDate,
     currentMonth,
     currentYear,
     daysInMonth,

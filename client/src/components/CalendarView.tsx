@@ -20,6 +20,7 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
   const { toast } = useToast();
   const { 
     currentDate,
+    setCurrentDate,
     currentMonth,
     currentYear, 
     daysInMonth,
@@ -33,7 +34,7 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
     getDaysInMonth 
   } = useCalendar();
   
-  const [view, setView] = useState<'month' | 'week' | 'day'>('month');
+  const [view, setView] = useState<'day' | 'week' | 'month' | 'year'>('month');
   const { tasks } = useTasks({ month: currentMonth, year: currentYear });
   const { 
     suggestions, 
@@ -179,7 +180,28 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
                 variant="ghost" 
                 size="icon" 
                 className="p-1 rounded hover:bg-gray-100"
-                onClick={prevMonth}
+                onClick={() => {
+                  switch(view) {
+                    case 'day':
+                      const prevDay = new Date(currentDate);
+                      prevDay.setDate(prevDay.getDate() - 1);
+                      setCurrentDate(prevDay);
+                      break;
+                    case 'week':
+                      const prevWeek = new Date(currentDate);
+                      prevWeek.setDate(prevWeek.getDate() - 7);
+                      setCurrentDate(prevWeek);
+                      break;
+                    case 'month':
+                      prevMonth();
+                      break;
+                    case 'year':
+                      const prevYear = new Date(currentDate);
+                      prevYear.setFullYear(prevYear.getFullYear() - 1);
+                      setCurrentDate(prevYear);
+                      break;
+                  }
+                }}
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
@@ -187,7 +209,28 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
                 variant="ghost" 
                 size="icon" 
                 className="p-1 rounded hover:bg-gray-100"
-                onClick={nextMonth}
+                onClick={() => {
+                  switch(view) {
+                    case 'day':
+                      const nextDay = new Date(currentDate);
+                      nextDay.setDate(nextDay.getDate() + 1);
+                      setCurrentDate(nextDay);
+                      break;
+                    case 'week':
+                      const nextWeek = new Date(currentDate);
+                      nextWeek.setDate(nextWeek.getDate() + 7);
+                      setCurrentDate(nextWeek);
+                      break;
+                    case 'month':
+                      nextMonth();
+                      break;
+                    case 'year':
+                      const nextYear = new Date(currentDate);
+                      nextYear.setFullYear(nextYear.getFullYear() + 1);
+                      setCurrentDate(nextYear);
+                      break;
+                  }
+                }}
               >
                 <ChevronRight className="h-5 w-5" />
               </Button>
@@ -203,11 +246,11 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
           </div>
           <div className="flex border rounded overflow-hidden">
             <Button 
-              variant={view === 'month' ? 'default' : 'ghost'} 
-              className={view === 'month' ? 'bg-primary text-white' : 'bg-white hover:bg-gray-100'}
-              onClick={() => setView('month')}
+              variant={view === 'day' ? 'default' : 'ghost'} 
+              className={view === 'day' ? 'bg-primary text-white' : 'bg-white hover:bg-gray-100'}
+              onClick={() => setView('day')}
             >
-              Month
+              Day
             </Button>
             <Button 
               variant={view === 'week' ? 'default' : 'ghost'} 
@@ -217,28 +260,194 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
               Week
             </Button>
             <Button 
-              variant={view === 'day' ? 'default' : 'ghost'} 
-              className={view === 'day' ? 'bg-primary text-white' : 'bg-white hover:bg-gray-100'}
-              onClick={() => setView('day')}
+              variant={view === 'month' ? 'default' : 'ghost'} 
+              className={view === 'month' ? 'bg-primary text-white' : 'bg-white hover:bg-gray-100'}
+              onClick={() => setView('month')}
             >
-              Day
+              Month
+            </Button>
+            <Button 
+              variant={view === 'year' ? 'default' : 'ghost'} 
+              className={view === 'year' ? 'bg-primary text-white' : 'bg-white hover:bg-gray-100'}
+              onClick={() => setView('year')}
+            >
+              Year
             </Button>
           </div>
         </div>
 
         {/* Calendar Grid */}
         <Card className="bg-white rounded-lg shadow">
-          {/* Days of week */}
-          <div className="grid grid-cols-7 border-b border-gray-200">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <div key={day} className="text-sm text-gray-600 font-medium p-2 text-center">{day}</div>
-            ))}
-          </div>
+          {view === 'month' && (
+            <>
+              {/* Days of week */}
+              <div className="grid grid-cols-7 border-b border-gray-200">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                  <div key={day} className="text-sm text-gray-600 font-medium p-2 text-center">{day}</div>
+                ))}
+              </div>
+              
+              {/* Calendar Cells */}
+              <div className="grid grid-cols-7">
+                {renderMonthCalendar()}
+              </div>
+            </>
+          )}
           
-          {/* Calendar Cells */}
-          <div className="grid grid-cols-7">
-            {renderMonthCalendar()}
-          </div>
+          {view === 'week' && (
+            <div className="p-4">
+              <div className="grid grid-cols-7 gap-2">
+                {Array.from({ length: 7 }).map((_, index) => {
+                  // Calculate the day for this column (starting from current week's Sunday)
+                  const currentDay = new Date(currentDate);
+                  const dayOfWeek = currentDay.getDay();
+                  currentDay.setDate(currentDay.getDate() - dayOfWeek + index);
+                  
+                  const dayTasks = getTasksForDate(currentDay);
+                  const isToday = isCurrentDay(currentDay);
+                  
+                  return (
+                    <div key={`week-day-${index}`} className="flex flex-col">
+                      <div className={`text-center p-2 mb-2 rounded-md ${isToday ? 'bg-primary text-white' : 'bg-gray-50'}`}>
+                        <div className="font-semibold">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index]}</div>
+                        <div className="text-sm">{currentDay.getDate()}</div>
+                      </div>
+                      
+                      <div className="flex-1 flex flex-col gap-2">
+                        {dayTasks.length === 0 ? (
+                          <div className="text-gray-400 text-center text-sm p-4">No events</div>
+                        ) : (
+                          dayTasks.map((task: Task) => (
+                            <div 
+                              key={`week-task-${task.id}`} 
+                              className={`p-2 rounded-md text-sm ${getPriorityClass(task.priority)}`}
+                              onClick={() => onDayClick?.(currentDay)}
+                            >
+                              <div className="font-medium">{task.title}</div>
+                              {task.isAllDay ? (
+                                <div className="text-xs">All day</div>
+                              ) : (
+                                <div className="text-xs">
+                                  {new Date(task.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                  {task.endDate && ` - ${new Date(task.endDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
+          {view === 'day' && (
+            <div className="p-4">
+              <div className="flex flex-col gap-2">
+                <div className={`text-center p-3 mb-2 rounded-md bg-primary text-white`}>
+                  <div className="font-semibold">{['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDate.getDay()]}</div>
+                  <div className="text-sm">{currentDate.toLocaleDateString()}</div>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-3">
+                  {Array.from({ length: 24 }).map((_, hour) => {
+                    const hourTasks = tasks.filter((task: Task) => {
+                      const taskDate = new Date(task.date);
+                      return taskDate.getDate() === currentDate.getDate() && 
+                             taskDate.getMonth() === currentDate.getMonth() && 
+                             taskDate.getFullYear() === currentDate.getFullYear() &&
+                             taskDate.getHours() === hour;
+                    });
+                    
+                    return (
+                      <div key={`hour-${hour}`} className="flex border-b border-gray-100 pb-2">
+                        <div className="w-16 text-right pr-4 font-medium text-gray-500">
+                          {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
+                        </div>
+                        <div className="flex-1">
+                          {hourTasks.length > 0 ? (
+                            hourTasks.map((task: Task) => (
+                              <div 
+                                key={`day-task-${task.id}`} 
+                                className={`p-2 mb-1 rounded-md text-sm ${getPriorityClass(task.priority)}`}
+                                onClick={() => onDayClick?.(currentDate)}
+                              >
+                                <div className="font-medium">{task.title}</div>
+                                {!task.isAllDay && (
+                                  <div className="text-xs">
+                                    {new Date(task.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    {task.endDate && ` - ${new Date(task.endDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
+                                  </div>
+                                )}
+                                {task.location && <div className="text-xs mt-1">📍 {task.location}</div>}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="h-6"></div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {view === 'year' && (
+            <div className="p-4 grid grid-cols-3 gap-6">
+              {Array.from({ length: 12 }).map((_, monthIndex) => {
+                const monthDate = new Date(currentYear, monthIndex, 1);
+                const daysInMonth = new Date(currentYear, monthIndex + 1, 0).getDate();
+                const firstDayOfMonth = new Date(currentYear, monthIndex, 1).getDay();
+                
+                return (
+                  <div key={`year-month-${monthIndex}`} className="border rounded-md overflow-hidden">
+                    <div className="bg-primary-light text-primary font-medium p-2 text-center">
+                      {new Date(currentYear, monthIndex).toLocaleString('default', { month: 'long' })}
+                    </div>
+                    <div className="grid grid-cols-7 text-xs">
+                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                        <div key={`year-month-${monthIndex}-day-${i}`} className="text-center p-1 text-gray-500">
+                          {day}
+                        </div>
+                      ))}
+                      
+                      {/* Empty cells for days before the first day of month */}
+                      {Array.from({ length: firstDayOfMonth }).map((_, i) => (
+                        <div key={`year-month-${monthIndex}-empty-${i}`} className="p-1"></div>
+                      ))}
+                      
+                      {/* Actual days */}
+                      {Array.from({ length: daysInMonth }).map((_, day) => {
+                        const date = new Date(currentYear, monthIndex, day + 1);
+                        const hasEventsOnDay = hasEvents(date);
+                        const isToday = isCurrentDay(date);
+                        
+                        return (
+                          <div 
+                            key={`year-month-${monthIndex}-day-${day + 1}`} 
+                            className={`text-center p-1 cursor-pointer
+                              ${isToday ? 'bg-primary text-white rounded-full' : ''} 
+                              ${hasEventsOnDay ? 'font-bold text-primary' : ''}
+                            `}
+                            onClick={() => {
+                              const newDate = new Date(currentYear, monthIndex, day + 1);
+                              onDayClick?.(newDate);
+                            }}
+                          >
+                            {day + 1}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
 
         {/* AI Suggestions Banner */}
