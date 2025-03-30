@@ -301,6 +301,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
 
   const onSubmit = async (data: TaskFormValues) => {
     try {
+      console.log("Starting task submission"); // Debug log
       let dateObj: Date;
       let endDateObj: Date | undefined;
       
@@ -445,6 +446,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
       const taskData: InsertTask = {
         title: data.title,
         description: data.description || "",
+        userId: 0, // This will be populated by the server based on the session
         date: dateObj.toISOString(), // Convert to ISO string for server
         endDate: endDateObj ? endDateObj.toISOString() : undefined,
         priority: data.priority,
@@ -461,7 +463,9 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         recurrenceEndDate: data.isRecurring && endDateObj ? endDateObj.toISOString() : undefined,
       };
       
-      await createTask(taskData);
+      console.log("Attempting to create task:", taskData);
+      const result = await createTask(taskData);
+      console.log("Task creation result:", result);
       
       toast({
         title: "Success",

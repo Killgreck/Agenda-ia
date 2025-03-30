@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Task, InsertTask, InsertCheckIn } from "@shared/schema";
+import { Task, InsertTask, InsertCheckIn, CheckIn } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { startOfMonth, endOfMonth, format, addDays } from "date-fns";
 

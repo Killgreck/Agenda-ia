@@ -55,7 +55,7 @@ const baseInsertTaskSchema = createInsertSchema(tasks).omit({
 
 // Extend it to handle string date inputs that will be converted to timestamps in the database
 export const insertTaskSchema = baseInsertTaskSchema.extend({
-  userId: z.number().int().positive(),
+  userId: z.number().int().positive().optional(), // Optional because it will be set from session on the server
   date: z.string(),
   endDate: z.string().optional(),
   recurrenceStartDate: z.string().optional(),

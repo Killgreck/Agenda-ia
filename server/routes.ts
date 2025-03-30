@@ -243,6 +243,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tasks", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId;
+      console.log("Creating task for user:", userId);
+      console.log("Session data:", req.session);
+      console.log("Request body:", req.body);
       
       // Parse and validate the request body
       // The schema expects date fields as strings in ISO format
