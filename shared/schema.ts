@@ -19,7 +19,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   name: true,
 }).extend({
   password: z.string().min(6, "Password must be at least 6 characters"),
-  email: z.string().email("Invalid email address").optional(),
+  email: z.string().email("Invalid email address").optional().nullable(),
+  name: z.string().optional().nullable(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
