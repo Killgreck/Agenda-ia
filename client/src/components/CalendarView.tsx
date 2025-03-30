@@ -180,12 +180,44 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center">
             <h2 className="text-xl font-semibold">
-              {view === 'year' 
-                ? currentYear 
-                : view === 'month' || view === 'week' || view === 'day' 
-                  ? formatMonthYear(currentDate)
-                  : formatMonthYear(currentDate)
-              }
+              {(() => {
+                switch(view) {
+                  case 'year':
+                    return currentYear;
+                  case 'month':
+                    return formatMonthYear(currentDate);
+                  case 'week': {
+                    // Get start and end of week
+                    const startOfWeek = new Date(currentDate);
+                    const dayOfWeek = startOfWeek.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                    startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek); // Go to start of week (Sunday)
+                    
+                    const endOfWeek = new Date(startOfWeek);
+                    endOfWeek.setDate(endOfWeek.getDate() + 6); // Go to end of week (Saturday)
+                    
+                    // Format the dates
+                    const startMonth = startOfWeek.toLocaleDateString('default', { month: 'short' });
+                    const endMonth = endOfWeek.toLocaleDateString('default', { month: 'short' });
+                    
+                    // If same month, just show once
+                    if (startMonth === endMonth) {
+                      return `${startMonth} ${startOfWeek.getDate()} - ${endOfWeek.getDate()}, ${endOfWeek.getFullYear()}`;
+                    } else {
+                      return `${startMonth} ${startOfWeek.getDate()} - ${endMonth} ${endOfWeek.getDate()}, ${endOfWeek.getFullYear()}`;
+                    }
+                  }
+                  case 'day':
+                    // Show full date for day view
+                    return currentDate.toLocaleDateString('default', { 
+                      weekday: 'long', 
+                      month: 'long', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    });
+                  default:
+                    return formatMonthYear(currentDate);
+                }
+              })()}
             </h2>
             <div className="ml-4 flex space-x-1">
               <Button 
