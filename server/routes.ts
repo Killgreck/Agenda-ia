@@ -64,7 +64,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Tasks API
   app.post("/api/tasks", async (req: Request, res: Response) => {
     try {
-      const taskData = insertTaskSchema.parse(req.body);
+      // Parse and validate the request body
+      const parseResult = insertTaskSchema.safeParse(req.body);
+      
+      if (!parseResult.success) {
+        // Detailed validation error response with format errors
+        return res.status(400).json({
+          message: "Invalid task data",
+          details: parseResult.error.format()
+        });
+      }
+      
+      const taskData = parseResult.data;
+      
+      // Additional validations
+      if (taskData.isRecurring) {
+        if (!taskData.recurrenceType) {
+          return res.status(400).json({ message: "Recurrence type is required for recurring events" });
+        }
+        
+        if (taskData.recurrenceType === "weekly" && (!taskData.recurringDays || taskData.recurringDays.length === 0)) {
+          return res.status(400).json({ message: "At least one recurring day must be selected for weekly events" });
+        }
+        
+        if (!taskData.recurrenceStartDate) {
+          return res.status(400).json({ message: "Recurrence start date is required" });
+        }
+        
+        if (!taskData.recurrenceEndDate) {
+          return res.status(400).json({ message: "Recurrence end date is required" });
+        }
+        
+        // Validate dates
+        const startDate = new Date(taskData.recurrenceStartDate);
+        const endDate = new Date(taskData.recurrenceEndDate);
+        if (startDate > endDate) {
+          return res.status(400).json({ message: "Start date must be before end date" });
+        }
+      }
+      
+      // Create the task
       const createdTask = await storage.createTask(taskData);
       
       // Broadcast new task to connected clients
@@ -93,7 +132,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(createdTask);
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      console.error("Error creating task:", error);
+      
+      // More detailed error handling
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else if (typeof error === 'string') {
+        res.status(400).json({ message: error });
+      } else {
+        res.status(500).json({ 
+          message: "An unexpected error occurred",
+          error: String(error)
+        });
+      }
     }
   });
   

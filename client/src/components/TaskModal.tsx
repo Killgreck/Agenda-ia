@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { InsertTask } from "@shared/schema";
+import { InsertTask, Task } from "@shared/schema";
 import { useTasks } from "@/hooks/useTaskManager";
 import { useToast } from "@/hooks/use-toast";
 import { useAI } from "@/hooks/useAI";
@@ -103,14 +103,127 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
   
   const isAllDay = watch("isAllDay");
   
+  // Function to check for time conflicts with existing tasks
+  const checkTimeConflicts = async (date: Date, endDate?: Date, isAllDay: boolean = false): Promise<string | null> => {
+    try {
+      // Get all tasks for the same date
+      const allTasks = await fetch('/api/tasks').then(res => res.json());
+      
+      if (!allTasks || allTasks.length === 0) return null;
+      
+      // Filter tasks that occur on the same day
+      const tasksOnSameDay = allTasks.filter((task: Task) => {
+        const taskDate = new Date(task.date);
+        return taskDate.toDateString() === date.toDateString();
+      });
+      
+      if (tasksOnSameDay.length === 0) return null;
+      
+      // For all-day events, suggest a different day if there's already an all-day event
+      if (isAllDay) {
+        const existingAllDayEvents = tasksOnSameDay.filter((task: Task) => task.isAllDay);
+        if (existingAllDayEvents.length > 0) {
+          return "There's already an all-day event scheduled. Consider choosing a different day.";
+        }
+      }
+      
+      // Check for time conflicts for non-all-day events
+      if (!isAllDay) {
+        const conflictingTasks = tasksOnSameDay.filter((task: Task) => {
+          if (task.isAllDay) return true; // All-day events conflict with any time of the day
+          
+          const taskStart = new Date(task.date);
+          const taskEnd = task.endDate ? new Date(task.endDate) : new Date(taskStart.getTime() + 60 * 60 * 1000); // Default 1 hour
+          
+          const newEventEnd = endDate || new Date(date.getTime() + 60 * 60 * 1000); // Default 1 hour
+          
+          // Check if there's an overlap
+          return (date < taskEnd && newEventEnd > taskStart);
+        });
+        
+        if (conflictingTasks.length > 0) {
+          // Find available time slots
+          const availableSlots = findAvailableTimeSlots(tasksOnSameDay, date);
+          if (availableSlots.length > 0) {
+            const nextSlot = availableSlots[0];
+            const formattedTime = nextSlot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return `There's a time conflict with existing events. Consider scheduling at ${formattedTime} instead.`;
+          } else {
+            return "There are time conflicts with existing events. Consider scheduling on another day.";
+          }
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("Error checking time conflicts:", error);
+      return null;
+    }
+  };
+  
+  // Function to find available time slots
+  const findAvailableTimeSlots = (tasksOnDay: Task[], preferredDate: Date): Date[] => {
+    // Default business hours: 9 AM to 5 PM
+    const businessHoursStart = 9;
+    const businessHoursEnd = 17;
+    
+    // Convert tasks to busy time ranges
+    const busyRanges: {start: Date, end: Date}[] = tasksOnDay
+      .filter(task => !task.isAllDay)
+      .map(task => {
+        const start = new Date(task.date);
+        const end = task.endDate ? new Date(task.endDate) : new Date(start.getTime() + 60 * 60 * 1000);
+        return { start, end };
+      });
+    
+    // Sort by start time
+    busyRanges.sort((a, b) => a.start.getTime() - b.start.getTime());
+    
+    // Find available slots (at least 30 minutes)
+    const availableSlots: Date[] = [];
+    const day = preferredDate.getDate();
+    const month = preferredDate.getMonth();
+    const year = preferredDate.getFullYear();
+    
+    // Start from business hours start
+    let currentTime = new Date(year, month, day, businessHoursStart, 0);
+    
+    for (const range of busyRanges) {
+      // If there's a gap between current time and next busy period, it's available
+      if (range.start.getTime() - currentTime.getTime() >= 30 * 60 * 1000) {
+        availableSlots.push(new Date(currentTime));
+      }
+      // Move current time to the end of this busy period
+      currentTime = new Date(Math.max(currentTime.getTime(), range.end.getTime()));
+    }
+    
+    // Check if there's time available after the last busy period until business hours end
+    const endOfDay = new Date(year, month, day, businessHoursEnd, 0);
+    if (endOfDay.getTime() - currentTime.getTime() >= 30 * 60 * 1000) {
+      availableSlots.push(new Date(currentTime));
+    }
+    
+    return availableSlots;
+  };
+
   const onSubmit = async (data: TaskFormValues) => {
     try {
       let dateObj: Date;
       let endDateObj: Date | undefined;
       
+      // Validate form data
+      if (!data.title.trim()) {
+        toast({
+          title: "Missing Information",
+          description: "Please provide a title for the task.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Handle different date logic for recurring vs single events
       if (data.isRecurring) {
-        // For recurring events, use the recurrence start/end dates
+        // For recurring events, validate recurrence settings
         if (!data.recurrenceStartDate) {
           toast({
             title: "Missing Information",
@@ -120,8 +233,38 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
           return;
         }
         
+        if (!data.recurrenceEndDate) {
+          toast({
+            title: "Missing Information",
+            description: "Please select an end date for the recurring event.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (data.recurrenceType === "weekly" && (!data.recurringDays || data.recurringDays.length === 0)) {
+          toast({
+            title: "Missing Information",
+            description: "Please select at least one day of the week for weekly recurring events.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         // Use recurrence start date as the main date
         dateObj = new Date(data.recurrenceStartDate);
+        
+        // Validate that start date is before end date
+        const startDate = new Date(data.recurrenceStartDate);
+        const endDate = new Date(data.recurrenceEndDate);
+        if (startDate > endDate) {
+          toast({
+            title: "Invalid Date Range",
+            description: "The start date must be before the end date.",
+            variant: "destructive",
+          });
+          return;
+        }
         
         // Time handling
         if (!isAllDay && data.time) {
@@ -131,17 +274,34 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
           dateObj.setHours(0, 0, 0, 0);
         }
         
-        // Process recurrence end date if provided
-        if (data.recurrenceEndDate) {
-          endDateObj = new Date(data.recurrenceEndDate);
-          if (!isAllDay && data.endTime) {
-            const [hours, minutes] = data.endTime.split(':').map(Number);
-            endDateObj.setHours(hours, minutes);
-          } else {
-            endDateObj.setHours(23, 59, 59, 999);
-          }
+        // Process recurrence end date
+        endDateObj = new Date(data.recurrenceEndDate);
+        if (!isAllDay && data.endTime) {
+          const [hours, minutes] = data.endTime.split(':').map(Number);
+          endDateObj.setHours(hours, minutes);
+        } else {
+          endDateObj.setHours(23, 59, 59, 999);
         }
       } else {
+        // For single events, check if date is provided
+        if (!data.date) {
+          toast({
+            title: "Missing Information",
+            description: "Please select a date for the event.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (!isAllDay && !data.time) {
+          toast({
+            title: "Missing Information",
+            description: "Please specify a time for the event.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         // For single events, use the regular date fields
         dateObj = new Date(data.date);
         if (!isAllDay && data.time) {
@@ -154,12 +314,36 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
         // Process regular end date if provided
         if (data.endDate) {
           endDateObj = new Date(data.endDate);
+          
+          // Validate that end date is not before start date
+          if (endDateObj < dateObj) {
+            toast({
+              title: "Invalid Date Range",
+              description: "The end date cannot be before the start date.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
           if (!isAllDay && data.endTime) {
             const [hours, minutes] = data.endTime.split(':').map(Number);
             endDateObj.setHours(hours, minutes);
           } else {
             endDateObj.setHours(23, 59, 59, 999);
           }
+        }
+      }
+
+      // Check for time conflicts for non-recurring events
+      if (!data.isRecurring) {
+        const conflictMessage = await checkTimeConflicts(dateObj, endDateObj, data.isAllDay);
+        if (conflictMessage) {
+          toast({
+            title: "Time Conflict Detected",
+            description: conflictMessage,
+            variant: "destructive",
+          });
+          // Continue anyway - just a warning
         }
       }
 
@@ -192,9 +376,25 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
       
       onClose();
     } catch (error) {
+      console.error("Error creating task:", error);
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error instanceof Response) {
+        try {
+          const data = await error.json();
+          errorMessage = data.message || errorMessage;
+        } catch (e) {
+          errorMessage = `Server error (${error.status}): ${error.statusText}`;
+        }
+      }
+      
       toast({
-        title: "Error",
-        description: "Failed to create task. Please try again.",
+        title: "Error Creating Task",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -747,25 +947,8 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
             />
           </div>
           
-          {/* Recurring Event Settings */}
+          {/* Other task settings */}
           <div className="mb-4 border-t pt-4">
-            <Controller
-              name="isRecurring"
-              control={control}
-              render={({ field }) => (
-                <div className="flex items-center mb-2">
-                  <Checkbox 
-                    id="isRecurring" 
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                  <Label htmlFor="isRecurring" className="ml-2 text-sm font-medium text-gray-700 flex items-center">
-                    <CalendarDays className="h-4 w-4 mr-1" />
-                    Recurring event
-                  </Label>
-                </div>
-              )}
-            />
             
             {isRecurring && (
               <div className="mt-2 ml-7">

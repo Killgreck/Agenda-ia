@@ -6,6 +6,8 @@ import {
   aiSuggestions, type AiSuggestion, type InsertAiSuggestion,
   statistics, type Statistic, type InsertStatistic
 } from "@shared/schema";
+import { eq, and, gte, lte, desc, asc } from "drizzle-orm";
+import { db } from "./db";
 
 export interface IStorage {
   // User operations
@@ -229,4 +231,219 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+  
+  async createTask(insertTask: InsertTask): Promise<Task> {
+    const [task] = await db
+      .insert(tasks)
+      .values({
+        ...insertTask,
+        description: insertTask.description ?? null,
+        endDate: insertTask.endDate ?? null,
+        priority: insertTask.priority || "medium",
+        location: insertTask.location ?? null,
+        reminder: insertTask.reminder || [],
+        recurringDays: insertTask.recurringDays || [],
+        holidayCountry: insertTask.holidayCountry ?? null,
+        recurrenceType: insertTask.recurrenceType ?? null,
+        recurrenceStartDate: insertTask.recurrenceStartDate ?? null,
+        recurrenceEndDate: insertTask.recurrenceEndDate ?? null
+      })
+      .returning();
+    return task;
+  }
+
+  async updateTask(id: number, taskUpdate: Partial<InsertTask>): Promise<Task | undefined> {
+    // Remove undefined values to prevent type issues
+    const cleanedUpdate: Record<string, any> = {};
+    Object.entries(taskUpdate).forEach(([key, value]) => {
+      if (value !== undefined) {
+        if (value === null || Array.isArray(value) || typeof value !== 'object') {
+          cleanedUpdate[key] = value;
+        } else {
+          cleanedUpdate[key] = value;
+        }
+      }
+    });
+
+    const [updatedTask] = await db
+      .update(tasks)
+      .set(cleanedUpdate)
+      .where(eq(tasks.id, id))
+      .returning();
+    return updatedTask || undefined;
+  }
+
+  async deleteTask(id: number): Promise<boolean> {
+    const result = await db
+      .delete(tasks)
+      .where(eq(tasks.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getTask(id: number): Promise<Task | undefined> {
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, id));
+    return task || undefined;
+  }
+
+  async getTasks(filters?: { startDate?: Date; endDate?: Date }): Promise<Task[]> {
+    let query = db.select().from(tasks);
+    
+    if (filters) {
+      if (filters.startDate) {
+        query = query.where(gte(tasks.date, filters.startDate));
+      }
+      if (filters.endDate) {
+        query = query.where(lte(tasks.date, filters.endDate));
+      }
+    }
+    
+    return await query;
+  }
+
+  async createCheckIn(insertCheckIn: InsertCheckIn): Promise<CheckIn> {
+    const [checkIn] = await db
+      .insert(checkIns)
+      .values(insertCheckIn)
+      .returning();
+    return checkIn;
+  }
+
+  async getCheckIns(startDate: Date, endDate: Date): Promise<CheckIn[]> {
+    return await db
+      .select()
+      .from(checkIns)
+      .where(
+        and(
+          gte(checkIns.date, startDate),
+          lte(checkIns.date, endDate)
+        )
+      );
+  }
+
+  async getLatestCheckIn(): Promise<CheckIn | undefined> {
+    const [latestCheckIn] = await db
+      .select()
+      .from(checkIns)
+      .orderBy(desc(checkIns.date))
+      .limit(1);
+    return latestCheckIn || undefined;
+  }
+
+  async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
+    const [message] = await db
+      .insert(chatMessages)
+      .values(insertMessage)
+      .returning();
+    return message;
+  }
+
+  async getChatMessages(limit?: number): Promise<ChatMessage[]> {
+    // Build basic query
+    let baseQuery = db
+      .select()
+      .from(chatMessages)
+      .orderBy(asc(chatMessages.timestamp));
+    
+    // Execute with limit if specified
+    if (limit) {
+      return await baseQuery.limit(limit);
+    }
+    
+    return await baseQuery;
+  }
+
+  async createAiSuggestion(insertSuggestion: InsertAiSuggestion): Promise<AiSuggestion> {
+    const [suggestion] = await db
+      .insert(aiSuggestions)
+      .values({
+        ...insertSuggestion,
+        metadata: insertSuggestion.metadata ?? null
+      })
+      .returning();
+    return suggestion;
+  }
+
+  async updateAiSuggestion(id: number, accepted: boolean): Promise<AiSuggestion | undefined> {
+    const [updatedSuggestion] = await db
+      .update(aiSuggestions)
+      .set({ accepted })
+      .where(eq(aiSuggestions.id, id))
+      .returning();
+    return updatedSuggestion || undefined;
+  }
+
+  async getAiSuggestions(limit?: number): Promise<AiSuggestion[]> {
+    // Build basic query
+    let baseQuery = db
+      .select()
+      .from(aiSuggestions)
+      .orderBy(desc(aiSuggestions.timestamp));
+    
+    // Execute with limit if specified
+    if (limit) {
+      return await baseQuery.limit(limit);
+    }
+    
+    return await baseQuery;
+  }
+
+  async createStatistics(insertStats: InsertStatistic): Promise<Statistic> {
+    const [stats] = await db
+      .insert(statistics)
+      .values(insertStats)
+      .returning();
+    return stats;
+  }
+
+  async getStatisticsForWeek(weekStart: Date, weekEnd: Date): Promise<Statistic | undefined> {
+    const [weekStats] = await db
+      .select()
+      .from(statistics)
+      .where(
+        and(
+          eq(statistics.weekStart, weekStart),
+          eq(statistics.weekEnd, weekEnd)
+        )
+      );
+    return weekStats || undefined;
+  }
+
+  async getLatestStatistics(limit?: number): Promise<Statistic[]> {
+    // Build basic query
+    let baseQuery = db
+      .select()
+      .from(statistics)
+      .orderBy(desc(statistics.weekEnd));
+    
+    // Execute with limit if specified
+    if (limit) {
+      return await baseQuery.limit(limit);
+    }
+    
+    return await baseQuery;
+  }
+}
+
+// Use the database storage for production
+export const storage = new DatabaseStorage();
