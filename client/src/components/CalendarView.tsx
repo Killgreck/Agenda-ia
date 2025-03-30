@@ -45,7 +45,7 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
   
   // Filter for tasks on a specific date
   const getTasksForDate = (date: Date): Task[] => {
-    return tasks.filter(task => {
+    return tasks.filter((task: Task) => {
       const taskDate = new Date(task.date);
       return taskDate.getDate() === date.getDate() && 
              taskDate.getMonth() === date.getMonth() && 
@@ -168,7 +168,7 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
   };
   
   return (
-    <div className="flex-1 bg-white overflow-y-auto">
+    <div className="flex-1 bg-white overflow-y-auto custom-scrollbar">
       <div className="p-4">
         {/* Calendar Header */}
         <div className="flex justify-between items-center mb-6">

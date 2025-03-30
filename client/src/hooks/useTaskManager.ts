@@ -37,7 +37,7 @@ export function useTasks(options?: UseTasksOptions) {
   });
   
   // Get upcoming tasks (next 5 days)
-  const upcomingTasks = tasks
+  const upcomingTasks: Task[] = tasks
     .filter((task: Task) => {
       const taskDate = new Date(task.date);
       const fiveDaysFromNow = addDays(today, 5);

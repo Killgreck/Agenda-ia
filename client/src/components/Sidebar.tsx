@@ -78,7 +78,7 @@ export default function Sidebar() {
   };
   
   return (
-    <aside className="w-full lg:w-64 bg-white border-r border-gray-200 flex-shrink-0 overflow-y-auto">
+    <aside className="w-full lg:w-64 bg-white border-r border-gray-200 flex-shrink-0 overflow-y-auto custom-scrollbar">
       <div className="p-4">
         {/* Daily Check-in */}
         <div className="mb-6 bg-blue-50 rounded-lg p-4">
@@ -162,7 +162,7 @@ export default function Sidebar() {
               No upcoming tasks
             </div>
           ) : (
-            upcomingTasks.map((task) => (
+            upcomingTasks.map((task: Task) => (
               <Card key={task.id} className="mt-3 hover:shadow transition">
                 <CardContent className="p-3">
                   <div className="flex justify-between items-start">

@@ -15,11 +15,11 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen overflow-hidden">
       <Header />
       
-      <main className="flex-1 overflow-hidden">
-        <div className="h-full flex flex-col lg:flex-row">
+      <main className="flex-1 overflow-auto">
+        <div className="min-h-full flex flex-col lg:flex-row">
           {/* Sidebar with productivity check-in, stats, and upcoming tasks */}
           <Sidebar />
           
@@ -42,7 +42,7 @@ export default function Dashboard() {
           taskToEdit={selectedDate ? { 
             title: "",
             description: "",
-            date: selectedDate,
+            date: selectedDate.toISOString().split('T')[0], // Format as YYYY-MM-DD string
             priority: "medium",
             completed: false,
             isAllDay: false
