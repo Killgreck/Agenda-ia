@@ -174,7 +174,14 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
         {/* Calendar Header */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center">
-            <h2 className="text-xl font-semibold">{formatMonthYear(currentDate)}</h2>
+            <h2 className="text-xl font-semibold">
+              {view === 'year' 
+                ? currentYear 
+                : view === 'month' || view === 'week' || view === 'day' 
+                  ? formatMonthYear(currentDate)
+                  : formatMonthYear(currentDate)
+              }
+            </h2>
             <div className="ml-4 flex space-x-1">
               <Button 
                 variant="ghost" 
