@@ -41,6 +41,9 @@ const taskFormSchema = insertTaskSchema.extend({
   recurringDays: z.array(z.string()).default([]),
   skipHolidays: z.boolean().default(false),
   holidayCountry: z.string().optional(),
+  recurrenceType: z.enum(["daily", "weekly"]).optional(),
+  recurrenceStartDate: z.string().optional(),
+  recurrenceEndDate: z.string().optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -69,6 +72,13 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
           recurringDays: taskToEdit.recurringDays || [],
           skipHolidays: taskToEdit.skipHolidays || false,
           holidayCountry: taskToEdit.holidayCountry || "",
+          recurrenceType: (taskToEdit.recurrenceType as "daily" | "weekly") || "weekly",
+          recurrenceStartDate: taskToEdit.recurrenceStartDate 
+            ? new Date(taskToEdit.recurrenceStartDate).toISOString().split('T')[0] 
+            : new Date().toISOString().split('T')[0],
+          recurrenceEndDate: taskToEdit.recurrenceEndDate 
+            ? new Date(taskToEdit.recurrenceEndDate).toISOString().split('T')[0] 
+            : "",
         }
       : {
           title: "",
@@ -85,6 +95,9 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
           recurringDays: [],
           skipHolidays: false,
           holidayCountry: "",
+          recurrenceType: "weekly",
+          recurrenceStartDate: new Date().toISOString().split('T')[0],
+          recurrenceEndDate: "",
         }
   });
   
@@ -113,6 +126,18 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
         }
       }
       
+      // Process recurrence dates if provided
+      let recurrenceStartDateObj: Date | undefined;
+      let recurrenceEndDateObj: Date | undefined;
+      
+      if (data.isRecurring && data.recurrenceStartDate) {
+        recurrenceStartDateObj = new Date(data.recurrenceStartDate);
+      }
+      
+      if (data.isRecurring && data.recurrenceEndDate) {
+        recurrenceEndDateObj = new Date(data.recurrenceEndDate);
+      }
+      
       // Create task object
       const taskData: InsertTask = {
         title: data.title,
@@ -128,6 +153,9 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
         recurringDays: data.recurringDays,
         skipHolidays: data.skipHolidays,
         holidayCountry: data.holidayCountry || undefined,
+        recurrenceType: data.recurrenceType,
+        recurrenceStartDate: recurrenceStartDateObj,
+        recurrenceEndDate: recurrenceEndDateObj,
       };
       
       await createTask(taskData);
@@ -150,6 +178,7 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
   const isRecurring = watch("isRecurring");
   const skipHolidays = watch("skipHolidays");
   const selectedDate = watch("date");
+  const recurrenceType = watch("recurrenceType");
   
   // Check if the selected date falls on a holiday
   const [holidayInfo, setHolidayInfo] = useState<{ isHoliday: boolean; holidayName?: string }>({ isHoliday: false });
@@ -483,42 +512,110 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
             
             {isRecurring && (
               <div className="mt-2 ml-7">
-                <Label className="block text-sm font-medium text-gray-700 mb-1">
-                  Repeat on these days
-                </Label>
-                <div className="grid grid-cols-7 gap-1 mt-1">
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => (
-                    <Controller
-                      key={day}
-                      name="recurringDays"
-                      control={control}
-                      render={({ field }) => {
-                        const dayName = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"][index];
-                        const isSelected = field.value?.includes(dayName);
-                        
-                        return (
-                          <Button
-                            type="button"
-                            variant={isSelected ? "default" : "outline"}
-                            className={`text-xs ${isSelected ? 'bg-primary text-white' : 'bg-white text-gray-700'} p-1 h-8`}
-                            onClick={() => {
-                              const newValue = [...(field.value || [])];
-                              if (isSelected) {
-                                const index = newValue.indexOf(dayName);
-                                if (index !== -1) newValue.splice(index, 1);
-                              } else {
-                                newValue.push(dayName);
-                              }
-                              field.onChange(newValue);
-                            }}
-                          >
-                            {day}
-                          </Button>
-                        );
-                      }}
-                    />
-                  ))}
+                {/* Recurrence Type Selection */}
+                <div className="mb-4">
+                  <Label htmlFor="recurrenceType" className="block text-sm font-medium text-gray-700 mb-1">
+                    Recurrence Type
+                  </Label>
+                  <Controller
+                    name="recurrenceType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select 
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger className="w-full border border-gray-300 rounded-lg">
+                          <SelectValue placeholder="Select recurrence type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
+                
+                {/* Date Range Selection */}
+                <div className="mb-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="recurrenceStartDate" className="block text-sm font-medium text-gray-700 mb-1">
+                      Starts On
+                    </Label>
+                    <Controller
+                      name="recurrenceStartDate"
+                      control={control}
+                      render={({ field }) => (
+                        <Input 
+                          {...field} 
+                          id="recurrenceStartDate"
+                          type="date" 
+                          className="w-full border border-gray-300 rounded-lg" 
+                        />
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="recurrenceEndDate" className="block text-sm font-medium text-gray-700 mb-1">
+                      Ends On
+                    </Label>
+                    <Controller
+                      name="recurrenceEndDate"
+                      control={control}
+                      render={({ field }) => (
+                        <Input 
+                          {...field} 
+                          id="recurrenceEndDate"
+                          type="date" 
+                          className="w-full border border-gray-300 rounded-lg" 
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+                
+                {recurrenceType === "weekly" && (
+                  <>
+                    <Label className="block text-sm font-medium text-gray-700 mb-1">
+                      Repeat on these days
+                    </Label>
+                    <div className="grid grid-cols-7 gap-1 mt-1">
+                      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => (
+                        <Controller
+                          key={day}
+                          name="recurringDays"
+                          control={control}
+                          render={({ field }) => {
+                            const dayName = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"][index];
+                            const isSelected = field.value?.includes(dayName);
+                            
+                            return (
+                              <Button
+                                type="button"
+                                variant={isSelected ? "default" : "outline"}
+                                className={`text-xs ${isSelected ? 'bg-primary text-white' : 'bg-white text-gray-700'} p-1 h-8`}
+                                onClick={() => {
+                                  const newValue = [...(field.value || [])];
+                                  if (isSelected) {
+                                    const index = newValue.indexOf(dayName);
+                                    if (index !== -1) newValue.splice(index, 1);
+                                  } else {
+                                    newValue.push(dayName);
+                                  }
+                                  field.onChange(newValue);
+                                }}
+                              >
+                                {day}
+                              </Button>
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
                 
                 {/* Holiday settings */}
                 <div className="mt-4">

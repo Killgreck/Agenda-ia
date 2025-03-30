@@ -18,6 +18,9 @@ export const tasks = pgTable("tasks", {
   recurringDays: text("recurring_days").array(), // days of week: ['monday', 'wednesday', etc]
   skipHolidays: boolean("skip_holidays").default(false).notNull(),
   holidayCountry: text("holiday_country"), // 'US', 'CO' for Colombia
+  recurrenceStartDate: timestamp("recurrence_start_date"), // When recurring events start
+  recurrenceEndDate: timestamp("recurrence_end_date"), // When recurring events end
+  recurrenceType: text("recurrence_type"), // 'daily', 'weekly'
 });
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({
