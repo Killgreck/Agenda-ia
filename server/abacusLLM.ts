@@ -2,20 +2,25 @@ import axios from 'axios';
 
 // Abacus LLM API integration
 const API_KEY = process.env.ABACUS_API_KEY;
-const API_URL = 'https://api.abacus.ai/api/v0/inference';
+const API_URL = 'https://api.abacus.ai/api/v1/project/deployed-model/predict';
 
 interface AbacusRequest {
-  model: string;
-  prompt: string;
-  temperature?: number;
-  max_tokens?: number;
-  system_message?: string;
+  apiKey: string;
+  modelId: string;
+  deployment: string;
+  inputs: {
+    prompt: string;
+    temperature?: number;
+    max_tokens?: number;
+    system?: string;
+  }
 }
 
 interface AbacusResponse {
-  response: string;
+  prediction: {
+    text: string;
+  };
   status: string;
-  id: string;
 }
 
 /**
@@ -52,27 +57,31 @@ export async function callAbacusLLM(userMessage: string): Promise<string> {
     The user is currently accessing the AI assistant feature of the application. Be helpful, friendly, and proactive in suggesting improvements to their schedule.`;
 
     const requestData: AbacusRequest = {
-      model: 'llama-3-8b-chat',  // Using a model format that's compatible with Abacus API
-      prompt: userMessage,
-      temperature: 0.7,
-      max_tokens: 500,
-      system_message: systemMessage
+      apiKey: API_KEY,
+      modelId: 'llama-3-8b-chat',
+      deployment: 'default',
+      inputs: {
+        prompt: userMessage,
+        temperature: 0.7,
+        max_tokens: 500,
+        system: systemMessage
+      }
     };
 
     console.log('Making request to Abacus LLM API with data:', JSON.stringify(requestData));
 
     const response = await axios.post(API_URL, requestData, {
       headers: {
-        'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json'
       }
     });
 
-    if (response.status === 200 && response.data.status === 'success') {
-      return response.data.response as string;
+    if (response.status === 200) {
+      console.log('Abacus LLM API response:', JSON.stringify(response.data));
+      return response.data.prediction.text as string;
     } else {
       console.error('Abacus LLM API error:', response.data);
-      throw new Error(`API returned status: ${response.data.status}`);
+      throw new Error(`API returned status: ${response.status}`);
     }
   } catch (error) {
     console.error('Error calling Abacus LLM API:', error);
