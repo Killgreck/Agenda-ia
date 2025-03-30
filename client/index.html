@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Calendar Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      /* Custom styles for the calendar */
+      .calendar-day {
+        aspect-ratio: 1;
+      }
+      .calendar-day-current {
+        background-color: rgba(25, 118, 210, 0.1);
+        font-weight: 600;
+      }
+      .calendar-day-has-event::after {
+        content: '';
+        position: absolute;
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: hsl(var(--accent));
+      }
+      .ai-message::before {
+        content: '';
+        position: absolute;
+        top: 12px;
+        left: -8px;
+        width: 0;
+        height: 0;
+        border-top: 8px solid transparent;
+        border-bottom: 8px solid transparent;
+        border-right: 8px solid hsl(var(--accent));
+      }
+      .user-message::before {
+        content: '';
+        position: absolute;
+        top: 12px;
+        right: -8px;
+        width: 0;
+        height: 0;
+        border-top: 8px solid transparent;
+        border-bottom: 8px solid transparent;
+        border-left: 8px solid hsl(var(--primary));
+      }
+      /* Loading animation for AI typing */
+      .typing-indicator {
+        display: flex;
+        align-items: center;
+        padding: 8px 16px;
+      }
+      .typing-indicator span {
+        height: 8px;
+        width: 8px;
+        background-color: hsl(var(--accent));
+        border-radius: 50%;
+        margin-right: 4px;
+        animation: bounce 1.5s infinite ease-in-out;
+      }
+      .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes bounce {
+        0%, 80%, 100% {
+          transform: translateY(0);
+        }
+        40% {
+          transform: translateY(-6px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
