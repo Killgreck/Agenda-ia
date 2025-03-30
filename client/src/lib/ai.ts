@@ -60,19 +60,43 @@ export async function updateAiSuggestion(id: number, accepted: boolean): Promise
  * Generate a suggestion for a task based on its title and description
  */
 export async function getTaskSuggestion(title: string, description?: string): Promise<string> {
-  // In a real implementation, this would make an API call to your Deepsek AI service
-  // For now, simulate a response based on the task details
-  
-  // This would be replaced with actual AI API call
-  if (title.toLowerCase().includes('meeting') || title.toLowerCase().includes('call')) {
-    return "I suggest allocating 15 minutes before this meeting for preparation and 10 minutes after for notes. Would you like me to update your schedule?";
-  } else if (title.toLowerCase().includes('deadline') || title.toLowerCase().includes('project')) {
-    return "This looks like an important project deadline. Would you like me to create focus time blocks in your calendar to work on this?";
-  } else if (title.toLowerCase().includes('doctor') || title.toLowerCase().includes('appointment')) {
-    return "For medical appointments, I recommend adding travel time. Would you like me to block 30 minutes before and after this appointment?";
+  try {
+    // Use our new dedicated API endpoint for task suggestions
+    const response = await fetch('/api/ai-suggestions/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title,
+        description: description || ''
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      console.error('Error generating task suggestion:', errorData || response.statusText);
+      throw new Error(errorData?.message || 'Failed to generate task suggestion');
+    }
+    
+    const data = await response.json();
+    return data.suggestion;
+  } catch (error) {
+    console.error('Error calling task suggestion API:', error);
+    
+    // Provide fallback suggestions based on task type for better user experience
+    // when the Abacus API is unavailable
+    if (title.toLowerCase().includes('meeting') || title.toLowerCase().includes('call')) {
+      return "I suggest allocating 15 minutes before this meeting for preparation and 10 minutes after for notes. Would you like me to update your schedule?";
+    } else if (title.toLowerCase().includes('deadline') || title.toLowerCase().includes('project')) {
+      return "This looks like an important project deadline. Would you like me to create focus time blocks in your calendar to work on this?";
+    } else if (title.toLowerCase().includes('doctor') || title.toLowerCase().includes('appointment')) {
+      return "For medical appointments, I recommend adding travel time. Would you like me to block 30 minutes before and after this appointment?";
+    }
+    
+    // Default suggestion
+    return "Based on your task details, I recommend setting a reminder the day before as well. Would you like me to add that?";
   }
-  
-  return "Based on your task details, I recommend setting a reminder the day before as well. Would you like me to add that?";
 }
 
 /**

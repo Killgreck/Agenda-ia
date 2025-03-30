@@ -1,10 +1,11 @@
-import { CalendarDays, Plus, Bell, User, LogOut, UserCircle } from "lucide-react";
+import { CalendarDays, Plus, User, LogOut, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import TaskModal from "./TaskModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import NotificationBell from "@/components/ui/notification-bell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +15,6 @@ import {
 
 export default function Header() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const notificationCount = 3; // In a real app, this would come from a notification state/API
   const { logout, user } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -46,20 +46,7 @@ export default function Header() {
               <Plus className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">New Task</span>
             </Button>
-            <div className="relative">
-              <Button 
-                variant="default" 
-                size="icon" 
-                className="bg-primary-dark hover:bg-primary-light rounded-full w-8 h-8 p-1"
-              >
-                <Bell className="h-5 w-5" />
-              </Button>
-              {notificationCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-destructive text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {notificationCount}
-                </span>
-              )}
-            </div>
+            <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button 

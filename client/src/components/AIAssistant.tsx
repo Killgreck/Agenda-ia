@@ -7,6 +7,7 @@ import { useTasks } from "@/hooks/useTaskManager";
 
 export default function AIAssistant() {
   const [message, setMessage] = useState("");
+  const [apiError, setApiError] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { messages, sendMessage, isTyping } = useAI();
   
@@ -16,6 +17,19 @@ export default function AIAssistant() {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
+  
+  // Check if there are any messages beyond the initial greeting
+  // If not and we have attempted communication, show API connection error
+  useEffect(() => {
+    // If there are messages and one of them indicates an API error
+    const hasApiError = messages.some(msg => 
+      msg.content.includes("trouble connecting") || 
+      msg.content.includes("having trouble processing") || 
+      msg.content.includes("connection is restored") ||
+      msg.content.includes("once I'm back online"));
+    
+    setApiError(hasApiError);
+  }, [messages]);
 
   const handleSendMessage = () => {
     if (!message.trim()) return;
@@ -39,6 +53,19 @@ export default function AIAssistant() {
           AI Assistant
         </h2>
         <p className="text-sm text-gray-500 mt-1">Powered by Abacus LLM</p>
+        
+        {apiError && (
+          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+            <p>
+              <strong>Connection Issue:</strong> Currently unable to connect to the Abacus AI service. The system is 
+              still operational, but advanced AI features are limited until connectivity is restored.
+            </p>
+            <p className="mt-1 text-xs text-red-600">
+              The API may be experiencing high demand or temporary maintenance. Basic scheduling functions 
+              continue to work normally.
+            </p>
+          </div>
+        )}
       </div>
       
       {/* Chat Messages Container */}

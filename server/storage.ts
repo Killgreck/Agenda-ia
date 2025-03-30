@@ -4,9 +4,10 @@ import {
   checkIns, type CheckIn, type InsertCheckIn,
   chatMessages, type ChatMessage, type InsertChatMessage,
   aiSuggestions, type AiSuggestion, type InsertAiSuggestion,
-  statistics, type Statistic, type InsertStatistic
+  statistics, type Statistic, type InsertStatistic,
+  notifications, type Notification, type InsertNotification
 } from "@shared/schema";
-import { eq, and, gte, lte, desc, asc } from "drizzle-orm";
+import { eq, and, gte, lte, desc, asc, count } from "drizzle-orm";
 import { db } from "./db";
 
 export interface IStorage {
@@ -41,6 +42,14 @@ export interface IStorage {
   createStatistics(stats: InsertStatistic): Promise<Statistic>;
   getStatisticsForWeek(weekStart: Date, weekEnd: Date, userId?: number): Promise<Statistic | undefined>;
   getLatestStatistics(limit?: number, userId?: number): Promise<Statistic[]>;
+  
+  // Notification operations
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: number): Promise<Notification | undefined>;
+  dismissNotification(id: number): Promise<Notification | undefined>;
+  getNotifications(userId: number, limit?: number, includeRead?: boolean): Promise<Notification[]>;
+  getUnreadNotificationCount(userId: number): Promise<number>;
+  markAllNotificationsAsRead(userId: number): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -50,6 +59,7 @@ export class MemStorage implements IStorage {
   private chatMessages: Map<number, ChatMessage>;
   private aiSuggestions: Map<number, AiSuggestion>;
   private statistics: Map<number, Statistic>;
+  private notifications: Map<number, Notification>;
   
   private currentUserIds: number;
   private currentTaskIds: number;
@@ -57,6 +67,7 @@ export class MemStorage implements IStorage {
   private currentChatMessageIds: number;
   private currentAiSuggestionIds: number;
   private currentStatisticsIds: number;
+  private currentNotificationIds: number;
 
   constructor() {
     this.users = new Map();
@@ -65,6 +76,7 @@ export class MemStorage implements IStorage {
     this.chatMessages = new Map();
     this.aiSuggestions = new Map();
     this.statistics = new Map();
+    this.notifications = new Map();
     
     this.currentUserIds = 1;
     this.currentTaskIds = 1;
@@ -72,6 +84,7 @@ export class MemStorage implements IStorage {
     this.currentChatMessageIds = 1;
     this.currentAiSuggestionIds = 1;
     this.currentStatisticsIds = 1;
+    this.currentNotificationIds = 1;
   }
 
   // User operations
@@ -238,6 +251,85 @@ export class MemStorage implements IStorage {
     }
     
     return stats;
+  }
+
+  // Notification operations
+  async createNotification(insertNotification: InsertNotification): Promise<Notification> {
+    const id = this.currentNotificationIds++;
+    const notification: Notification = { 
+      ...insertNotification, 
+      id,
+      readAt: insertNotification.readAt ? new Date(insertNotification.readAt) : null
+    };
+    this.notifications.set(id, notification);
+    return notification;
+  }
+
+  async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+    const notification = this.notifications.get(id);
+    if (!notification) return undefined;
+
+    const updatedNotification = { 
+      ...notification, 
+      status: 'read' as const,
+      readAt: new Date()
+    };
+    this.notifications.set(id, updatedNotification);
+    return updatedNotification;
+  }
+
+  async dismissNotification(id: number): Promise<Notification | undefined> {
+    const notification = this.notifications.get(id);
+    if (!notification) return undefined;
+
+    const dismissedNotification = { 
+      ...notification, 
+      status: 'dismissed' as const 
+    };
+    this.notifications.set(id, dismissedNotification);
+    return dismissedNotification;
+  }
+
+  async getNotifications(userId: number, limit?: number, includeRead: boolean = false): Promise<Notification[]> {
+    let notifications = Array.from(this.notifications.values())
+      .filter(notification => notification.userId === userId);
+    
+    // Filter by status if not including read notifications
+    if (!includeRead) {
+      notifications = notifications.filter(notification => notification.status === 'unread');
+    }
+    
+    // Order by creation time (newest first)
+    notifications = notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    // Apply limit if provided
+    if (limit) {
+      notifications = notifications.slice(0, limit);
+    }
+    
+    return notifications;
+  }
+
+  async getUnreadNotificationCount(userId: number): Promise<number> {
+    return Array.from(this.notifications.values())
+      .filter(notification => notification.userId === userId && notification.status === 'unread')
+      .length;
+  }
+
+  async markAllNotificationsAsRead(userId: number): Promise<void> {
+    // Find all unread notifications for the user
+    const unreadNotifications = Array.from(this.notifications.entries())
+      .filter(([_, notification]) => notification.userId === userId && notification.status === 'unread');
+    
+    // Mark each as read
+    const now = new Date();
+    for (const [id, notification] of unreadNotifications) {
+      this.notifications.set(id, {
+        ...notification,
+        status: 'read' as const,
+        readAt: now
+      });
+    }
   }
 }
 
@@ -570,6 +662,87 @@ export class DatabaseStorage implements IStorage {
     }
     
     return await baseQuery;
+  }
+
+  // Notification operations
+  async createNotification(insertNotification: InsertNotification): Promise<Notification> {
+    // Convert readAt timestamp string to Date object if provided
+    const cleanedNotification = {
+      ...insertNotification,
+      readAt: insertNotification.readAt ? new Date(insertNotification.readAt) : null,
+      metadata: insertNotification.metadata ?? null,
+    };
+
+    const [notification] = await db
+      .insert(notifications)
+      .values(cleanedNotification)
+      .returning();
+    return notification;
+  }
+
+  async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+    const [updatedNotification] = await db
+      .update(notifications)
+      .set({ 
+        status: 'read',
+        readAt: new Date()
+      })
+      .where(eq(notifications.id, id))
+      .returning();
+    return updatedNotification || undefined;
+  }
+
+  async dismissNotification(id: number): Promise<Notification | undefined> {
+    const [dismissedNotification] = await db
+      .update(notifications)
+      .set({ status: 'dismissed' })
+      .where(eq(notifications.id, id))
+      .returning();
+    return dismissedNotification || undefined;
+  }
+
+  async getNotifications(userId: number, limit?: number, includeRead: boolean = false): Promise<Notification[]> {
+    let query = db.select().from(notifications).where(eq(notifications.userId, userId));
+    
+    // Filter by status if not including read notifications
+    if (!includeRead) {
+      query = query.where(eq(notifications.status, 'unread'));
+    }
+    
+    // Order by creation time (newest first)
+    query = query.orderBy(desc(notifications.createdAt));
+    
+    // Apply limit if provided
+    if (limit) {
+      query = query.limit(limit);
+    }
+    
+    return await query;
+  }
+
+  async getUnreadNotificationCount(userId: number): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.status, 'unread')
+      ));
+    
+    return result[0]?.count || 0;
+  }
+
+  async markAllNotificationsAsRead(userId: number): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ 
+        status: 'read',
+        readAt: new Date()
+      })
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.status, 'unread')
+      ));
   }
 }
 

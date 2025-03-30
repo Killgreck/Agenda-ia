@@ -142,46 +142,120 @@ export function useAI() {
   const sendMessage = useCallback(async (content: string) => {
     try {
       await sendMessageMutation(content);
+      
+      // After a short delay, check if the AI responded
+      setTimeout(() => {
+        const lastMessage = messages[messages.length - 1];
+        
+        // If the last message is from the user (not AI), it may indicate an API issue
+        if (lastMessage && lastMessage.sender === 'user') {
+          // Add a helpful fallback message
+          const fallbackMessage: ChatMessage = {
+            id: Date.now(), // Use timestamp as ID
+            content: "I'm having trouble connecting to my knowledge base right now. I've recorded your message and will process it as soon as I'm back online. In the meantime, you can still use all calendar features.",
+            timestamp: new Date().toISOString(),
+            sender: 'ai'
+          };
+          
+          setMessages(prev => [...prev, fallbackMessage]);
+        }
+      }, 8000); // Wait 8 seconds for response before showing error
+      
     } catch (error) {
       console.error('Error sending message:', error);
+      
+      // Add error message
+      const errorMessage: ChatMessage = {
+        id: Date.now(), // Use timestamp as ID
+        content: "I'm having trouble processing your request right now. Please try again in a few moments.",
+        timestamp: new Date().toISOString(),
+        sender: 'ai'
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
     }
-  }, [sendMessageMutation]);
+  }, [sendMessageMutation, messages]);
   
   // Function to ask AI for task suggestion
   const { mutateAsync: askAiForTaskSuggestion, isPending: isAskingAi } = useMutation({
     mutationFn: async (taskDetails: { title: string, description?: string }) => {
-      // In a real app, this would call the actual AI API
-      const suggestion = await getTaskSuggestion(taskDetails.title, taskDetails.description);
-      
-      // Get user ID from auth storage for the AI suggestion
-      const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
-      
-      // Create the AI suggestion in the database
-      const suggestionData = {
-        suggestion,
-        timestamp: new Date().toISOString(),
-        accepted: false,
-        type: 'task',
-        userId, // Add userId for the suggestion
-        metadata: { 
-          title: taskDetails.title,
-          description: taskDetails.description
+      try {
+        // Get suggestion from our dedicated AI suggestion endpoint
+        const suggestion = await getTaskSuggestion(taskDetails.title, taskDetails.description);
+        
+        // Check if the response contains an error indicator
+        if (suggestion.includes("trouble connecting") || suggestion.includes("error")) {
+          throw new Error("AI service error detected in response");
         }
-      };
-      
-      await apiRequest('/api/ai-suggestions', {
-        method: 'POST',
-        body: JSON.stringify(suggestionData)
-      });
-      return suggestion;
+        
+        // Get user ID from auth storage for the AI suggestion
+        const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
+        
+        // Create the AI suggestion in the database
+        const suggestionData = {
+          suggestion,
+          timestamp: new Date().toISOString(),
+          accepted: false,
+          type: 'task',
+          userId, // Add userId for the suggestion
+          metadata: { 
+            title: taskDetails.title,
+            description: taskDetails.description
+          }
+        };
+        
+        await fetch('/api/ai-suggestions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(suggestionData)
+        });
+        
+        return suggestion;
+      } catch (error) {
+        console.error("Error in AI suggestion:", error);
+        
+        // Provide a graceful fallback message
+        const fallbackSuggestion = "I can provide scheduling suggestions for this task once my connection is restored. In the meantime, consider adding this to your calendar with a buffer time before and after.";
+        
+        // Still attempt to save this fallback in the database
+        try {
+          const userId = authStorage?.state?.user?.id || 1;
+          const fallbackData = {
+            suggestion: fallbackSuggestion,
+            timestamp: new Date().toISOString(),
+            accepted: false,
+            type: 'task',
+            userId,
+            metadata: { 
+              title: taskDetails.title,
+              description: taskDetails.description,
+              fallback: true
+            }
+          };
+          
+          await fetch('/api/ai-suggestions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(fallbackData)
+          });
+        } catch (dbError) {
+          console.error("Error saving fallback suggestion:", dbError);
+        }
+        
+        return fallbackSuggestion;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/ai-suggestions'] });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to get AI suggestions. Please try again.",
+        title: "AI Connection Issue",
+        description: "Unable to generate AI suggestions at the moment. Basic task functionality is still available.",
         variant: "destructive",
       });
     }

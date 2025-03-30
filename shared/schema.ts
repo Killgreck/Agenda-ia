@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, foreignKey, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -201,6 +201,51 @@ export const insertStatisticsSchema = baseInsertStatisticsSchema.extend({
   weekEnd: z.string(),
 });
 
+// Notification type enum
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'task_reminder',
+  'task_due',
+  'task_overdue',
+  'task_completed',
+  'ai_suggestion',
+  'system'
+]);
+
+// Notification status enum
+export const notificationStatusEnum = pgEnum('notification_status', [
+  'unread',
+  'read',
+  'dismissed'
+]);
+
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: notificationTypeEnum("type").notNull(),
+  status: notificationStatusEnum("status").default("unread").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  readAt: timestamp("read_at"),
+  link: text("link"), // Optional link to redirect to when notification is clicked
+  metadata: json("metadata"), // Optional additional data related to the notification
+  emailSent: boolean("email_sent").default(false).notNull(),
+  relatedTaskId: integer("related_task_id").references(() => tasks.id),
+});
+
+// Create the base notification insert schema
+const baseInsertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Extend it to handle string timestamp input
+export const insertNotificationSchema = baseInsertNotificationSchema.extend({
+  userId: z.number().int().positive(),
+  readAt: z.string().optional(),
+});
+
 // Export types
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
@@ -216,3 +261,6 @@ export type InsertAiSuggestion = z.infer<typeof insertAiSuggestionSchema>;
 
 export type Statistic = typeof statistics.$inferSelect;
 export type InsertStatistic = z.infer<typeof insertStatisticsSchema>;
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;

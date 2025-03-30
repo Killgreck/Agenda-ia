@@ -7,7 +7,8 @@ import {
   insertChatMessageSchema, 
   insertAiSuggestionSchema, 
   insertStatisticsSchema,
-  insertUserSchema
+  insertUserSchema,
+  insertNotificationSchema
 } from "@shared/schema";
 import axios from "axios";
 import { WebSocketServer } from "ws";
@@ -806,6 +807,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Generate task suggestions using the Abacus LLM
+  app.post("/api/ai-suggestions/generate", async (req: Request, res: Response) => {
+    try {
+      const { title, description } = req.body;
+      
+      if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+      }
+      
+      // Import the generateTaskSuggestion function from abacusLLM
+      const { generateTaskSuggestion } = require('./abacusLLM');
+      
+      // Call the Abacus LLM to generate a suggestion
+      const suggestion = await generateTaskSuggestion(title, description);
+      
+      // Return the suggestion
+      res.json({ suggestion });
+    } catch (error) {
+      console.error('Error generating task suggestion:', error);
+      
+      // Check if the error is related to the Abacus API key
+      if (error instanceof Error && error.message && error.message.includes('API key')) {
+        return res.status(503).json({ 
+          error: 'Abacus API service unavailable',
+          message: 'The AI service is currently unavailable. Please try again later.'
+        });
+      }
+      
+      res.status(500).json({ 
+        error: 'Failed to generate task suggestion',
+        message: 'There was an issue connecting to the AI service. Please try again later.'
+      });
+    }
+  });
+  
   app.patch("/api/ai-suggestions/:id", async (req: Request, res: Response) => {
     try {
       const suggestionId = parseInt(req.params.id);
@@ -970,6 +1006,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
           report: generateWeeklyReport(statsData)
         });
       }
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Notifications API
+  app.post("/api/notifications", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const sessionData = req.session as SessionData;
+      const userId = sessionData.userId;
+      
+      const notificationData: InsertNotification = {
+        ...req.body,
+        userId,
+        status: 'unread',
+        createdAt: new Date(),
+      };
+
+      const notification = await storage.createNotification(notificationData);
+      
+      // Broadcast new notification to connected clients
+      broadcastMessage({ type: 'NEW_NOTIFICATION', notification });
+      
+      res.status(201).json(notification);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/notifications", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const sessionData = req.session as SessionData;
+      const userId = sessionData.userId;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const includeRead = req.query.includeRead === 'true';
+      
+      const notifications = await storage.getNotifications(userId, limit, includeRead);
+      res.json(notifications);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/notifications/count", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const sessionData = req.session as SessionData;
+      const userId = sessionData.userId;
+      
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const notificationId = parseInt(req.params.id);
+      
+      const updatedNotification = await storage.markNotificationAsRead(notificationId);
+      
+      if (!updatedNotification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      // Broadcast notification update
+      broadcastMessage({ type: 'UPDATE_NOTIFICATION', notification: updatedNotification });
+      
+      res.json(updatedNotification);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/notifications/:id/dismiss", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const notificationId = parseInt(req.params.id);
+      
+      const dismissedNotification = await storage.dismissNotification(notificationId);
+      
+      if (!dismissedNotification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      // Broadcast notification update
+      broadcastMessage({ type: 'UPDATE_NOTIFICATION', notification: dismissedNotification });
+      
+      res.json(dismissedNotification);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/notifications/read-all", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const sessionData = req.session as SessionData;
+      const userId = sessionData.userId;
+      
+      await storage.markAllNotificationsAsRead(userId);
+      
+      // Broadcast bulk notification update
+      broadcastMessage({ type: 'NOTIFICATIONS_READ_ALL', userId });
+      
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
