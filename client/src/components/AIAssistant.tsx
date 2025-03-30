@@ -6,6 +6,45 @@ import { Input } from "@/components/ui/input";
 import { useTasks } from "@/hooks/useTaskManager";
 import { type ChatMessage } from "@/types/chat";
 import { useLocalMessages } from "@/hooks/useLocalMessages";
+import TaskModal from "@/components/TaskModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+// Add Speech Recognition type definitions
+interface SpeechRecognitionEvent {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+        confidence: number;
+      };
+    };
+  };
+}
+
+interface SpeechRecognition extends EventTarget {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onstart: (event: Event) => void;
+  onend: (event: Event) => void;
+  onerror: (event: { error: string }) => void;
+  onresult: (event: SpeechRecognitionEvent) => void;
+}
+
+interface SpeechRecognitionConstructor {
+  new(): SpeechRecognition;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: SpeechRecognitionConstructor;
+    webkitSpeechRecognition: SpeechRecognitionConstructor;
+  }
+}
 
 // Define adapter function to convert between message formats if needed
 const adaptMessage = (message: any): ChatMessage => {
@@ -20,9 +59,14 @@ const adaptMessage = (message: any): ChatMessage => {
 export default function AIAssistant() {
   const [message, setMessage] = useState("");
   const [apiError, setApiError] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const { messages: aiMessages, sendMessage, isTyping } = useAI();
+  const { messages: aiMessages, sendMessage, isTyping, askAiForTaskSuggestion } = useAI();
   const { messages, addUserMessage, addAIMessage } = useLocalMessages(aiMessages);
+  const { createTask, isCreatingTask } = useTasks();
   
   // Auto-scroll chat to bottom when messages change
   useEffect(() => {
@@ -43,6 +87,70 @@ export default function AIAssistant() {
     
     setApiError(hasApiError);
   }, [messages]);
+
+  // Handle voice recognition when voice mode is active
+  useEffect(() => {
+    if (!isVoiceActive) return;
+    
+    // Check if browser supports speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      // Show error message if speech recognition is not supported
+      addAIMessage("Sorry, your browser doesn't support voice recognition. Try using Chrome or Edge browser for voice input.", 0);
+      setIsVoiceActive(false);
+      return;
+    }
+    
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      
+      // Notify user that voice recognition has started
+      addAIMessage("I'm listening... Speak now and I'll transcribe what you say.", 0);
+      
+      recognition.onstart = () => {
+        console.log("Voice recognition started");
+      };
+      
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        console.log("Voice recognition result:", transcript);
+        setMessage(transcript);
+        
+        // Automatically send the message after a brief delay
+        setTimeout(() => {
+          if (transcript) {
+            sendMessage(transcript);
+            setMessage("");
+          }
+        }, 500);
+      };
+      
+      recognition.onerror = (event: any) => {
+        console.error("Voice recognition error:", event.error);
+        addAIMessage(`Voice recognition error: ${event.error}. Please try again or type your message.`, 0);
+        setIsVoiceActive(false);
+      };
+      
+      recognition.onend = () => {
+        console.log("Voice recognition ended");
+        setIsVoiceActive(false);
+      };
+      
+      recognition.start();
+      
+      // Cleanup function
+      return () => {
+        recognition.abort();
+      };
+    } catch (error) {
+      console.error("Error initializing voice recognition:", error);
+      addAIMessage("There was a problem starting voice recognition. Please try again later or type your message.", 0);
+      setIsVoiceActive(false);
+    }
+  }, [isVoiceActive, addAIMessage, sendMessage]);
 
   const handleSendMessage = () => {
     if (!message.trim()) return;
@@ -126,6 +234,22 @@ export default function AIAssistant() {
     }
     
     setMessage("");
+  };
+
+  const handleVoiceInput = () => {
+    setIsVoiceActive(true);
+  };
+  
+  const handleQuickSchedule = () => {
+    setShowTaskModal(true);
+  };
+  
+  const handleEventTemplate = () => {
+    setShowTemplateDialog(true);
+  };
+  
+  const handleHelp = () => {
+    setShowHelpDialog(true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -229,24 +353,257 @@ export default function AIAssistant() {
           </Button>
         </div>
         <div className="flex justify-between mt-2 text-xs text-gray-500">
-          <Button variant="ghost" size="sm" className="text-xs p-1 h-6 hover:text-accent">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={`text-xs p-1 h-6 ${isVoiceActive ? 'text-accent' : 'hover:text-accent'}`}
+            onClick={handleVoiceInput}
+            disabled={isVoiceActive}
+          >
             <Mic className="h-3 w-3 mr-1" />
             Voice
           </Button>
-          <Button variant="ghost" size="sm" className="text-xs p-1 h-6 hover:text-accent">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-xs p-1 h-6 hover:text-accent"
+            onClick={handleQuickSchedule}
+          >
             <Clock className="h-3 w-3 mr-1" />
             Quick Schedule
           </Button>
-          <Button variant="ghost" size="sm" className="text-xs p-1 h-6 hover:text-accent">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-xs p-1 h-6 hover:text-accent"
+            onClick={handleEventTemplate}
+          >
             <CalendarDays className="h-3 w-3 mr-1" />
             Event Template
           </Button>
-          <Button variant="ghost" size="sm" className="text-xs p-1 h-6 hover:text-accent">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-xs p-1 h-6 hover:text-accent"
+            onClick={handleHelp}
+          >
             <HelpCircle className="h-3 w-3 mr-1" />
             Help
           </Button>
         </div>
       </div>
+      
+      {/* Task Modal for Quick Schedule */}
+      <TaskModal 
+        open={showTaskModal} 
+        onClose={() => setShowTaskModal(false)} 
+      />
+      
+      {/* Help Dialog */}
+      <Dialog open={showHelpDialog} onOpenChange={setShowHelpDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>AI Assistant Help</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-96 rounded-md">
+            <div className="p-4 space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Getting Started</h3>
+                <p className="text-sm text-gray-600">
+                  Your AI assistant helps you manage your schedule, create events, and optimize your productivity. 
+                  Simply type your questions or requests in the chat, and the assistant will guide you.
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Features</h3>
+                <ul className="list-disc pl-5 space-y-2 text-sm text-gray-600">
+                  <li><strong>Schedule Management:</strong> Ask the assistant to create, modify, or cancel events on your calendar.</li>
+                  <li><strong>Smart Suggestions:</strong> The AI analyzes your schedule to suggest optimal times for new events and activities.</li>
+                  <li><strong>Productivity Tips:</strong> Get personalized advice on time management and scheduling best practices.</li>
+                  <li><strong>Multilingual Support:</strong> Communicate with the assistant in English or Spanish.</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Quick Commands</h3>
+                <div className="rounded bg-gray-50 p-3 text-sm">
+                  <p className="font-medium">Try asking:</p>
+                  <ul className="ml-4 mt-2 space-y-1 list-disc">
+                    <li>"Schedule a team meeting at 2pm tomorrow"</li>
+                    <li>"What's my schedule for today?"</li>
+                    <li>"Find a free slot for a workout this week"</li>
+                    <li>"Optimize my calendar for deep work"</li>
+                    <li>"Create a recurring event for piano practice"</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Tools</h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="font-medium text-sm">Voice Input</p>
+                    <p className="text-xs text-gray-600">Click the Voice button to speak your request instead of typing.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Quick Schedule</p>
+                    <p className="text-xs text-gray-600">Opens a form to directly create a new event without typing details in chat.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Event Templates</p>
+                    <p className="text-xs text-gray-600">Create and use templates for common types of events you schedule regularly.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Event Templates Dialog */}
+      <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Event Templates</DialogTitle>
+            <DialogDescription>
+              Choose a template to quickly create common events
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            {/* Workout Template */}
+            <div 
+              className="p-4 border rounded-lg hover:border-accent cursor-pointer transition-all"
+              onClick={() => {
+                setShowTemplateDialog(false);
+                setShowTaskModal(true);
+                // Pre-fill task details with workout template
+                const workoutTemplate = {
+                  title: "Workout",
+                  description: "Regular exercise session",
+                  priority: "medium",
+                  isRecurring: true,
+                  recurrenceType: "weekly",
+                  recurringDays: ["monday", "wednesday", "friday"],
+                  isAllDay: false,
+                  reminder: [30]
+                };
+                // We're opening the task modal, which has its own form handling
+              }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">Workout Session</h3>
+                <div className="p-1 rounded-full bg-accent/10 text-accent">
+                  <CalendarDays className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">Regular workout session, 3 times per week</p>
+              <div className="mt-2 text-xs text-gray-400">
+                <p>Monday, Wednesday, Friday • 45 min</p>
+                <p>Priority: Medium • 30 min reminder</p>
+              </div>
+            </div>
+            
+            {/* Meeting Template */}
+            <div 
+              className="p-4 border rounded-lg hover:border-accent cursor-pointer transition-all"
+              onClick={() => {
+                setShowTemplateDialog(false);
+                setShowTaskModal(true);
+                // Pre-fill task details with meeting template
+                const meetingTemplate = {
+                  title: "Team Meeting",
+                  description: "Weekly team sync",
+                  priority: "high",
+                  isRecurring: true,
+                  recurrenceType: "weekly",
+                  recurringDays: ["monday"],
+                  isAllDay: false,
+                  reminder: [15, 60]
+                };
+                // We're opening the task modal, which has its own form handling
+              }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">Team Meeting</h3>
+                <div className="p-1 rounded-full bg-accent/10 text-accent">
+                  <CalendarDays className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">Weekly team sync meeting</p>
+              <div className="mt-2 text-xs text-gray-400">
+                <p>Monday • 60 min</p>
+                <p>Priority: High • 15 min & 1 hour reminders</p>
+              </div>
+            </div>
+            
+            {/* Focus Work Template */}
+            <div 
+              className="p-4 border rounded-lg hover:border-accent cursor-pointer transition-all"
+              onClick={() => {
+                setShowTemplateDialog(false);
+                setShowTaskModal(true);
+                // Pre-fill task details with focus work template
+                const focusTemplate = {
+                  title: "Focus Block",
+                  description: "Uninterrupted deep work session",
+                  priority: "high",
+                  isRecurring: true,
+                  recurrenceType: "daily",
+                  isAllDay: false,
+                  reminder: [5]
+                };
+                // We're opening the task modal, which has its own form handling
+              }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">Focus Work</h3>
+                <div className="p-1 rounded-full bg-accent/10 text-accent">
+                  <CalendarDays className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">Dedicated deep work session</p>
+              <div className="mt-2 text-xs text-gray-400">
+                <p>Daily • 90 min</p>
+                <p>Priority: High • 5 min reminder</p>
+              </div>
+            </div>
+            
+            {/* Personal Time Template */}
+            <div 
+              className="p-4 border rounded-lg hover:border-accent cursor-pointer transition-all"
+              onClick={() => {
+                setShowTemplateDialog(false);
+                setShowTaskModal(true);
+                // Pre-fill task details with personal time template
+                const personalTemplate = {
+                  title: "Personal Time",
+                  description: "Self-care and relaxation",
+                  priority: "medium",
+                  isRecurring: true,
+                  recurrenceType: "weekly",
+                  recurringDays: ["saturday", "sunday"],
+                  isAllDay: false,
+                  reminder: [60]
+                };
+                // We're opening the task modal, which has its own form handling
+              }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">Personal Time</h3>
+                <div className="p-1 rounded-full bg-accent/10 text-accent">
+                  <CalendarDays className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">Dedicated relaxation and self-care</p>
+              <div className="mt-2 text-xs text-gray-400">
+                <p>Weekend • Flexible duration</p>
+                <p>Priority: Medium • 1 hour reminder</p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
