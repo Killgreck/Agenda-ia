@@ -56,38 +56,59 @@ const calculateRates = (stats: Omit<DetailedStats, 'tasksCompletionRate' | 'prod
 };
 
 export function useStats() {
+  // Helper function to get current week dates
+  const getCurrentWeekDates = () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    // Calculate start of week (Sunday)
+    const startDate = new Date(now);
+    startDate.setDate(now.getDate() - dayOfWeek);
+    startDate.setHours(0, 0, 0, 0);
+    
+    // Calculate end of week (Saturday)
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 6);
+    endDate.setHours(23, 59, 59, 999);
+    
+    return { startDate, endDate };
+  };
+
   // Get current week's statistics
   const { data: currentWeekData, isLoading, error } = useQuery({
     queryKey: ['/api/statistics/week'],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/statistics/week');
-        if (!response.ok) {
-          throw new Error('Failed to fetch weekly statistics');
+        const { startDate, endDate } = getCurrentWeekDates();
+        
+        // First try to fetch existing stats for the week
+        const response = await fetch(`/api/statistics/week?start=${startDate.toISOString()}&end=${endDate.toISOString()}`);
+        
+        // If found, return the data
+        if (response.ok) {
+          const data = await response.json();
+          return calculateRates(data);
         }
         
-        const data = await response.json();
+        // If not found (404) or other error, generate new stats
+        await generateWeeklyReport(startDate, endDate);
         
-        if (!data) {
-          // If no data exists yet, generate the current week's statistics
-          await generateWeeklyReport();
-          // Retry fetching
-          const retryResponse = await fetch('/api/statistics/week');
-          if (!retryResponse.ok) {
-            throw new Error('Failed to fetch weekly statistics after generation');
-          }
+        // Retry fetching
+        const retryResponse = await fetch(`/api/statistics/week?start=${startDate.toISOString()}&end=${endDate.toISOString()}`);
+        if (retryResponse.ok) {
           return calculateRates(await retryResponse.json());
         }
         
-        return calculateRates(data);
+        throw new Error('Failed to fetch weekly statistics after generation');
       } catch (error) {
         console.error("Error fetching statistics:", error);
         // Return default stats with 0 values
+        const { startDate, endDate } = getCurrentWeekDates();
         return calculateRates({
           id: 0,
           userId: 0,
-          weekStart: new Date().toISOString(),
-          weekEnd: new Date().toISOString(),
+          weekStart: startDate.toISOString(),
+          weekEnd: endDate.toISOString(),
           tasksCompleted: 0,
           tasksTotal: 0,
           avgProductivity: 0,
@@ -99,13 +120,28 @@ export function useStats() {
   });
   
   // Function to generate weekly report
-  const generateWeeklyReport = async () => {
+  const generateWeeklyReport = async (startDate?: Date, endDate?: Date) => {
     try {
+      // Get user ID from localStorage
+      const authStorageStr = localStorage.getItem('auth-storage');
+      const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { user: { id: 0 } } };
+      const userId = authStorage?.state?.user?.id || 0;
+      
+      // Use provided dates or calculate current week
+      const dates = startDate && endDate 
+        ? { startDate, endDate } 
+        : getCurrentWeekDates();
+      
       const response = await fetch('/api/generate-weekly-report', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          startDate: dates.startDate.toISOString(),
+          endDate: dates.endDate.toISOString(),
+          userId
+        })
       });
       
       if (!response.ok) {

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { TaskMenu } from "@/components/ui/task-menu";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -27,7 +28,8 @@ export default function Dashboard() {
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const { toast } = useToast();
   const { submitCheckin, isCheckingIn, latestCheckIn } = useCheckin();
-  const { stats } = useStats();
+  const { stats, generateWeeklyReport } = useStats();
+  const queryClient = useQueryClient();
   const { upcomingTasks } = useTasks();
 
   // Global task edit handler - can be called from any component
@@ -50,7 +52,7 @@ export default function Dashboard() {
     setIsTaskModalOpen(true);
   };
   
-  const handleMoodSelection = (rating: number) => {
+  const handleMoodSelection = async (rating: number) => {
     setSelectedRating(rating);
     
     // Get user ID from localStorage
@@ -58,17 +60,35 @@ export default function Dashboard() {
     const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { user: { id: 0 } } };
     const userId = authStorage?.state?.user?.id || 0;
     
-    submitCheckin({
-      date: new Date().toISOString(),
-      productivityRating: rating,
-      notes: "",
-      userId
-    });
-    
-    toast({
-      title: "Check-in recorded",
-      description: "Thank you for your daily productivity check-in!",
-    });
+    try {
+      // Submit check-in data
+      await submitCheckin({
+        date: new Date().toISOString(),
+        productivityRating: rating,
+        notes: "",
+        userId
+      });
+      
+      // Regenerate weekly report with updated check-in data
+      await generateWeeklyReport();
+      
+      // Invalidate statistics queries to fetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
+      
+      toast({
+        title: "Check-in recorded",
+        description: "Thank you for your daily productivity check-in!",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Error submitting check-in:", error);
+      toast({
+        title: "Error",
+        description: "Failed to record your check-in. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const getMoodIcon = (value: number, selected: number | null) => {
