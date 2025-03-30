@@ -29,6 +29,7 @@ type TaskModalProps = {
   open: boolean;
   onClose: () => void;
   taskToEdit?: InsertTask;
+  viewOnly?: boolean;
 };
 
 // Extend the original schema with extra validations
@@ -48,7 +49,7 @@ const taskFormSchema = insertTaskSchema.extend({
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
 
-export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps) {
+export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false }: TaskModalProps) {
   const { createTask, isCreatingTask } = useTasks();
   const { toast } = useToast();
   const { askAiForTaskSuggestion, isAskingAi } = useAI();
@@ -464,7 +465,7 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
       <DialogContent className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex justify-between items-center p-4 border-b border-gray-200">
           <DialogTitle className="text-lg font-medium text-gray-800">
-            {taskToEdit ? "Edit Task" : "Create New Task"}
+            {viewOnly ? "View Task" : taskToEdit ? "Edit Task" : "Create New Task"}
           </DialogTitle>
           <Button 
             variant="ghost" 
@@ -476,7 +477,7 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
           </Button>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit(onSubmit)} className="p-4">
+        <form onSubmit={viewOnly ? (e) => { e.preventDefault(); } : handleSubmit(onSubmit)} className="p-4">
           <div className="mb-4">
             <Label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
               Task Title
@@ -488,12 +489,14 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
                 <Input 
                   {...field} 
                   id="title"
-                  className="w-full border border-gray-300 rounded-lg" 
+                  className={`w-full border border-gray-300 rounded-lg ${viewOnly ? 'bg-gray-50' : ''}`}
                   placeholder="Enter task title" 
+                  readOnly={viewOnly}
+                  disabled={viewOnly}
                 />
               )}
             />
-            {errors.title && (
+            {errors.title && !viewOnly && (
               <p className="text-xs text-red-500 mt-1">{errors.title.message}</p>
             )}
           </div>
@@ -508,7 +511,7 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
               render={({ field }) => (
                 <Textarea 
                   id="description"
-                  className="w-full border border-gray-300 rounded-lg" 
+                  className={`w-full border border-gray-300 rounded-lg ${viewOnly ? 'bg-gray-50' : ''}`}
                   rows={3} 
                   placeholder="Task description"
                   onChange={field.onChange}
@@ -516,6 +519,8 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
                   value={field.value || ""}
                   ref={field.ref}
                   name={field.name}
+                  readOnly={viewOnly}
+                  disabled={viewOnly}
                 />
               )}
             />
@@ -531,7 +536,8 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
                   <Checkbox 
                     id="isRecurring" 
                     checked={field.value}
-                    onCheckedChange={field.onChange}
+                    onCheckedChange={viewOnly ? undefined : field.onChange}
+                    disabled={viewOnly}
                   />
                   <Label htmlFor="isRecurring" className="ml-2 text-sm font-medium text-gray-700 flex items-center">
                     <CalendarDays className="h-4 w-4 mr-1" />
@@ -751,7 +757,8 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
                   <Checkbox 
                     id="isAllDay" 
                     checked={field.value}
-                    onCheckedChange={field.onChange}
+                    onCheckedChange={viewOnly ? undefined : field.onChange}
+                    disabled={viewOnly}
                   />
                   <Label htmlFor="isAllDay" className="ml-2 text-sm font-medium text-gray-700">
                     All-day event
@@ -776,7 +783,9 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
                         {...field} 
                         id="date"
                         type="date" 
-                        className="w-full border border-gray-300 rounded-lg" 
+                        className={`w-full border border-gray-300 rounded-lg ${viewOnly ? 'bg-gray-50' : ''}`}
+                        readOnly={viewOnly}
+                        disabled={viewOnly}
                       />
                     )}
                   />
@@ -798,7 +807,9 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
                           {...field} 
                           id="time"
                           type="time" 
-                          className="w-full border border-gray-300 rounded-lg" 
+                          className={`w-full border border-gray-300 rounded-lg ${viewOnly ? 'bg-gray-50' : ''}`}
+                          readOnly={viewOnly}
+                          disabled={viewOnly}
                         />
                       )}
                     />
@@ -819,7 +830,9 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
                         {...field} 
                         id="endDate"
                         type="date" 
-                        className="w-full border border-gray-300 rounded-lg" 
+                        className={`w-full border border-gray-300 rounded-lg ${viewOnly ? 'bg-gray-50' : ''}`}
+                        readOnly={viewOnly}
+                        disabled={viewOnly}
                       />
                     )}
                   />
@@ -838,7 +851,9 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
                           {...field} 
                           id="endTime"
                           type="time" 
-                          className="w-full border border-gray-300 rounded-lg" 
+                          className={`w-full border border-gray-300 rounded-lg ${viewOnly ? 'bg-gray-50' : ''}`}
+                          readOnly={viewOnly}
+                          disabled={viewOnly}
                         />
                       )}
                     />
@@ -856,19 +871,27 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
               name="priority"
               control={control}
               render={({ field }) => (
-                <Select 
-                  onValueChange={field.onChange} 
-                  defaultValue={field.value}
-                >
-                  <SelectTrigger className="w-full border border-gray-300 rounded-lg">
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
+                <>
+                  {viewOnly ? (
+                    <div className="p-2 border border-gray-300 rounded-lg bg-gray-50">
+                      {field.value ? field.value.charAt(0).toUpperCase() + field.value.slice(1) : "None"}
+                    </div>
+                  ) : (
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <SelectTrigger className="w-full border border-gray-300 rounded-lg">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </>
               )}
             />
           </div>
@@ -883,13 +906,15 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
               render={({ field }) => (
                 <Input 
                   id="location"
-                  className="w-full border border-gray-300 rounded-lg" 
+                  className={`w-full border border-gray-300 rounded-lg ${viewOnly ? 'bg-gray-50' : ''}`}
                   placeholder="Enter location"
                   onChange={field.onChange}
                   onBlur={field.onBlur}
                   value={field.value || ""}
                   ref={field.ref}
                   name={field.name}
+                  readOnly={viewOnly}
+                  disabled={viewOnly}
                 />
               )}
             />
@@ -908,7 +933,9 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
                     <Checkbox 
                       id="reminder15" 
                       checked={field.value?.includes(15)}
+                      disabled={viewOnly}
                       onCheckedChange={(checked) => {
+                        if (viewOnly) return;
                         const newValue = [...(field.value || [])];
                         if (checked) {
                           newValue.push(15);
@@ -927,7 +954,9 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
                     <Checkbox 
                       id="reminder60" 
                       checked={field.value?.includes(60)}
+                      disabled={viewOnly}
                       onCheckedChange={(checked) => {
+                        if (viewOnly) return;
                         const newValue = [...(field.value || [])];
                         if (checked) {
                           newValue.push(60);
@@ -1121,36 +1150,40 @@ export default function TaskModal({ open, onClose, taskToEdit }: TaskModalProps)
           )}
           
           <div className="flex justify-between p-4 border-t border-gray-200">
-            <div className="flex items-center text-sm text-accent">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="flex items-center text-accent"
-                onClick={handleAskAI}
-                disabled={isAskingAi}
-              >
-                <LightbulbIcon className="h-4 w-4 mr-1" />
-                Ask AI for suggestions
-              </Button>
-            </div>
-            <div>
+            {!viewOnly && (
+              <div className="flex items-center text-sm text-accent">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center text-accent"
+                  onClick={handleAskAI}
+                  disabled={isAskingAi}
+                >
+                  <LightbulbIcon className="h-4 w-4 mr-1" />
+                  Ask AI for suggestions
+                </Button>
+              </div>
+            )}
+            <div className={viewOnly ? "w-full flex justify-center" : ""}>
               <Button
                 type="button"
                 variant="outline"
                 className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg mr-2 hover:bg-gray-300"
                 onClick={onClose}
               >
-                Cancel
+                {viewOnly ? "Close" : "Cancel"}
               </Button>
-              <Button
-                type="submit"
-                variant="default"
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
-                disabled={isCreatingTask}
-              >
-                {isCreatingTask ? "Saving..." : "Save Task"}
-              </Button>
+              {!viewOnly && (
+                <Button
+                  type="submit"
+                  variant="default"
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
+                  disabled={isCreatingTask}
+                >
+                  {isCreatingTask ? "Saving..." : "Save Task"}
+                </Button>
+              )}
             </div>
           </div>
         </form>
