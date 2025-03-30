@@ -1,9 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { ChatMessage, InsertChatMessage, AiSuggestion } from "@shared/schema";
+import { InsertChatMessage, AiSuggestion } from "@shared/schema";
 import { getTaskSuggestion } from "@/lib/ai";
 import { useToast } from "@/hooks/use-toast";
+
+// Define a client-side version of ChatMessage with timestamp as string
+// This prevents type issues between server (Date) and client (string) representations
+interface ChatMessage {
+  id: number;
+  content: string;
+  timestamp: string;
+  sender: string;
+}
 
 export function useAI() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -68,42 +77,29 @@ export function useAI() {
     };
   }, []);
   
-  // Query to get chat messages
-  const { data: chatMessagesData } = useQuery({
-    queryKey: ['/api/chat-messages'],
-    refetchOnWindowFocus: false,
-  });
-  
-  // Set initial messages when data is loaded
+  // Initialize with welcome message since messages aren't persisted anymore
   useEffect(() => {
-    if (chatMessagesData && chatMessagesData.length > 0) {
-      setMessages(chatMessagesData);
-    } else {
-      // Add welcome message if no messages exist
-      const welcomeMessage: ChatMessage = {
-        id: 0,
-        content: "Hello! I'm your AI calendar assistant. I can help schedule tasks, set reminders, and optimize your day. What would you like to do today?",
-        timestamp: new Date(),
-        sender: 'ai'
-      };
-      setMessages([welcomeMessage]);
-    }
-  }, [chatMessagesData]);
+    // Add welcome message
+    const welcomeMessage: ChatMessage = {
+      id: 0,
+      content: "Hello! I'm your AI calendar assistant. I can help schedule tasks, set reminders, and optimize your day. What would you like to do today?",
+      timestamp: new Date().toISOString(),
+      sender: 'ai'
+    };
+    setMessages([welcomeMessage]);
+  }, []);
   
   // Mutation to send message
   const { mutateAsync: sendMessageMutation } = useMutation({
     mutationFn: async (content: string) => {
       const messageData: InsertChatMessage = {
         content,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         sender: 'user'
       };
       
       await apiRequest('POST', '/api/chat-messages', messageData);
       return content;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/chat-messages'] });
     },
     onError: (error) => {
       toast({
@@ -115,10 +111,13 @@ export function useAI() {
   });
   
   // Query to get AI suggestions
-  const { data: suggestionsData } = useQuery({
+  const { data: suggestionsData = [] } = useQuery({
     queryKey: ['/api/ai-suggestions'],
     refetchOnWindowFocus: false,
   });
+  
+  // Ensure we have a properly typed array of suggestions
+  const suggestions = Array.isArray(suggestionsData) ? suggestionsData as AiSuggestion[] : [];
   
   // Function to send a message
   const sendMessage = useCallback(async (content: string) => {
@@ -138,7 +137,7 @@ export function useAI() {
       // Create the AI suggestion in the database
       const suggestionData = {
         suggestion,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         accepted: false,
         type: 'task',
         metadata: { 
@@ -180,13 +179,13 @@ export function useAI() {
   });
   
   // Get the current most recent suggestion that hasn't been accepted/rejected
-  const currentSuggestion = suggestionsData?.find((suggestion: AiSuggestion) => suggestion.accepted === false);
+  const currentSuggestion = suggestions.find(suggestion => suggestion.accepted === false);
   
   return { 
     messages, 
     isTyping, 
     sendMessage,
-    suggestions: suggestionsData || [],
+    suggestions,
     currentSuggestion,
     acceptSuggestion: (id: number) => updateSuggestion({ id, accepted: true }),
     rejectSuggestion: (id: number) => updateSuggestion({ id, accepted: false }),
@@ -201,10 +200,13 @@ export function useAiSuggestions() {
   const queryClient = useQueryClient();
   
   // Query to get AI suggestions
-  const { data: suggestions = [] } = useQuery({
+  const { data: suggestionsData = [] } = useQuery({
     queryKey: ['/api/ai-suggestions'],
     refetchOnWindowFocus: false,
   });
+  
+  // Ensure we have a properly typed array of suggestions
+  const suggestions = Array.isArray(suggestionsData) ? suggestionsData as AiSuggestion[] : [];
   
   // Mutation to update AI suggestion (accept/reject)
   const { mutateAsync: updateSuggestion, isPending: isAcceptingSuggestion } = useMutation({
@@ -217,7 +219,7 @@ export function useAiSuggestions() {
   });
   
   // Get the current most recent suggestion that hasn't been accepted/rejected
-  const currentSuggestion = suggestions.find((suggestion: AiSuggestion) => suggestion.accepted === false);
+  const currentSuggestion = suggestions.find(suggestion => suggestion.accepted === false);
   
   return {
     suggestions,

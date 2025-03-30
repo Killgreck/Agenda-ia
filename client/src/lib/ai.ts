@@ -7,7 +7,7 @@ import { InsertChatMessage, InsertAiSuggestion } from "@shared/schema";
 export async function sendChatMessage(message: string): Promise<void> {
   const messageData: InsertChatMessage = {
     content: message,
-    timestamp: new Date(),
+    timestamp: new Date().toISOString(),
     sender: 'user'
   };
   
@@ -29,7 +29,7 @@ export async function getChatMessages(limit?: number): Promise<any> {
 export async function createAiSuggestion(suggestion: string, type: string, metadata?: any): Promise<any> {
   const suggestionData: InsertAiSuggestion = {
     suggestion,
-    timestamp: new Date(),
+    timestamp: new Date().toISOString(),
     accepted: false,
     type,
     metadata

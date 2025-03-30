@@ -283,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Chat API
+  // Chat API - Now using WebSockets instead of storing messages
   app.post("/api/chat-messages", async (req: Request, res: Response) => {
     try {
       // Pre-process timestamp field as string
@@ -294,46 +294,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const messageData = insertChatMessageSchema.parse(rawData);
-      const createdMessage = await storage.createChatMessage(messageData);
+      
+      // Create a message object with an ID for the client
+      // but don't store it in the database
+      const messageWithId = {
+        ...messageData,
+        id: Date.now() // Generate a simple client-side ID
+      };
       
       // If the message is from the user, generate AI response
       if (messageData.sender === 'user') {
         // Broadcast user message to connected clients
-        broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: createdMessage });
+        broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: messageWithId });
         
         try {
           // Simulate API call to Deepsek AI
           // In production, replace this with actual API call to Deepsek
-          setTimeout(async () => {
+          setTimeout(() => {
             // Create AI response with timestamp as string (ISO format)
             const now = new Date();
             const aiResponseData = {
               content: generateAIResponse(messageData.content),
               timestamp: now.toISOString(),
-              sender: 'ai'
+              sender: 'ai',
+              id: Date.now() + 1 // Simple ID for the response
             };
             
-            const aiResponseMessage = await storage.createChatMessage(aiResponseData);
-            
-            // Broadcast AI response
-            broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: aiResponseMessage });
+            // Broadcast AI response directly without saving to database
+            broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: aiResponseData });
           }, 1000);
         } catch (aiError) {
           console.error('Error generating AI response:', aiError);
         }
       }
       
-      res.status(201).json(createdMessage);
+      // Return the message with ID but don't store it
+      res.status(201).json(messageWithId);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
   });
   
+  // Instead of retrieving from database, we'll return an empty array as messages are not saved
   app.get("/api/chat-messages", async (req: Request, res: Response) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
-      const messages = await storage.getChatMessages(limit);
-      res.json(messages);
+      // Return empty array since we're no longer storing chat messages
+      res.json([]);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
