@@ -38,7 +38,7 @@ export default function AIAssistant() {
           <Bot className="text-accent mr-2 h-5 w-5" />
           AI Assistant
         </h2>
-        <p className="text-sm text-gray-500 mt-1">Powered by Deepsek</p>
+        <p className="text-sm text-gray-500 mt-1">Powered by Abacus LLM</p>
       </div>
       
       {/* Chat Messages Container */}

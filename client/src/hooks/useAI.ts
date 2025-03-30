@@ -12,6 +12,7 @@ interface ChatMessage {
   content: string;
   timestamp: string;
   sender: string;
+  userId?: number; // Making userId optional to fix TypeScript errors
 }
 
 export function useAI() {
@@ -31,8 +32,9 @@ export function useAI() {
     
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}`;
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
       
+      console.log('Connecting to WebSocket at:', wsUrl);
       ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
