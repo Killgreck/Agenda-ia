@@ -982,10 +982,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       if (existingStats) {
-        // Update the existing statistics record
-        // Note: We don't have an updateStatistics method, so we'll just use the existing one
-        statistics = existingStats;
+        // Instead of using the existing stats document, we'll create a new one
+        // Note: we're not actually keeping the ID, as createStatistics will create a new record
+        // This is a workaround for not having an updateStatistics method
+        console.log("Existing stats found, updating with new data:", statsData);
+        
+        // Here we'll just create a new statistics record with the latest data
+        statistics = await storage.createStatistics(statsData);
+        
+        console.log("Created new statistics record to replace existing one:", statistics);
       } else {
+        console.log("No existing stats found, creating new record:", statsData);
         statistics = await storage.createStatistics(statsData);
       }
       

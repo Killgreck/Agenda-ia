@@ -210,17 +210,64 @@ export function useStats() {
   // Force refresh function that can be called after check-ins
   const refreshAllStats = async () => {
     console.log("Manual refresh of all statistics triggered");
-    // Generate a new weekly report
-    await generateWeeklyReport();
-    
-    // Force refetch
-    queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
-    queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
-    
-    await Promise.all([
-      refetchWeeklyStats(),
-      refetchHistoricalStats()
-    ]);
+    try {
+      // First make sure we generate a new weekly report
+      const { startDate, endDate } = getCurrentWeekDates();
+      
+      console.log("Generating new weekly report with date range:", 
+        startDate.toISOString(), "to", endDate.toISOString());
+        
+      const response = await fetch('/api/generate-weekly-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          userId
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate weekly report');
+      }
+      
+      const result = await response.json();
+      console.log("Weekly report generation successful:", result);
+      
+      // Now force invalidate queries and refetch all data
+      console.log("Invalidating query cache and refetching statistics...");
+      queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
+      
+      // Add a slight delay to ensure the server has time to update
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Now refetch all data
+      const [weeklyStats, historicalStats] = await Promise.all([
+        refetchWeeklyStats(),
+        refetchHistoricalStats()
+      ]);
+      
+      console.log("Statistics refreshed successfully:", {
+        weeklyStats: weeklyStats.data,
+        historicalDataCount: historicalStats.data?.length
+      });
+      
+      return result;
+    } catch (error) {
+      console.error("Error during statistics refresh:", error);
+      // Still try to refresh if generate report fails
+      try {
+        queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
+        await Promise.all([refetchWeeklyStats(), refetchHistoricalStats()]);
+      } catch (refetchError) {
+        console.error("Failed to refetch after error:", refetchError);
+      }
+      throw error;
+    }
   };
   
   // Calculate derived stats for current week

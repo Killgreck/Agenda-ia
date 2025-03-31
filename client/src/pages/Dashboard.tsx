@@ -84,26 +84,53 @@ export default function Dashboard() {
         userId: userId
       });
       
-      // Use the new refreshAllStats function to handle all stats updates
-      if (refreshAllStats) {
-        console.log("Calling refreshAllStats to update all statistics");
-        await refreshAllStats();
-      } else {
-        console.log("refreshAllStats not available, using fallback method");
-        // Fallback to old method
-        await generateWeeklyReport();
-        queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
-      }
-      
-      // Refetch latest check-in to update the UI
-      queryClient.invalidateQueries({ queryKey: ['/api/check-ins/latest'] });
-      
       toast({
         title: "Check-in recorded",
         description: "Thank you for your daily productivity check-in!",
         variant: "default"
       });
+      
+      // First invalidate queries to ensure we get fresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/check-ins/latest'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
+      
+      // Force regenerate the weekly report first
+      try {
+        console.log("Forcing weekly report generation after check-in");
+        await fetch('/api/generate-weekly-report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            startDate: new Date(new Date().setDate(new Date().getDate() - new Date().getDay())).toISOString(),
+            endDate: new Date(new Date().setDate(new Date().getDate() - new Date().getDay() + 6)).toISOString(),
+            userId
+          })
+        });
+      } catch (reportError) {
+        console.error("Error generating report after check-in:", reportError);
+      }
+      
+      // Use the refreshAllStats function to update all statistics
+      if (refreshAllStats) {
+        console.log("Calling refreshAllStats to update all statistics");
+        setTimeout(async () => {
+          try {
+            await refreshAllStats();
+            console.log("Statistics refreshed successfully");
+          } catch (refreshError) {
+            console.error("Error during stats refresh:", refreshError);
+          }
+        }, 1000); // Small delay to ensure server has processed the check-in
+      } else {
+        console.log("refreshAllStats not available, using fallback method");
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
+        }, 1000);
+      }
     } catch (error) {
       console.error("Error submitting check-in:", error);
       toast({
