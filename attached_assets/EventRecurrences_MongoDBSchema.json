@@ -1,0 +1,32 @@
+{
+  "$jsonSchema" : {
+    "bsonType" : "object",
+    "properties" : {
+      "eventId" : {
+        "bsonType" : "int"
+      },
+      "createdAt" : {
+        "bsonType" : "date"
+      },
+      "untilDate" : {
+        "bsonType" : "date"
+      },
+      "count" : {
+        "bsonType" : "int"
+      },
+      "patternType" : {
+        "bsonType" : "string"
+      },
+      "interval" : {
+        "bsonType" : "int"
+      },
+      "_id" : {
+        "bsonType" : "objectId"
+      },
+      "id" : {
+        "bsonType" : "int"
+      }
+    },
+    "title" : "eventRecurrences"
+  }
+}

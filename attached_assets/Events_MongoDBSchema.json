@@ -1,0 +1,50 @@
+{
+  "$jsonSchema" : {
+    "bsonType" : "object",
+    "properties" : {
+      "description" : {
+        "bsonType" : "string"
+      },
+      "recurrenceRule" : {
+        "bsonType" : "string"
+      },
+      "title" : {
+        "bsonType" : "string"
+      },
+      "priority" : {
+        "bsonType" : "int"
+      },
+      "userId" : {
+        "bsonType" : "int"
+      },
+      "createdAt" : {
+        "bsonType" : "date"
+      },
+      "isAllDay" : {
+        "bsonType" : "bool"
+      },
+      "startTime" : {
+        "bsonType" : "date"
+      },
+      "location" : {
+        "bsonType" : "string"
+      },
+      "_id" : {
+        "bsonType" : "objectId"
+      },
+      "id" : {
+        "bsonType" : "int"
+      },
+      "endTime" : {
+        "bsonType" : "date"
+      },
+      "status" : {
+        "bsonType" : "string"
+      },
+      "updatedAt" : {
+        "bsonType" : "date"
+      }
+    },
+    "title" : "events"
+  }
+}

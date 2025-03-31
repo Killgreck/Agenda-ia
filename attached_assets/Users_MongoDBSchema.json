@@ -1,0 +1,35 @@
+{
+  "$jsonSchema" : {
+    "bsonType" : "object",
+    "properties" : {
+      "createdAt" : {
+        "bsonType" : "date"
+      },
+      "preferences" : {
+        "bsonType" : "object"
+      },
+      "timezone" : {
+        "bsonType" : "string"
+      },
+      "name" : {
+        "bsonType" : "string"
+      },
+      "_id" : {
+        "bsonType" : "objectId"
+      },
+      "id" : {
+        "bsonType" : "int"
+      },
+      "email" : {
+        "bsonType" : "string"
+      },
+      "passwordHash" : {
+        "bsonType" : "string"
+      },
+      "updatedAt" : {
+        "bsonType" : "date"
+      }
+    },
+    "title" : "users"
+  }
+}

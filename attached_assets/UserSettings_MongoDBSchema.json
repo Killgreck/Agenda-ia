@@ -1,0 +1,29 @@
+{
+  "$jsonSchema" : {
+    "bsonType" : "object",
+    "properties" : {
+      "createdAt" : {
+        "bsonType" : "date"
+      },
+      "displayPreferences" : {
+        "bsonType" : "object"
+      },
+      "notificationPreferences" : {
+        "bsonType" : "object"
+      },
+      "_id" : {
+        "bsonType" : "objectId"
+      },
+      "id" : {
+        "bsonType" : "int"
+      },
+      "userId" : {
+        "bsonType" : "int"
+      },
+      "updatedAt" : {
+        "bsonType" : "date"
+      }
+    },
+    "title" : "userSettings"
+  }
+}

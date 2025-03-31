@@ -1,0 +1,29 @@
+{
+  "$jsonSchema" : {
+    "bsonType" : "object",
+    "properties" : {
+      "eventId" : {
+        "bsonType" : "int"
+      },
+      "createdAt" : {
+        "bsonType" : "date"
+      },
+      "reminderType" : {
+        "bsonType" : "string"
+      },
+      "_id" : {
+        "bsonType" : "objectId"
+      },
+      "id" : {
+        "bsonType" : "int"
+      },
+      "reminderTime" : {
+        "bsonType" : "date"
+      },
+      "status" : {
+        "bsonType" : "string"
+      }
+    },
+    "title" : "eventReminders"
+  }
+}
