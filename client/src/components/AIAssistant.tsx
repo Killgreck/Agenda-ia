@@ -88,21 +88,46 @@ export default function AIAssistant() {
     setApiError(hasApiError);
   }, [messages]);
 
+  // Store recognition instance
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  
   // Handle voice recognition when voice mode is active
+  useEffect(() => {
+    // Clean up any existing recognition on component mount
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {
+          console.error("Error cleaning up recognition:", e);
+        }
+        recognitionRef.current = null;
+      }
+    };
+  }, []);
+  
+  // Setup and start recognition when voice mode is activated
   useEffect(() => {
     if (!isVoiceActive) return;
     
+    console.log("Activating voice recognition");
+    
     // Check if browser supports speech recognition
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      // Show error message if speech recognition is not supported
+    const SpeechRecognitionAPI = window.webkitSpeechRecognition || window.SpeechRecognition;
+    
+    if (!SpeechRecognitionAPI) {
+      console.error("Speech Recognition API not available");
       addAIMessage("Sorry, your browser doesn't support voice recognition. Try using Chrome or Edge browser for voice input.", 0);
       setIsVoiceActive(false);
       return;
     }
     
     try {
-      const recognition = new SpeechRecognition();
+      // Always create a fresh instance
+      recognitionRef.current = new SpeechRecognitionAPI();
+      const recognition = recognitionRef.current;
+      
+      // Configure recognition
       recognition.lang = 'en-US';
       recognition.continuous = false;
       recognition.interimResults = false;
@@ -110,22 +135,33 @@ export default function AIAssistant() {
       // Notify user that voice recognition has started
       addAIMessage("I'm listening... Speak now and I'll transcribe what you say.", 0);
       
+      // Set up event handlers
       recognition.onstart = () => {
         console.log("Voice recognition started");
       };
       
       recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        console.log("Voice recognition result:", transcript);
-        setMessage(transcript);
-        
-        // Automatically send the message after a brief delay
-        setTimeout(() => {
-          if (transcript) {
-            sendMessage(transcript);
-            setMessage("");
+        console.log("Got speech recognition results", event);
+        if (event.results && event.results.length > 0) {
+          const transcript = event.results[0][0].transcript;
+          console.log("Voice recognition result:", transcript);
+          
+          if (transcript && transcript.trim().length > 0) {
+            setMessage(transcript);
+            
+            // Automatically send the message after a brief delay
+            setTimeout(() => {
+              sendMessage(transcript);
+              setMessage("");
+            }, 500);
+          } else {
+            console.log("Empty transcript received");
+            addAIMessage("I didn't catch that. Could you please speak again?", 0);
           }
-        }, 500);
+        } else {
+          console.log("No results in speech recognition event");
+          addAIMessage("I didn't hear anything. Please try speaking again.", 0);
+        }
       };
       
       recognition.onerror = (event: any) => {
@@ -139,11 +175,21 @@ export default function AIAssistant() {
         setIsVoiceActive(false);
       };
       
+      // Start recognition
       recognition.start();
+      console.log("Recognition started");
       
       // Cleanup function
       return () => {
-        recognition.abort();
+        console.log("Cleaning up voice recognition");
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.stop();
+          } catch (e) {
+            console.error("Error stopping recognition:", e);
+          }
+          recognitionRef.current = null;
+        }
       };
     } catch (error) {
       console.error("Error initializing voice recognition:", error);
