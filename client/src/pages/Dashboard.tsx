@@ -28,7 +28,7 @@ export default function Dashboard() {
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const { toast } = useToast();
   const { submitCheckin, isCheckingIn, latestCheckIn } = useCheckin();
-  const { stats, generateWeeklyReport } = useStats();
+  const { stats, generateWeeklyReport, refreshAllStats } = useStats();
   const queryClient = useQueryClient();
   const { upcomingTasks } = useTasks();
 
@@ -84,17 +84,20 @@ export default function Dashboard() {
         userId: userId
       });
       
-      // Regenerate weekly report with updated check-in data
-      await generateWeeklyReport();
-      
-      // Invalidate statistics queries to fetch fresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
+      // Use the new refreshAllStats function to handle all stats updates
+      if (refreshAllStats) {
+        console.log("Calling refreshAllStats to update all statistics");
+        await refreshAllStats();
+      } else {
+        console.log("refreshAllStats not available, using fallback method");
+        // Fallback to old method
+        await generateWeeklyReport();
+        queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
+      }
       
       // Refetch latest check-in to update the UI
-      if (latestCheckIn) {
-        queryClient.invalidateQueries({ queryKey: ['/api/check-ins/latest'] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['/api/check-ins/latest'] });
       
       toast({
         title: "Check-in recorded",
@@ -400,6 +403,17 @@ export default function Dashboard() {
                   ? (typeof taskToEdit.endDate === 'string'
                     ? taskToEdit.endDate
                     : taskToEdit.endDate.toISOString())
+                  : undefined,
+                // Convert Date objects to strings for recurrence dates
+                recurrenceStartDate: taskToEdit.recurrenceStartDate
+                  ? (typeof taskToEdit.recurrenceStartDate === 'string'
+                    ? taskToEdit.recurrenceStartDate
+                    : taskToEdit.recurrenceStartDate.toISOString())
+                  : undefined,
+                recurrenceEndDate: taskToEdit.recurrenceEndDate
+                  ? (typeof taskToEdit.recurrenceEndDate === 'string'
+                    ? taskToEdit.recurrenceEndDate
+                    : taskToEdit.recurrenceEndDate.toISOString())
                   : undefined
               }
             : selectedDate 

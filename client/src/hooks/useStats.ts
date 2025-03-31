@@ -56,6 +56,8 @@ const calculateRates = (stats: Omit<DetailedStats, 'tasksCompletionRate' | 'prod
 };
 
 export function useStats() {
+  const queryClient = useQueryClient();
+  
   // Helper function to get current week dates
   const getCurrentWeekDates = () => {
     const now = new Date();
@@ -74,22 +76,24 @@ export function useStats() {
     return { startDate, endDate };
   };
 
-  // Get current week's statistics
   // Get user ID from localStorage
   const authStorageStr = localStorage.getItem('auth-storage');
   const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { user: { id: 0 } } };
   const userId = authStorage?.state?.user?.id || 0;
+  const isAuthenticated = authStorage?.state?.isAuthenticated || false;
   
-  const { data: currentWeekData, isLoading, error } = useQuery({
+  // Get current week's statistics
+  const { 
+    data: currentWeekData, 
+    isLoading, 
+    error, 
+    refetch: refetchWeeklyStats 
+  } = useQuery({
     queryKey: ['/api/statistics/week', userId],
     queryFn: async () => {
       try {
+        console.log("Fetching weekly statistics for user:", userId);
         const { startDate, endDate } = getCurrentWeekDates();
-        
-        // Get user ID from localStorage
-        const authStorageStr = localStorage.getItem('auth-storage');
-        const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { user: { id: 0 } } };
-        const userId = authStorage?.state?.user?.id || 0;
         
         // First try to fetch existing stats for the week
         const response = await fetch(`/api/statistics/week?start=${startDate.toISOString()}&end=${endDate.toISOString()}&userId=${userId}`);
@@ -97,16 +101,20 @@ export function useStats() {
         // If found, return the data
         if (response.ok) {
           const data = await response.json();
+          console.log("Received weekly statistics:", data);
           return calculateRates(data);
         }
         
         // If not found (404) or other error, generate new stats
-        await generateWeeklyReport(startDate, endDate);
+        const generatedReport = await generateWeeklyReport(startDate, endDate);
+        console.log("Generated new weekly report:", generatedReport);
         
         // Retry fetching
         const retryResponse = await fetch(`/api/statistics/week?start=${startDate.toISOString()}&end=${endDate.toISOString()}&userId=${userId}`);
         if (retryResponse.ok) {
-          return calculateRates(await retryResponse.json());
+          const data = await retryResponse.json();
+          console.log("Received weekly statistics after generation:", data);
+          return calculateRates(data);
         }
         
         throw new Error('Failed to fetch weekly statistics after generation');
@@ -116,7 +124,7 @@ export function useStats() {
         const { startDate, endDate } = getCurrentWeekDates();
         return calculateRates({
           id: 0,
-          userId: 0,
+          userId,
           weekStart: startDate.toISOString(),
           weekEnd: endDate.toISOString(),
           tasksCompleted: 0,
@@ -126,16 +134,14 @@ export function useStats() {
           aiSuggestionsTotal: 0
         });
       }
-    }
+    },
+    enabled: isAuthenticated && userId > 0 // Only fetch when user is authenticated and we have a valid userId
   });
   
   // Function to generate weekly report
   const generateWeeklyReport = async (startDate?: Date, endDate?: Date) => {
     try {
-      // Get user ID from localStorage
-      const authStorageStr = localStorage.getItem('auth-storage');
-      const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { user: { id: 0 } } };
-      const userId = authStorage?.state?.user?.id || 0;
+      console.log("Generating weekly report for user:", userId);
       
       // Use provided dates or calculate current week
       const dates = startDate && endDate 
@@ -158,7 +164,19 @@ export function useStats() {
         throw new Error('Failed to generate weekly report');
       }
       
-      return await response.json();
+      const result = await response.json();
+      
+      // Invalidate cache and trigger refetch
+      queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
+      
+      // Manually refresh statistics
+      setTimeout(() => {
+        refetchWeeklyStats();
+        refetchHistoricalStats();
+      }, 500);
+      
+      return result;
     } catch (error) {
       console.error("Error generating weekly report:", error);
       return null;
@@ -166,10 +184,14 @@ export function useStats() {
   };
   
   // Get historical statistics
-  const { data: historicalData } = useQuery({
+  const { 
+    data: historicalData, 
+    refetch: refetchHistoricalStats 
+  } = useQuery({
     queryKey: ['/api/statistics', userId],
     queryFn: async () => {
       try {
+        console.log("Fetching historical statistics for user:", userId);
         const response = await fetch(`/api/statistics?userId=${userId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch historical statistics');
@@ -181,8 +203,25 @@ export function useStats() {
         console.error("Error fetching historical statistics:", error);
         return [];
       }
-    }
+    },
+    enabled: isAuthenticated && userId > 0 // Only fetch when user is authenticated
   });
+  
+  // Force refresh function that can be called after check-ins
+  const refreshAllStats = async () => {
+    console.log("Manual refresh of all statistics triggered");
+    // Generate a new weekly report
+    await generateWeeklyReport();
+    
+    // Force refetch
+    queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
+    
+    await Promise.all([
+      refetchWeeklyStats(),
+      refetchHistoricalStats()
+    ]);
+  };
   
   // Calculate derived stats for current week
   const stats: WeeklyStats = {
@@ -197,6 +236,8 @@ export function useStats() {
     historicalData,
     isLoading,
     error,
-    generateWeeklyReport
+    generateWeeklyReport,
+    refreshAllStats,
+    refetchWeeklyStats
   };
 }
