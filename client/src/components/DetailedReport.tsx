@@ -83,6 +83,9 @@ export default function DetailedReport() {
     return new Date(a.weekStart).getTime() - new Date(b.weekStart).getTime();
   });
   
+  // Create a key to force re-render when data changes but maintain the same layout
+  const chartKey = historicalData?.length > 0 ? 'stats-chart' : 'stats-chart-empty';
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -175,6 +178,7 @@ export default function DetailedReport() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
+                    key={chartKey}
                     data={sortedHistoricalData}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
@@ -182,16 +186,19 @@ export default function DetailedReport() {
                     <XAxis 
                       dataKey="weekLabel" 
                       tick={{ fontSize: 12 }}
+                      height={50}
                     />
                     <YAxis 
                       yAxisId="left"
                       orientation="left"
                       domain={[0, 100]}
                       tickFormatter={(value) => `${value}%`}
+                      width={45}
                     />
                     <Tooltip 
                       formatter={(value) => [`${value}%`]}
                       labelFormatter={(label) => `Week: ${label}`}
+                      isAnimationActive={false}
                     />
                     <Legend />
                     <Line
@@ -201,6 +208,7 @@ export default function DetailedReport() {
                       name="Tasks Completed"
                       stroke="#0ea5e9"
                       activeDot={{ r: 8 }}
+                      isAnimationActive={false}
                     />
                     <Line
                       yAxisId="left"
@@ -208,6 +216,7 @@ export default function DetailedReport() {
                       dataKey="productivityScore"
                       name="Productivity"
                       stroke="#10b981"
+                      isAnimationActive={false}
                     />
                     <Line
                       yAxisId="left"
@@ -215,6 +224,7 @@ export default function DetailedReport() {
                       dataKey="aiSuggestionsRate"
                       name="AI Usage"
                       stroke="#f59e0b"
+                      isAnimationActive={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -233,25 +243,36 @@ export default function DetailedReport() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
+                    key={chartKey}
                     data={sortedHistoricalData}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="weekLabel" />
-                    <YAxis />
-                    <Tooltip />
+                    <XAxis 
+                      dataKey="weekLabel" 
+                      height={50}
+                    />
+                    <YAxis 
+                      width={45}
+                      domain={[0, 'auto']}
+                    />
+                    <Tooltip 
+                      isAnimationActive={false}
+                    />
                     <Legend />
                     <Bar
                       dataKey="tasksCompleted"
                       name="Completed"
                       stackId="a"
                       fill="#0ea5e9"
+                      isAnimationActive={false}
                     />
                     <Bar
                       dataKey={(data) => data.tasksTotal - data.tasksCompleted}
                       name="Incomplete"
                       stackId="a"
                       fill="#e2e8f0"
+                      isAnimationActive={false}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -267,18 +288,24 @@ export default function DetailedReport() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
+                    key={chartKey}
                     data={sortedHistoricalData}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="weekLabel" />
+                    <XAxis 
+                      dataKey="weekLabel" 
+                      height={50}
+                    />
                     <YAxis 
                       domain={[0, 100]}
                       tickFormatter={(value) => `${value}%`}
+                      width={45}
                     />
                     <Tooltip 
                       formatter={(value) => [`${value}%`]}
                       labelFormatter={(label) => `Week: ${label}`}
+                      isAnimationActive={false}
                     />
                     <Legend />
                     <Line
@@ -287,6 +314,7 @@ export default function DetailedReport() {
                       name="Completion Rate"
                       stroke="#0ea5e9"
                       strokeWidth={2}
+                      isAnimationActive={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -305,18 +333,24 @@ export default function DetailedReport() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
+                    key={chartKey}
                     data={sortedHistoricalData}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="weekLabel" />
+                    <XAxis 
+                      dataKey="weekLabel"
+                      height={50}
+                    />
                     <YAxis 
                       domain={[0, 100]}
                       tickFormatter={(value) => `${value}%`}
+                      width={45}
                     />
                     <Tooltip 
                       formatter={(value) => [`${value}%`]}
                       labelFormatter={(label) => `Week: ${label}`}
+                      isAnimationActive={false}
                     />
                     <Legend />
                     <Line
@@ -325,6 +359,7 @@ export default function DetailedReport() {
                       name="Productivity Score"
                       stroke="#10b981"
                       strokeWidth={2}
+                      isAnimationActive={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -340,18 +375,24 @@ export default function DetailedReport() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
+                    key={chartKey}
                     data={sortedHistoricalData}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="weekLabel" />
+                    <XAxis 
+                      dataKey="weekLabel"
+                      height={50}
+                    />
                     <YAxis 
                       domain={[0, 5]}
                       tickFormatter={(value) => `${value}`}
+                      width={45}
                     />
                     <Tooltip 
                       formatter={(value) => [`${Number(value).toFixed(1)}/5`]}
                       labelFormatter={(label) => `Week: ${label}`}
+                      isAnimationActive={false}
                     />
                     <Legend />
                     <Line
@@ -360,6 +401,7 @@ export default function DetailedReport() {
                       name="Daily Rating"
                       stroke="#10b981"
                       strokeWidth={2}
+                      isAnimationActive={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -378,25 +420,36 @@ export default function DetailedReport() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
+                    key={chartKey}
                     data={sortedHistoricalData}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="weekLabel" />
-                    <YAxis />
-                    <Tooltip />
+                    <XAxis 
+                      dataKey="weekLabel"
+                      height={50}
+                    />
+                    <YAxis 
+                      width={45}
+                      domain={[0, 'auto']}
+                    />
+                    <Tooltip 
+                      isAnimationActive={false}
+                    />
                     <Legend />
                     <Bar
                       dataKey="aiSuggestionsAccepted"
                       name="Accepted"
                       stackId="a"
                       fill="#f59e0b"
+                      isAnimationActive={false}
                     />
                     <Bar
                       dataKey={(data) => data.aiSuggestionsTotal - data.aiSuggestionsAccepted}
                       name="Declined"
                       stackId="a"
                       fill="#e2e8f0"
+                      isAnimationActive={false}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -412,18 +465,24 @@ export default function DetailedReport() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
+                    key={chartKey}
                     data={sortedHistoricalData}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="weekLabel" />
+                    <XAxis 
+                      dataKey="weekLabel"
+                      height={50}
+                    />
                     <YAxis 
                       domain={[0, 100]}
                       tickFormatter={(value) => `${value}%`}
+                      width={45}
                     />
                     <Tooltip 
                       formatter={(value) => [`${value}%`]}
                       labelFormatter={(label) => `Week: ${label}`}
+                      isAnimationActive={false}
                     />
                     <Legend />
                     <Line
@@ -432,6 +491,7 @@ export default function DetailedReport() {
                       name="Acceptance Rate"
                       stroke="#f59e0b"
                       strokeWidth={2}
+                      isAnimationActive={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>
