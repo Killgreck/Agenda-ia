@@ -1,9 +1,15 @@
 // This file now acts as a bridge between the old PostgreSQL setup and the new MongoDB setup
-// Imports kept for backward compatibility during transition
 import * as schema from "@shared/schema";
 import { log } from './vite';
 import { connectToDatabase, initializeCounters } from './mongodb';
 import { setMongoAvailability } from './storage';
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+
+// PostgreSQL connection setup - we'll still need this for our fallback
+const connectionString = process.env.DATABASE_URL;
+export const pool = postgres(connectionString, { max: 10 });
+export const db = drizzle(pool, { schema });
 
 // Initialize MongoDB connection and set up counters
 export const initializeDatabase = async () => {
@@ -41,7 +47,3 @@ export const initializeDatabase = async () => {
     return false;
   }
 };
-
-// These are kept as dummy objects to prevent breaking existing code during transition
-export const pool = {};
-export const db = {};

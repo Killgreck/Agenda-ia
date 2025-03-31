@@ -73,19 +73,20 @@ export class MongoDBStorage implements IStorage {
       // Generate a sequential ID for the user
       const id = await getNextSequenceValue('users');
       
-      // Hash the password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(userData.password, salt);
+      // Note: We're not hashing the password here since it should already be hashed
+      // by the time it reaches this method (in the routes.ts signup route)
       
       // Create a new user with the sequential ID
       const newUser = new User({
         id,
         ...userData,
-        password: hashedPassword,
         createdAt: new Date(),
       });
       
       await newUser.save();
+      
+      // Log for debugging
+      log(`Created MongoDB user: ${newUser.id} (${newUser.username}) with password hash: ${newUser.password.substring(0, 10)}...`, 'mongodb');
       
       // After creating the user, also create related user documents with the same ID
       // This ensures consistent IDs across collections for the same user

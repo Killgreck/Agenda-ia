@@ -54,8 +54,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   language: true,
 }).extend({
   password: z.string().min(6, "Password must be at least 6 characters"),
-  email: z.string().email("Invalid email address"), // Required
-  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"), // Required
+  email: z.string().email("Invalid email address").optional().nullable(), // Optional for now
+  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits").optional().nullable(), // Optional for now
   name: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   city: z.string().optional().nullable(),

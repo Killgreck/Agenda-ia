@@ -1,24 +1,15 @@
 import mongoose from 'mongoose';
 import { log } from './vite';
+import { MongoMemoryServer } from 'mongodb-memory-server';
 
 // MongoDB connection settings
-// For MongoDB Atlas, the URL will look like: mongodb+srv://username:password@cluster.mongodb.net/database-name
 const dbName = 'productivity-app';
 
 // We'll use a separate environment variable for MongoDB to avoid conflicts with PostgreSQL
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
-// For local development, we'll use the local MongoDB instance with direct connection
-// The directConnection=true parameter helps with connectivity issues in some environments
-const localMongoUri = `mongodb://127.0.0.1:27017/${dbName}?directConnection=true`;
-
-// Use the environment variable if available, otherwise use local MongoDB
-const connectionString = MONGODB_URI || localMongoUri;
-
-// Log connection info (without credentials)
-log(`MongoDB will attempt to connect to: ${connectionString.includes('@') ? 
-  connectionString.replace(/\/\/([^:]+):[^@]+@/, '//***:***@') : 
-  connectionString}`, 'mongodb');
+// Create an instance of MongoMemoryServer
+let mongoMemoryServer: MongoMemoryServer | null = null;
 
 // Connection Options
 const options = {
@@ -30,9 +21,27 @@ const options = {
 // Connect to MongoDB
 export async function connectToDatabase() {
   try {
-    log(`Attempting to connect to MongoDB using ${connectionString}`, 'mongodb');
-    await mongoose.connect(connectionString, options);
-    log('Connected to MongoDB successfully!', 'mongodb');
+    // First try to use the environment variable if provided
+    if (MONGODB_URI) {
+      log(`Attempting to connect to MongoDB using environment variable`, 'mongodb');
+      await mongoose.connect(MONGODB_URI, options);
+      log('Connected to MongoDB successfully using environment variable!', 'mongodb');
+      return mongoose.connection;
+    }
+    
+    // If no environment variable, use in-memory MongoDB server
+    log('Starting in-memory MongoDB server...', 'mongodb');
+    mongoMemoryServer = await MongoMemoryServer.create({
+      instance: {
+        dbName
+      }
+    });
+    
+    const memoryServerUri = mongoMemoryServer.getUri();
+    log(`In-memory MongoDB server started with URI: ${memoryServerUri}`, 'mongodb');
+    
+    await mongoose.connect(memoryServerUri, options);
+    log('Connected to in-memory MongoDB successfully!', 'mongodb');
     return mongoose.connection;
   } catch (error) {
     log(`MongoDB connection error: ${error}`, 'mongodb');

@@ -180,7 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
   app.post("/api/auth/signup", async (req: Request, res: Response) => {
     try {
-      const { username, password, email, name } = req.body;
+      const { username, password, email, name, phoneNumber } = req.body;
       
       // Check if username already exists
       const existingUser = await storage.getUserByUsername(username);
@@ -200,6 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username,
         password: hashedPassword,
         email: email || null,
+        phoneNumber: phoneNumber || null,
         name: name || null
       };
       
@@ -231,8 +232,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { username, password } = req.body;
       
+      console.log("Login attempt for username:", username);
+      
       // Find user
       const user = await storage.getUserByUsername(username);
+      console.log("User found:", user ? "Yes" : "No");
+      
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -240,8 +245,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      console.log("Retrieved user data:", { 
+        id: user.id, 
+        username: user.username, 
+        passwordExists: Boolean(user.password),
+        passwordLength: user.password?.length
+      });
+      
       // Verify password
+      console.log("About to compare password with hash");
       const isMatch = await bcrypt.compare(password, user.password);
+      console.log("Password match result:", isMatch);
+      
       if (!isMatch) {
         return res.status(401).json({
           success: false,
@@ -263,6 +278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Error in login:", error);
+      console.error("Error details:", error.stack);
       res.status(400).json({
         success: false,
         message: error.message
