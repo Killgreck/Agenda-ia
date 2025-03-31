@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import CalendarView from "@/components/CalendarView";
@@ -28,9 +28,19 @@ export default function Dashboard() {
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const { toast } = useToast();
   const { submitCheckin, isCheckingIn, latestCheckIn } = useCheckin();
-  const { stats, generateWeeklyReport, refreshAllStats } = useStats();
+  const { stats, generateWeeklyReport, refreshAllStats, isLoading: statsLoading } = useStats();
   const queryClient = useQueryClient();
   const { upcomingTasks } = useTasks();
+  
+  // Ensure stats are refreshed when component mounts
+  useEffect(() => {
+    if (refreshAllStats) {
+      console.log("Dashboard mounted, refreshing statistics...");
+      refreshAllStats().catch(err => 
+        console.error("Failed to refresh stats on dashboard mount:", err)
+      );
+    }
+  }, [refreshAllStats]);
 
   // Global task edit handler - can be called from any component
   window.handleTaskEdit = (task: Task) => {
@@ -296,27 +306,50 @@ export default function Dashboard() {
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className="mb-3">
-                    <p className="text-xs text-gray-500">Tasks Completed</p>
-                    <div className="flex items-center">
-                      <Progress value={stats?.tasksCompletionRate || 0} className="flex-grow h-2" />
-                      <span className="text-sm ml-2 font-medium">{stats?.tasksCompletionRate || 0}%</span>
+                  {statsLoading ? (
+                    <div className="py-8 text-center text-gray-500 text-sm">
+                      Loading statistics...
                     </div>
-                  </div>
-                  <div className="mb-3">
-                    <p className="text-xs text-gray-500">Productivity Score</p>
-                    <div className="flex items-center">
-                      <Progress value={stats?.productivityScore || 0} className="flex-grow h-2 bg-gray-200 [&>*]:bg-accent" />
-                      <span className="text-sm ml-2 font-medium">{stats?.productivityScore || 0}%</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">AI Suggestions Used</p>
-                    <div className="flex items-center">
-                      <Progress value={stats?.aiSuggestionsRate || 0} className="flex-grow h-2 bg-gray-200 [&>*]:bg-blue-500" />
-                      <span className="text-sm ml-2 font-medium">{stats?.aiSuggestionsRate || 0}%</span>
-                    </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="mb-3">
+                        <p className="text-xs text-gray-500">Tasks Completed</p>
+                        <div className="flex items-center">
+                          {/* Force key to remount component when value changes */}
+                          <Progress 
+                            key={`tasks-${stats?.tasksCompletionRate || 0}`}
+                            value={stats?.tasksCompletionRate || 0} 
+                            className="flex-grow h-2" 
+                          />
+                          <span className="text-sm ml-2 font-medium">{stats?.tasksCompletionRate || 0}%</span>
+                        </div>
+                      </div>
+                      <div className="mb-3">
+                        <p className="text-xs text-gray-500">Productivity Score</p>
+                        <div className="flex items-center">
+                          {/* Force key to remount component when value changes */}
+                          <Progress 
+                            key={`prod-${stats?.productivityScore || 0}`}
+                            value={stats?.productivityScore || 0} 
+                            className="flex-grow h-2 bg-gray-200 [&>*]:bg-accent" 
+                          />
+                          <span className="text-sm ml-2 font-medium">{stats?.productivityScore || 0}%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">AI Suggestions Used</p>
+                        <div className="flex items-center">
+                          {/* Force key to remount component when value changes */}
+                          <Progress 
+                            key={`ai-${stats?.aiSuggestionsRate || 0}`}
+                            value={stats?.aiSuggestionsRate || 0} 
+                            className="flex-grow h-2 bg-gray-200 [&>*]:bg-blue-500" 
+                          />
+                          <span className="text-sm ml-2 font-medium">{stats?.aiSuggestionsRate || 0}%</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   <Button 
                     variant="link" 
                     className="mt-2 px-0 text-xs text-primary font-medium"
