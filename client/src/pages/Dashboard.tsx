@@ -60,13 +60,28 @@ export default function Dashboard() {
     const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { user: { id: 0 } } };
     const userId = authStorage?.state?.user?.id || 0;
     
+    // Check if authenticated
+    const isAuthenticated = authStorage?.state?.isAuthenticated || false;
+    
+    // Don't proceed if user is not authenticated
+    if (!isAuthenticated || userId === 0) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to record your daily check-in.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
+      console.log("Submitting check-in with rating:", rating, "for user:", userId);
+      
       // Submit check-in data
       await submitCheckin({
         date: new Date().toISOString(),
         productivityRating: rating,
         notes: "",
-        userId
+        userId: userId
       });
       
       // Regenerate weekly report with updated check-in data
@@ -75,6 +90,11 @@ export default function Dashboard() {
       // Invalidate statistics queries to fetch fresh data
       queryClient.invalidateQueries({ queryKey: ['/api/statistics/week'] });
       queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
+      
+      // Refetch latest check-in to update the UI
+      if (latestCheckIn) {
+        queryClient.invalidateQueries({ queryKey: ['/api/check-ins/latest'] });
+      }
       
       toast({
         title: "Check-in recorded",
@@ -175,31 +195,54 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-gray-600 mb-3">How productive do you feel today?</p>
-                  <div className="flex justify-between">
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <Button 
-                        key={value}
-                        variant="ghost" 
-                        size="sm"
-                        className="p-1 rounded hover:bg-gray-100"
-                        onClick={() => handleMoodSelection(value)}
-                        disabled={isCheckingIn}
-                      >
-                        <span className={getMoodIcon(value, selectedRating || (latestCheckIn?.productivityRating || null))}>
-                          {value === 1 && "😞"}
-                          {value === 2 && "😕"}
-                          {value === 3 && "😐"}
-                          {value === 4 && "🙂"}
-                          {value === 5 && "😁"}
-                        </span>
-                      </Button>
-                    ))}
-                  </div>
-                  {latestCheckIn && (
-                    <p className="text-xs text-gray-500 mt-3">
-                      Last check-in: {new Date(latestCheckIn.date).toLocaleDateString()}
-                    </p>
-                  )}
+                  
+                  {/* Check if user is authenticated */}
+                  {(() => {
+                    // Get authentication status
+                    const authStorageStr = localStorage.getItem('auth-storage');
+                    const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { isAuthenticated: false } };
+                    const isAuthenticated = authStorage?.state?.isAuthenticated;
+                    
+                    if (!isAuthenticated) {
+                      return (
+                        <div className="bg-gray-50 p-3 rounded-md text-center">
+                          <p className="text-sm text-gray-500">
+                            Please log in to track your daily productivity
+                          </p>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <>
+                        <div className="flex justify-between">
+                          {[1, 2, 3, 4, 5].map((value) => (
+                            <Button 
+                              key={value}
+                              variant="ghost" 
+                              size="sm"
+                              className="p-1 rounded hover:bg-gray-100"
+                              onClick={() => handleMoodSelection(value)}
+                              disabled={isCheckingIn}
+                            >
+                              <span className={getMoodIcon(value, selectedRating || (latestCheckIn?.productivityRating || null))}>
+                                {value === 1 && "😞"}
+                                {value === 2 && "😕"}
+                                {value === 3 && "😐"}
+                                {value === 4 && "🙂"}
+                                {value === 5 && "😁"}
+                              </span>
+                            </Button>
+                          ))}
+                        </div>
+                        {latestCheckIn && (
+                          <p className="text-xs text-gray-500 mt-3">
+                            Last check-in: {new Date(latestCheckIn.date).toLocaleDateString()}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </CardContent>
               </Card>
               

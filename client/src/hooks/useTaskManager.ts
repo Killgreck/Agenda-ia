@@ -136,12 +136,21 @@ export function useCheckin() {
   const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { isAuthenticated: false } };
   const isAuthenticated = authStorage?.state?.isAuthenticated;
   
+  // Get user ID from localStorage for API calls
+  const userId = authStorage?.state?.user?.id || 0;
+  
   // Submit a new check-in
   const { mutateAsync: submitCheckin, isPending: isCheckingIn } = useMutation({
     mutationFn: async (checkIn: InsertCheckIn) => {
+      // Make sure we include the userId in the check-in data
+      const checkInWithUser = {
+        ...checkIn,
+        userId: checkIn.userId || userId
+      };
+      
       return await apiRequest<CheckIn>('/api/check-ins', {
         method: 'POST',
-        body: JSON.stringify(checkIn)
+        body: JSON.stringify(checkInWithUser)
       });
     },
     onSuccess: () => {
@@ -151,15 +160,28 @@ export function useCheckin() {
   });
   
   // Get the latest check-in
-  const { data: latestCheckIn, isLoading: isLoadingLatest } = useQuery({
-    queryKey: ['/api/check-ins/latest'],
-    enabled: isAuthenticated ? true : false // Only load when authenticated
+  const { data: latestCheckIn, isLoading: isLoadingLatest, refetch: refetchLatestCheckIn } = useQuery({
+    queryKey: ['/api/check-ins/latest', userId],
+    queryFn: async () => {
+      // Add userId as a query parameter to get the correct user's data
+      const response = await fetch(`/api/check-ins/latest?userId=${userId}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          // No check-ins yet, return null instead of throwing an error
+          return null;
+        }
+        throw new Error('Failed to fetch latest check-in');
+      }
+      return response.json();
+    },
+    enabled: isAuthenticated && userId > 0 // Only enable when authenticated and have a valid userId
   });
   
   return {
     submitCheckin,
     isCheckingIn,
     latestCheckIn,
-    isLoadingLatest
+    isLoadingLatest,
+    refetchLatestCheckIn
   };
 }
