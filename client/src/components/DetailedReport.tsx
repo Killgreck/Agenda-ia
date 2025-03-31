@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -25,16 +25,44 @@ export default function DetailedReport() {
     currentWeekData, 
     historicalData = [], 
     generateWeeklyReport,
+    refreshAllStats,
+    refetchWeeklyStats,
     isLoading
   } = useStats();
   
   const [isRegenerating, setIsRegenerating] = useState(false);
   
+  // Force refresh data when component mounts
+  useEffect(() => {
+    console.log("DetailedReport mounted, refreshing statistics...");
+    const refreshData = async () => {
+      try {
+        // Check if we have the refreshAllStats function
+        if (refreshAllStats) {
+          await refreshAllStats();
+        } else if (refetchWeeklyStats) {
+          await refetchWeeklyStats();
+        } else {
+          // Fallback to old method
+          await generateWeeklyReport();
+        }
+      } catch (error) {
+        console.error("Error refreshing stats on mount:", error);
+      }
+    };
+    
+    refreshData();
+  }, []);
+  
   // Handle regenerate weekly report
   const handleRegenerateReport = async () => {
     setIsRegenerating(true);
     try {
-      await generateWeeklyReport();
+      if (refreshAllStats) {
+        await refreshAllStats();
+      } else {
+        await generateWeeklyReport();
+      }
       toast({
         title: "Report Regenerated",
         description: "Weekly statistics have been updated.",

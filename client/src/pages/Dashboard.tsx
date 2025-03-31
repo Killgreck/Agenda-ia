@@ -9,7 +9,7 @@ import PostponeModal from "@/components/PostponeModal";
 import { Task, InsertTask } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, BarChart, CheckSquare, Calendar, MessageSquare, LineChart } from "lucide-react";
+import { CheckCircle, BarChart, CheckSquare, Calendar, MessageSquare, LineChart, RefreshCw } from "lucide-react";
 import { useStats } from "@/hooks/useStats";
 import { useCheckin, useTasks } from "@/hooks/useTaskManager";
 import { Button } from "@/components/ui/button";
@@ -251,11 +251,22 @@ export default function Dashboard() {
               
               {/* Weekly Statistics */}
               <Card>
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-2 flex justify-between items-center">
                   <CardTitle className="text-lg flex items-center">
                     <BarChart className="mr-2 h-5 w-5 text-primary" />
                     Weekly Statistics
                   </CardTitle>
+                  {refreshAllStats && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0"
+                      onClick={() => refreshAllStats()}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      <span className="sr-only">Refresh statistics</span>
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <div className="mb-3">
