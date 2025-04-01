@@ -62,13 +62,21 @@ export default function Auth() {
   // Handle login submission
   const onLoginSubmit = async (data: LoginValues) => {
     try {
+      console.log('Starting login process for:', data.username);
       const success = await login(data.username, data.password);
+      console.log('Login result:', success);
+      
       if (success) {
         toast({
           title: 'Welcome back!',
           description: 'You have been successfully logged in.',
         });
-        setLocation('/');
+        
+        // Add a small delay before redirecting to ensure state updates have propagated
+        setTimeout(() => {
+          console.log('Redirecting to dashboard after successful login');
+          setLocation('/dashboard');
+        }, 500);
       } else {
         toast({
           title: 'Login failed',
@@ -77,6 +85,7 @@ export default function Auth() {
         });
       }
     } catch (error) {
+      console.error('Error during login:', error);
       toast({
         title: 'Login error',
         description: 'An error occurred during login. Please try again.',
@@ -88,13 +97,21 @@ export default function Auth() {
   // Handle signup submission
   const onSignupSubmit = async (data: SignupValues) => {
     try {
+      console.log('Starting signup process for:', data.username);
       const success = await signup(data.username, data.password, data.email, data.name);
+      console.log('Signup result:', success);
+      
       if (success) {
         toast({
           title: 'Account created!',
           description: 'Your account has been created successfully.',
         });
-        setLocation('/');
+        
+        // Add a small delay before redirecting to ensure state updates have propagated
+        setTimeout(() => {
+          console.log('Redirecting to dashboard after successful signup');
+          setLocation('/dashboard');
+        }, 500);
       } else {
         toast({
           title: 'Signup failed',
@@ -103,6 +120,7 @@ export default function Auth() {
         });
       }
     } catch (error) {
+      console.error('Error during signup:', error);
       toast({
         title: 'Signup error',
         description: 'An error occurred during signup. Please try again.',
