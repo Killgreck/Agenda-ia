@@ -4,6 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { InsertChatMessage, AiSuggestion } from "@shared/schema";
 import { getTaskSuggestion } from "@/lib/ai";
 import { useToast } from "@/hooks/use-toast";
+import useWebsocket from "./useWebsocket";
 
 // Define a client-side version of ChatMessage with timestamp as string
 // This prevents type issues between server (Date) and client (string) representations
@@ -26,63 +27,47 @@ export function useAI() {
   const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { isAuthenticated: false } };
   const isAuthenticated = authStorage?.state?.isAuthenticated;
   
-  // Create a websocket connection
+  // Use the central WebSocket hook
+  const { subscribe, isConnected } = useWebsocket();
+  
+  // Subscribe to relevant WebSocket messages
   useEffect(() => {
-    let ws: WebSocket | null = null;
+    if (!isConnected) return;
     
-    try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
-      
-      console.log('Connecting to WebSocket at:', wsUrl);
-      ws = new WebSocket(wsUrl);
-      
-      ws.onopen = () => {
-        console.log('WebSocket connection established');
-      };
-      
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'NEW_CHAT_MESSAGE') {
-            // Add the new message to the list
-            const newMessage = data.message as ChatMessage;
-            
-            if (newMessage.sender === 'ai') {
-              // Simulate AI typing before showing the message
-              setIsTyping(true);
-              setTimeout(() => {
-                setIsTyping(false);
-                setMessages(prev => [...prev, newMessage]);
-              }, 1500);
-            } else {
+    // Get user ID for message filtering
+    const userId = authStorage?.state?.user?.id;
+    
+    // Define message handler
+    const handleMessage = (data: any) => {
+      if (data.type === 'NEW_CHAT_MESSAGE') {
+        // Add the new message to the list only if it belongs to this user
+        const newMessage = data.message as ChatMessage;
+        
+        // Check if the message belongs to this user
+        // If userId isn't in the message, it's likely a broadcast intended for everyone
+        if (!newMessage.userId || newMessage.userId === userId) {
+          if (newMessage.sender === 'ai') {
+            // Simulate AI typing before showing the message
+            setIsTyping(true);
+            setTimeout(() => {
+              setIsTyping(false);
               setMessages(prev => [...prev, newMessage]);
-            }
+            }, 1500);
+          } else {
+            setMessages(prev => [...prev, newMessage]);
           }
-        } catch (error) {
-          console.error('Error processing WebSocket message:', error);
         }
-      };
-      
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-      
-      ws.onclose = () => {
-        console.log('WebSocket connection closed');
-      };
-    } catch (error) {
-      console.error('Failed to connect to WebSocket:', error);
-    }
-    
-    // Clean up the WebSocket connection when the component unmounts
-    return () => {
-      if (ws) {
-        ws.close();
       }
     };
-  }, []);
+    
+    // Subscribe to messages
+    const unsubscribe = subscribe(handleMessage);
+    
+    // Clean up subscription when component unmounts
+    return () => {
+      unsubscribe();
+    };
+  }, [isConnected, subscribe, authStorage?.state?.user?.id]);
   
   // Initialize with welcome message since messages aren't persisted anymore
   useEffect(() => {

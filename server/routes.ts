@@ -407,8 +407,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     path: '/ws'  // Use a specific path for our websocket to avoid conflicts with Vite's HMR
   });
   
-  wss.on('connection', (ws) => {
+  // Map to store WebSocket connections by user ID
+  const userConnections = new Map();
+  
+  wss.on('connection', (ws, req) => {
     console.log('Client connected to WebSocket');
+    
+    // Add a userId property to the WebSocket object (will be set when auth message is received)
+    (ws as any).userId = null;
     
     // Send a welcome message to confirm connection is working
     ws.send(JSON.stringify({ type: 'WELCOME', message: 'Connected to AI Calendar WebSocket server' }));
@@ -416,10 +422,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('message', (message) => {
       try {
         // Handle incoming websocket messages
-        console.log('Received message:', message.toString());
+        const messageData = JSON.parse(message.toString());
+        console.log('Received message:', messageData);
         
-        // Echo the message back to confirm receipt
-        ws.send(JSON.stringify({ type: 'ECHO', message: message.toString() }));
+        // Handle authentication message to register user ID with this connection
+        if (messageData.type === 'AUTH' && messageData.userId) {
+          const userId = parseInt(messageData.userId);
+          console.log(`Registering WebSocket connection for user ID: ${userId}`);
+          
+          // Store the userId on the websocket object
+          (ws as any).userId = userId;
+          
+          // Add this connection to the user's connections list
+          if (!userConnections.has(userId)) {
+            userConnections.set(userId, new Set());
+          }
+          userConnections.get(userId).add(ws);
+          
+          // Confirm authentication
+          ws.send(JSON.stringify({ 
+            type: 'AUTH_CONFIRMED', 
+            message: `Connection authenticated for user ID: ${userId}` 
+          }));
+        } else {
+          // Echo other messages back to confirm receipt
+          ws.send(JSON.stringify({ type: 'ECHO', message: messageData }));
+        }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
       }
@@ -430,7 +458,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
     
     ws.on('close', (code, reason) => {
-      console.log(`Client disconnected from WebSocket. Code: ${code}, Reason: ${reason || 'No reason provided'}`);
+      // Get the user ID associated with this connection
+      const userId = (ws as any).userId;
+      console.log(`Client disconnected from WebSocket. User ID: ${userId}, Code: ${code}, Reason: ${reason || 'No reason provided'}`);
+      
+      // Remove this connection from the user's connections list
+      if (userId && userConnections.has(userId)) {
+        userConnections.get(userId).delete(ws);
+        // Clean up empty user entries
+        if (userConnections.get(userId).size === 0) {
+          userConnections.delete(userId);
+        }
+      }
     });
   });
   
@@ -438,13 +477,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error('WebSocket server error:', error);
   });
   
-  // Broadcast a message to all connected clients
+  // Broadcast a message to specific user's connections or all connections if no userId provided
   const broadcastMessage = (message: any) => {
-    wss.clients.forEach(client => {
-      if (client.readyState === 1) { // OPEN
-        client.send(JSON.stringify(message));
-      }
-    });
+    // If the message contains a userId, send only to that user's connections
+    const userId = message.userId || (message.message && message.message.userId);
+    
+    if (userId && userConnections.has(userId)) {
+      // Send to specific user's connections
+      userConnections.get(userId).forEach(client => {
+        if (client.readyState === 1) { // OPEN
+          client.send(JSON.stringify(message));
+        }
+      });
+      console.log(`Broadcasted message to user ID: ${userId}, connections: ${userConnections.get(userId).size}`);
+    } else {
+      // Fallback: broadcast to all connections
+      wss.clients.forEach(client => {
+        if (client.readyState === 1) { // OPEN
+          client.send(JSON.stringify(message));
+        }
+      });
+    }
   };
   
   // Tasks API
@@ -711,8 +764,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If the message is from the user, generate AI response
       if (messageData.sender === 'user') {
-        // Broadcast user message to connected clients
-        broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: messageWithId });
+        // Broadcast user message only to this user's connections
+        broadcastMessage({ 
+          type: 'NEW_CHAT_MESSAGE', 
+          message: messageWithId,
+          userId: userId  // Include userId to target specific connections
+        });
         
         try {
           // Fetch user's calendar events for better context
@@ -724,7 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get user's tasks (calendar events)
           storage.getTasks({ userId, startDate, endDate })
             .then(async (tasks) => {
-              console.log(`Retrieved ${tasks.length} calendar events for AI context`);
+              console.log(`Retrieved ${tasks.length} calendar events for AI context for user ${userId}`);
               
               // Format tasks for friendly display to the AI
               const formattedTasks = tasks.map(task => {
@@ -759,25 +816,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 content: aiResponse,
                 timestamp: now.toISOString(),
                 sender: 'ai',
+                userId: userId, // Include the userId for proper routing
                 id: Date.now() + 1 // Simple ID for the response
               };
               
-              // Broadcast AI response directly without saving to database
-              broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: aiResponseData });
+              // Broadcast AI response only to this user's connections
+              broadcastMessage({ 
+                type: 'NEW_CHAT_MESSAGE', 
+                message: aiResponseData,
+                userId: userId  // Include userId to target specific connections
+              });
             })
             .catch(error => {
-              console.error('Error processing calendar events or LLM response:', error);
-              // Send fallback response in case of error
+              console.error(`Error processing calendar events or LLM response for user ${userId}:`, error);
+              // Send fallback response in case of error (only to this user)
               const fallbackResponse = {
                 content: "I'm having trouble connecting to my knowledge base at the moment. Please try again in a moment.",
                 timestamp: new Date().toISOString(),
                 sender: 'ai',
+                userId: userId, // Include userId for proper routing
                 id: Date.now() + 1
               };
-              broadcastMessage({ type: 'NEW_CHAT_MESSAGE', message: fallbackResponse });
+              broadcastMessage({ 
+                type: 'NEW_CHAT_MESSAGE', 
+                message: fallbackResponse,
+                userId: userId  // Include userId to target specific connections
+              });
             });
         } catch (aiError) {
-          console.error('Error generating AI response:', aiError);
+          console.error(`Error generating AI response for user ${userId}:`, aiError);
         }
       }
       
