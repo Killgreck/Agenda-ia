@@ -5,7 +5,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Pencil, Trash, Calendar, Clock } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash, Calendar, CheckCircle, XCircle } from "lucide-react";
 import { Task } from "@shared/schema";
 import { useTasks } from "@/hooks/useTaskManager";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,7 @@ interface TaskMenuProps {
 }
 
 export function TaskMenu({ task, onEdit, className = "" }: TaskMenuProps) {
-  const { deleteTask, isDeletingTask } = useTasks();
+  const { deleteTask, updateTask, isDeletingTask, isUpdatingTask } = useTasks();
   const { toast } = useToast();
 
   const handleDelete = async () => {
@@ -31,6 +31,27 @@ export function TaskMenu({ task, onEdit, className = "" }: TaskMenuProps) {
       toast({
         title: "Error",
         description: "Failed to delete the task. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleToggleComplete = async () => {
+    try {
+      await updateTask({
+        id: task.id,
+        completed: !task.completed
+      });
+      toast({
+        title: task.completed ? "Task marked as incomplete" : "Task marked as completed",
+        description: task.completed 
+          ? "The task has been marked as incomplete" 
+          : "The task has been successfully completed",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update task status. Please try again.",
         variant: "destructive",
       });
     }
@@ -60,6 +81,23 @@ export function TaskMenu({ task, onEdit, className = "" }: TaskMenuProps) {
         <DropdownMenuItem onClick={() => onEdit(task)} className="cursor-pointer">
           <Pencil className="mr-2 h-4 w-4" />
           Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={handleToggleComplete} 
+          className={`cursor-pointer ${task.completed ? "text-orange-500" : "text-green-500"}`}
+          disabled={isUpdatingTask}
+        >
+          {task.completed ? (
+            <>
+              <XCircle className="mr-2 h-4 w-4" />
+              Mark as Incomplete
+            </>
+          ) : (
+            <>
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Mark as Completed
+            </>
+          )}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handlePostpone} className="cursor-pointer">
           <Calendar className="mr-2 h-4 w-4" />
