@@ -72,10 +72,10 @@ export function useAI() {
   // Initialize with welcome message since messages aren't persisted anymore
   useEffect(() => {
     // Get user ID for the welcome message
-    const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
+    const userId = authStorage?.state?.user?.id;
     
-    // Add welcome message only if messages array is empty
-    if (messages.length === 0) {
+    // Add welcome message only if messages array is empty and we have a valid userId
+    if (messages.length === 0 && userId) {
       const welcomeMessage: ChatMessage = {
         id: 0,
         content: "Hi there! I'm your calendar assistant and scheduling coach. I'd be happy to help you manage your schedule or provide productivity tips. What can I help you with today?",
@@ -85,13 +85,18 @@ export function useAI() {
       };
       setMessages([welcomeMessage]);
     }
-  }, [messages.length]);
+  }, [messages.length, authStorage?.state?.user?.id]);
   
   // Mutation to send message
   const { mutateAsync: sendMessageMutation } = useMutation({
     mutationFn: async (content: string) => {
       // Get user ID from auth storage
-      const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
+      const userId = authStorage?.state?.user?.id;
+      
+      // Only proceed if we have a valid userId
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
       
       const messageData: InsertChatMessage = {
         content,
@@ -176,7 +181,12 @@ export function useAI() {
         }
         
         // Get user ID from auth storage for the AI suggestion
-        const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
+        const userId = authStorage?.state?.user?.id;
+        
+        // Only proceed if we have a valid userId
+        if (!userId) {
+          throw new Error("User not authenticated");
+        }
         
         // Create the AI suggestion in the database
         const suggestionData = {
@@ -205,7 +215,13 @@ export function useAI() {
         
         // Still attempt to save this fallback in the database
         try {
-          const userId = authStorage?.state?.user?.id || 1;
+          const userId = authStorage?.state?.user?.id;
+          
+          // Only proceed if we have a valid userId
+          if (!userId) {
+            throw new Error("User not authenticated");
+          }
+          
           const fallbackData = {
             suggestion: fallbackSuggestion,
             timestamp: new Date().toISOString(),
