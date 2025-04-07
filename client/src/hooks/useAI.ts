@@ -32,31 +32,54 @@ export function useAI() {
   
   // Subscribe to relevant WebSocket messages
   useEffect(() => {
-    if (!isConnected) return;
+    // Don't subscribe if WebSocket isn't connected
+    if (!isConnected) {
+      console.log('WebSocket not connected, skipping chat message subscription');
+      return;
+    }
     
     // Get user ID for message filtering
     const userId = authStorage?.state?.user?.id;
     
+    // Only subscribe if we have a valid user ID
+    if (!userId) {
+      console.log('No user ID available, skipping chat message subscription');
+      return; 
+    }
+    
+    console.log(`Setting up WebSocket subscription for chat messages for user ${userId}`);
+    
     // Define message handler
     const handleMessage = (data: any) => {
-      if (data.type === 'NEW_CHAT_MESSAGE') {
-        // Add the new message to the list only if it belongs to this user
-        const newMessage = data.message as ChatMessage;
-        
-        // Check if the message belongs to this user
-        // If userId isn't in the message, it's likely a broadcast intended for everyone
-        if (!newMessage.userId || newMessage.userId === userId) {
-          if (newMessage.sender === 'ai') {
-            // Simulate AI typing before showing the message
-            setIsTyping(true);
-            setTimeout(() => {
-              setIsTyping(false);
+      try {
+        if (data.type === 'NEW_CHAT_MESSAGE') {
+          // Add the new message to the list only if it belongs to this user
+          const newMessage = data.message as ChatMessage;
+          
+          // Check if the message belongs to this user
+          // If userId isn't in the message, it's likely a broadcast intended for everyone
+          if (!newMessage.userId || newMessage.userId === userId) {
+            console.log('Received relevant chat message:', newMessage);
+            
+            if (newMessage.sender === 'ai') {
+              // Simulate AI typing before showing the message
+              setIsTyping(true);
+              setTimeout(() => {
+                setIsTyping(false);
+                setMessages(prev => [...prev, newMessage]);
+              }, 1500);
+            } else {
               setMessages(prev => [...prev, newMessage]);
-            }, 1500);
+            }
           } else {
-            setMessages(prev => [...prev, newMessage]);
+            console.log('Received message for different user, ignoring', {
+              messageUserId: newMessage.userId,
+              currentUserId: userId
+            });
           }
         }
+      } catch (error) {
+        console.error('Error processing WebSocket chat message:', error);
       }
     };
     
@@ -65,6 +88,7 @@ export function useAI() {
     
     // Clean up subscription when component unmounts
     return () => {
+      console.log('Cleaning up chat message subscription');
       unsubscribe();
     };
   }, [isConnected, subscribe, authStorage?.state?.user?.id]);
