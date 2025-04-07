@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { WeeklyStats } from "@/types";
 import { apiRequest } from "@/lib/queryClient";
 import { useState, useEffect } from "react";
+import { useAuth } from "./useAuth";
 
 // Interface for detailed statistics
 export interface DetailedStats {
@@ -76,11 +77,9 @@ export function useStats() {
     return { startDate, endDate };
   };
 
-  // Get user ID from localStorage
-  const authStorageStr = localStorage.getItem('auth-storage');
-  const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { user: null, isAuthenticated: false } };
-  const userId = authStorage?.state?.user?.id;
-  const isAuthenticated = authStorage?.state?.isAuthenticated || false;
+  // Get user ID from the useAuth hook
+  const { isAuthenticated, user } = useAuth();
+  const userId = user?.id;
   
   // Get current week's statistics
   const { 
