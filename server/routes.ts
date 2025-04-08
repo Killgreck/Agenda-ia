@@ -52,16 +52,34 @@ function scheduleTaskReminders(task: any, broadcastMessage: (message: any) => vo
   }
 }
 
+// Helper function to format dates in a way that preserves local day
+function formatDateToPreserveLocalDay(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  
+  // Create date string in format YYYY-MM-DDThh:mm:ss
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
 function generateRecurringTasks(taskData: any): any[] {
+  console.log("Generating recurring tasks from base task data, preserving date formats");
   const tasks: any[] = [];
   
-  // Convert dates to Date objects
+  // Convert dates to Date objects for calculation
   const startDate = new Date(taskData.recurrenceStartDate);
   const endDate = new Date(taskData.recurrenceEndDate);
   
-  // Get start time and end time
-  const startTime = new Date(taskData.date).toTimeString().substring(0, 8); // Extract HH:MM:SS
-  const endTime = taskData.endDate ? new Date(taskData.endDate).toTimeString().substring(0, 8) : null;
+  // Get base task date objects
+  const baseDate = new Date(taskData.date);
+  const baseEndDate = taskData.endDate ? new Date(taskData.endDate) : null;
+  
+  // Calculate time portions to preserve in recurring instances
+  const startTime = baseDate.toTimeString().substring(0, 8); // Extract HH:MM:SS
+  const endTime = baseEndDate ? baseEndDate.toTimeString().substring(0, 8) : null;
 
   // For daily recurrence
   if (taskData.recurrenceType === "daily") {
@@ -75,14 +93,16 @@ function generateRecurringTasks(taskData: any): any[] {
       if (!taskData.isAllDay) {
         // Combine date and time
         const dateStr = format(currentDate, "yyyy-MM-dd");
-        taskInstance.date = new Date(`${dateStr}T${startTime}`).toISOString();
+        const dateWithTime = new Date(`${dateStr}T${startTime}`);
+        taskInstance.date = formatDateToPreserveLocalDay(dateWithTime); // Use the format that preserves local day
         
         if (endTime) {
-          taskInstance.endDate = new Date(`${dateStr}T${endTime}`).toISOString();
+          const endDateWithTime = new Date(`${dateStr}T${endTime}`);
+          taskInstance.endDate = formatDateToPreserveLocalDay(endDateWithTime); // Use the format that preserves local day
         }
       } else {
         // All-day event
-        taskInstance.date = currentDate.toISOString();
+        taskInstance.date = formatDateToPreserveLocalDay(currentDate); // Use the format that preserves local day
       }
       
       // Add to task list
@@ -123,14 +143,16 @@ function generateRecurringTasks(taskData: any): any[] {
         if (!taskData.isAllDay) {
           // Combine date and time
           const dateStr = format(currentDate, "yyyy-MM-dd");
-          taskInstance.date = new Date(`${dateStr}T${startTime}`).toISOString();
+          const dateWithTime = new Date(`${dateStr}T${startTime}`);
+          taskInstance.date = formatDateToPreserveLocalDay(dateWithTime); // Use the format that preserves local day
           
           if (endTime) {
-            taskInstance.endDate = new Date(`${dateStr}T${endTime}`).toISOString();
+            const endDateWithTime = new Date(`${dateStr}T${endTime}`);
+            taskInstance.endDate = formatDateToPreserveLocalDay(endDateWithTime); // Use the format that preserves local day
           }
         } else {
           // All-day event
-          taskInstance.date = currentDate.toISOString();
+          taskInstance.date = formatDateToPreserveLocalDay(currentDate); // Use the format that preserves local day
         }
         
         // Add to task list
@@ -510,14 +532,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Parse and validate the request body
       // The schema expects date fields as strings in ISO format
+      // Important: Preserve dates exactly as received from client to avoid timezone issues
+      console.log("Date from client:", req.body.date);
+      console.log("End date from client:", req.body.endDate);
+      
       const rawData = {
         ...req.body,
         userId, // Include the user ID from session
-        // Ensure all date fields are strings (they may already be ISO strings from client)
-        date: req.body.date ? req.body.date.toString() : undefined,
-        endDate: req.body.endDate ? req.body.endDate.toString() : undefined,
-        recurrenceStartDate: req.body.recurrenceStartDate ? req.body.recurrenceStartDate.toString() : undefined,
-        recurrenceEndDate: req.body.recurrenceEndDate ? req.body.recurrenceEndDate.toString() : undefined
+        // Preserve date strings EXACTLY as received from client to maintain local day
+        date: req.body.date,
+        endDate: req.body.endDate,
+        recurrenceStartDate: req.body.recurrenceStartDate,
+        recurrenceEndDate: req.body.recurrenceEndDate
       };
       
       const parseResult = insertTaskSchema.safeParse(rawData);
@@ -639,13 +665,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const taskId = parseInt(req.params.id);
       
-      // Pre-process date fields for update - ensure they remain as strings
+      // Important: Preserve date strings EXACTLY as received from client to maintain local day
+      console.log("PATCH task date from client:", req.body.date);
+      console.log("PATCH end date from client:", req.body.endDate);
+      
+      // Keep the dates exactly as received from client to prevent timezone conversions
       const taskUpdate = {
         ...req.body,
-        date: req.body.date ? req.body.date.toString() : undefined,
-        endDate: req.body.endDate ? req.body.endDate.toString() : undefined,
-        recurrenceStartDate: req.body.recurrenceStartDate ? req.body.recurrenceStartDate.toString() : undefined,
-        recurrenceEndDate: req.body.recurrenceEndDate ? req.body.recurrenceEndDate.toString() : undefined
+        date: req.body.date, // Preserve format exactly as received
+        endDate: req.body.endDate, // Preserve format exactly as received
+        recurrenceStartDate: req.body.recurrenceStartDate, // Preserve format exactly as received
+        recurrenceEndDate: req.body.recurrenceEndDate // Preserve format exactly as received
       };
       
       const updatedTask = await storage.updateTask(taskId, taskUpdate);

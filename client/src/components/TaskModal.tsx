@@ -32,6 +32,20 @@ type TaskModalProps = {
   viewOnly?: boolean;
 };
 
+// Utility function to format a date string preserving the local date (not UTC converted)
+// This prevents the timezone offset issues when sending dates to the server
+function formatDateToPreserveLocalDay(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  
+  // Format without timezone component
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
 // Extend the original schema with extra validations
 const taskFormSchema = insertTaskSchema.extend({
   date: z.string().min(1, "Date is required"),
@@ -442,10 +456,10 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         }
       }
 
-      // Create task object with timezone-aware approach
-      // Create a function to format dates properly preserving the local date
-      function createLocalISOString(date: Date): string {
-        // Create the ISO string but preserve local timezone info by using fixed parts
+      // Create date with adjusted timezone to preserve local date
+      // Format a date to keep the same visually displayed day in local time
+      const formatDateToPreserveLocalDay = (date: Date): string => {
+        // Extract local date components
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
@@ -453,15 +467,16 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         const minutes = String(date.getMinutes()).padStart(2, '0');
         const seconds = String(date.getSeconds()).padStart(2, '0');
         
-        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.000Z`;
-      }
+        // Create date string in format YYYY-MM-DDThh:mm:ss
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      };
       
       const taskData: InsertTask = {
         title: data.title,
         description: data.description || "",
         userId: 0, // This will be populated by the server based on the session
-        date: createLocalISOString(dateObj), // Use custom function to preserve local date
-        endDate: endDateObj ? createLocalISOString(endDateObj) : undefined,
+        date: formatDateToPreserveLocalDay(dateObj), // Format date to preserve local time 
+        endDate: endDateObj ? formatDateToPreserveLocalDay(endDateObj) : undefined,
         priority: data.priority,
         location: data.location || "",
         isAllDay: data.isAllDay,
@@ -472,8 +487,8 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         skipHolidays: data.skipHolidays,
         holidayCountry: data.holidayCountry || undefined,
         recurrenceType: data.recurrenceType,
-        recurrenceStartDate: data.isRecurring ? createLocalISOString(dateObj) : undefined,
-        recurrenceEndDate: data.isRecurring && endDateObj ? createLocalISOString(endDateObj) : undefined,
+        recurrenceStartDate: data.isRecurring ? formatDateToPreserveLocalDay(dateObj) : undefined,
+        recurrenceEndDate: data.isRecurring && endDateObj ? formatDateToPreserveLocalDay(endDateObj) : undefined,
       };
       
       console.log("Attempting to create task:", taskData);
