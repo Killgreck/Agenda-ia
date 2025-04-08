@@ -162,6 +162,79 @@ function generateRecurringTasks(taskData: any): any[] {
     }
   }
   
+  // For monthly recurrence
+  else if (taskData.recurrenceType === "monthly") {
+    let currentDate = new Date(startDate);
+    const dayOfMonth = currentDate.getDate(); // Get the day of month from start date
+    
+    while (currentDate <= endDate) {
+      // Check if current date has same day of month
+      if (currentDate.getDate() === dayOfMonth) {
+        // Create a new task instance
+        const taskInstance = { ...taskData };
+        
+        // Set the date for this instance
+        if (!taskData.isAllDay) {
+          // Combine date and time
+          const dateStr = format(currentDate, "yyyy-MM-dd");
+          const dateWithTime = new Date(`${dateStr}T${startTime}`);
+          taskInstance.date = formatDateToPreserveLocalDay(dateWithTime);
+          
+          if (endTime) {
+            const endDateWithTime = new Date(`${dateStr}T${endTime}`);
+            taskInstance.endDate = formatDateToPreserveLocalDay(endDateWithTime);
+          }
+        } else {
+          // All-day event
+          taskInstance.date = formatDateToPreserveLocalDay(currentDate);
+        }
+        
+        // Add to task list
+        tasks.push(taskInstance);
+      }
+      
+      // Move to next day
+      currentDate = addDays(currentDate, 1);
+    }
+  }
+  
+  // For yearly recurrence
+  else if (taskData.recurrenceType === "yearly") {
+    let currentDate = new Date(startDate);
+    const monthOfYear = currentDate.getMonth(); // Get month (0-11)
+    const dayOfMonth = currentDate.getDate(); // Get day of month
+    
+    while (currentDate <= endDate) {
+      // Check if current date has same month and day of month (same day of year)
+      if (currentDate.getMonth() === monthOfYear && currentDate.getDate() === dayOfMonth) {
+        // Create a new task instance
+        const taskInstance = { ...taskData };
+        
+        // Set the date for this instance
+        if (!taskData.isAllDay) {
+          // Combine date and time
+          const dateStr = format(currentDate, "yyyy-MM-dd");
+          const dateWithTime = new Date(`${dateStr}T${startTime}`);
+          taskInstance.date = formatDateToPreserveLocalDay(dateWithTime);
+          
+          if (endTime) {
+            const endDateWithTime = new Date(`${dateStr}T${endTime}`);
+            taskInstance.endDate = formatDateToPreserveLocalDay(endDateWithTime);
+          }
+        } else {
+          // All-day event
+          taskInstance.date = formatDateToPreserveLocalDay(currentDate);
+        }
+        
+        // Add to task list
+        tasks.push(taskInstance);
+      }
+      
+      // Move to next day
+      currentDate = addDays(currentDate, 1);
+    }
+  }
+  
   return tasks;
 }
 

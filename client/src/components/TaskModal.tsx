@@ -1,331 +1,284 @@
-import { useState, useEffect } from "react";
-import { X, LightbulbIcon, CalendarDays, AlertTriangle } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertTaskSchema } from "@shared/schema";
-import { z } from "zod";
-import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { InsertTask, Task } from "@shared/schema";
-import { useTasks } from "@/hooks/useTaskManager";
-import { useToast } from "@/hooks/use-toast";
-import { useAI } from "@/hooks/useAI";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { isHoliday } from "@/utils/holidays";
+import React, { useState, useEffect } from 'react';
+import { X, CalendarDays, AlertTriangle, LightbulbIcon } from 'lucide-react';
+import { z } from 'zod';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { format, addDays } from 'date-fns';
+import { Task, InsertTask } from '@shared/schema';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { isHoliday } from '@/utils/holidays';
+import { findPostponeSuggestions } from '@/utils/postponeSuggestions';
+import { useTaskManager } from '@/hooks/useTaskManager';
+import { useAI } from '@/hooks/useAI';
 
-type TaskModalProps = {
-  open: boolean;
-  onClose: () => void;
-  taskToEdit?: InsertTask;
-  viewOnly?: boolean;
-};
-
-// Utility function to format a date string preserving the local date (not UTC converted)
-// This prevents the timezone offset issues when sending dates to the server
-function formatDateToPreserveLocalDay(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-  
-  // Format without timezone component
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-}
-
-// Extend the original schema with extra validations
-const taskFormSchema = insertTaskSchema.extend({
-  date: z.string().min(1, "Date is required"),
+// Create a schema for task form validation
+const taskFormSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  date: z.string().optional(),
   endDate: z.string().optional(),
-  time: z.string().optional(), // Will be merged with date
-  endTime: z.string().optional(), // Will be merged with endDate
+  time: z.string().optional(),
+  endTime: z.string().optional(),
+  priority: z.string().optional().default("medium"),
+  isAllDay: z.boolean().default(false),
+  location: z.string().optional(),
+  reminder: z.array(z.number()).optional(),
   isRecurring: z.boolean().default(false),
-  recurringDays: z.array(z.string()).default([]),
-  skipHolidays: z.boolean().default(false),
-  holidayCountry: z.string().optional(),
-  recurrenceType: z.enum(["daily", "weekly"]).optional(),
+  recurrenceType: z.string().optional(),
   recurrenceStartDate: z.string().optional(),
   recurrenceEndDate: z.string().optional(),
+  recurringDays: z.array(z.string()).optional(),
+  skipHolidays: z.boolean().default(false),
+  holidayCountry: z.string().optional(),
 });
+
+// Function to format date to preserve the local day when converting to ISO
+function formatDateToPreserveLocalDay(date: Date): string {
+  const offset = date.getTimezoneOffset();
+  const adjustedDate = new Date(date.getTime() - offset * 60 * 1000);
+  return adjustedDate.toISOString().split('T')[0];
+}
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
 
+interface TaskModalProps {
+  open: boolean;
+  onClose: () => void;
+  taskToEdit?: Task;
+  viewOnly?: boolean;
+}
+
 export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false }: TaskModalProps) {
-  const { createTask, isCreatingTask } = useTasks();
   const { toast } = useToast();
-  const { askAiForTaskSuggestion, isAskingAi } = useAI();
+  const { createTask, updateTask, tasks: allTasks } = useTaskManager();
+  const { askAiForTaskSuggestion } = useAI();
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [isAskingAi, setIsAskingAi] = useState(false);
   
-  // Initialize form with default values or edit values
-  const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm<TaskFormValues>({
+  // Initialize form with default values or task to edit
+  const { control, handleSubmit, watch, reset, setValue, formState: { errors } } = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
-    defaultValues: taskToEdit 
-      ? {
-          title: taskToEdit.title,
-          description: taskToEdit.description || "",
-          date: new Date(taskToEdit.date).toISOString().split('T')[0],
-          time: taskToEdit.isAllDay ? "" : new Date(taskToEdit.date).toISOString().split('T')[1].substring(0, 5),
-          endDate: taskToEdit.endDate ? new Date(taskToEdit.endDate).toISOString().split('T')[0] : "",
-          endTime: taskToEdit.endDate && !taskToEdit.isAllDay ? new Date(taskToEdit.endDate).toISOString().split('T')[1].substring(0, 5) : "",
-          priority: taskToEdit.priority || "medium",
-          location: taskToEdit.location || "",
-          isAllDay: taskToEdit.isAllDay || false,
-          reminder: taskToEdit.reminder || [],
-          isRecurring: taskToEdit.isRecurring || false,
-          recurringDays: taskToEdit.recurringDays || [],
-          skipHolidays: taskToEdit.skipHolidays || false,
-          holidayCountry: taskToEdit.holidayCountry || "",
-          recurrenceType: (taskToEdit.recurrenceType as "daily" | "weekly") || "weekly",
-          recurrenceStartDate: taskToEdit.recurrenceStartDate 
-            ? new Date(taskToEdit.recurrenceStartDate).toISOString().split('T')[0] 
-            : new Date().toISOString().split('T')[0],
-          recurrenceEndDate: taskToEdit.recurrenceEndDate 
-            ? new Date(taskToEdit.recurrenceEndDate).toISOString().split('T')[0] 
-            : "",
-        }
-      : {
-          title: "",
-          description: "",
-          date: new Date().toISOString().split('T')[0],
-          time: "",
-          endDate: "",
-          endTime: "",
-          priority: "medium",
-          location: "",
-          isAllDay: false,
-          reminder: [15, 60], // Default reminders: 15 min and 1 hour before
-          isRecurring: false,
-          recurringDays: ["monday", "wednesday", "friday"], // Default to MWF for weekly recurrence
-          skipHolidays: false,
-          holidayCountry: "US",
-          recurrenceType: "weekly",
-          recurrenceStartDate: new Date().toISOString().split('T')[0],
-          recurrenceEndDate: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0], // Default to 30 days ahead
-        }
+    defaultValues: taskToEdit ? {
+      title: taskToEdit.title,
+      description: taskToEdit.description || "",
+      date: taskToEdit.date ? new Date(taskToEdit.date).toISOString().split('T')[0] : undefined,
+      endDate: taskToEdit.endDate ? new Date(taskToEdit.endDate).toISOString().split('T')[0] : undefined,
+      time: taskToEdit.date && !taskToEdit.isAllDay ? new Date(taskToEdit.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : undefined,
+      endTime: taskToEdit.endDate && !taskToEdit.isAllDay ? new Date(taskToEdit.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : undefined,
+      priority: taskToEdit.priority || "medium",
+      isAllDay: taskToEdit.isAllDay || false,
+      location: taskToEdit.location || "",
+      reminder: taskToEdit.reminder || [],
+      isRecurring: taskToEdit.isRecurring || false,
+      recurrenceType: taskToEdit.recurrenceType || "daily",
+      recurrenceStartDate: taskToEdit.recurrenceStartDate ? new Date(taskToEdit.recurrenceStartDate).toISOString().split('T')[0] : undefined,
+      recurrenceEndDate: taskToEdit.recurrenceEndDate ? new Date(taskToEdit.recurrenceEndDate).toISOString().split('T')[0] : undefined,
+      recurringDays: taskToEdit.recurringDays || [],
+      skipHolidays: taskToEdit.skipHolidays || false,
+      holidayCountry: taskToEdit.holidayCountry || "",
+    } : {
+      title: "",
+      description: "",
+      date: format(new Date(), "yyyy-MM-dd"),
+      endDate: "",
+      time: "",
+      endTime: "",
+      priority: "medium",
+      isAllDay: false,
+      location: "",
+      reminder: [],
+      isRecurring: false,
+      recurrenceType: "daily",
+      recurrenceStartDate: format(new Date(), "yyyy-MM-dd"),
+      recurrenceEndDate: format(addDays(new Date(), 7), "yyyy-MM-dd"),
+      recurringDays: [],
+      skipHolidays: false,
+      holidayCountry: "",
+    }
   });
   
+  // Watch the value of isAllDay to conditionally display time fields
   const isAllDay = watch("isAllDay");
   
-  // Function to check for time conflicts with existing tasks
+  // Reset form when modal is closed
+  useEffect(() => {
+    if (!open) {
+      reset();
+    }
+  }, [open, reset]);
+  
+  // Check for time conflicts with existing tasks
   const checkTimeConflicts = async (date: Date, endDate?: Date, isAllDay: boolean = false): Promise<string | null> => {
     try {
-      // Get all tasks for the same date
-      const allTasks = await fetch('/api/tasks').then(res => res.json());
+      // Get the date string for the task
+      const dateStr = date.toISOString().split('T')[0];
       
-      if (!allTasks || allTasks.length === 0) return null;
-      
-      // Filter tasks that occur on the same day (excluding the current task if editing)
+      // Filter tasks for the same day
       const tasksOnSameDay = allTasks.filter((task: Task) => {
-        // Skip if we're editing this task (compare by matching fields since ID might not be accessible during edit)
-        if (taskToEdit && task.title === taskToEdit.title && 
-            new Date(task.date).toISOString() === new Date(taskToEdit.date).toISOString()) {
-          return false;
-        }
         const taskDate = new Date(task.date);
-        return taskDate.toDateString() === date.toDateString();
+        return taskDate.toISOString().split('T')[0] === dateStr && !task.isRecurring;
       });
       
-      if (tasksOnSameDay.length === 0) return null;
-      
-      // For all-day events, reject if there's already an all-day event
       if (isAllDay) {
+        // For all-day events, check if there are other all-day events
         const existingAllDayEvents = tasksOnSameDay.filter((task: Task) => task.isAllDay);
         if (existingAllDayEvents.length > 0) {
-          return "There's already an all-day event scheduled for this day. Please choose a different day.";
+          return `You already have ${existingAllDayEvents.length} all-day events scheduled on this date. Would you like to merge them?`;
         }
-      }
-      
-      // Check for time conflicts for non-all-day events
-      if (!isAllDay) {
-        // Ensure endDate exists - default to 1 hour if not specified
-        const actualEndDate = endDate || new Date(date.getTime() + 60 * 60 * 1000);
-        
+        return null;
+      } else {
+        // For time-specific events, check for overlaps
         const conflictingTasks = tasksOnSameDay.filter((task: Task) => {
-          // All-day events conflict with any time of the day
-          if (task.isAllDay) return true; 
+          if (task.isAllDay) return false; // Ignore all-day events
           
-          const taskStart = new Date(task.date);
-          const taskEnd = task.endDate ? new Date(task.endDate) : new Date(taskStart.getTime() + 60 * 60 * 1000); // Default 1 hour
+          const taskStart = new Date(task.date).getTime();
+          const taskEnd = task.endDate ? new Date(task.endDate).getTime() : taskStart + 3600000; // Default 1 hour
           
-          // Check if there's an overlap: new event starts before existing ends AND new event ends after existing starts
-          const hasOverlap = (date < taskEnd && actualEndDate > taskStart);
+          const newTaskStart = date.getTime();
+          const newTaskEnd = endDate ? endDate.getTime() : newTaskStart + 3600000; // Default 1 hour
           
-          // Log conflict detection details for debugging
-          if (hasOverlap) {
-            console.log("Conflict detected:", {
-              newEventStart: date.toLocaleTimeString(),
-              newEventEnd: actualEndDate.toLocaleTimeString(),
-              existingEventStart: taskStart.toLocaleTimeString(),
-              existingEventEnd: taskEnd.toLocaleTimeString(),
-              taskTitle: task.title
-            });
-          }
-          
-          return hasOverlap;
+          // Check for overlap
+          return (
+            (newTaskStart >= taskStart && newTaskStart < taskEnd) || // New task starts during existing task
+            (newTaskEnd > taskStart && newTaskEnd <= taskEnd) || // New task ends during existing task
+            (newTaskStart <= taskStart && newTaskEnd >= taskEnd) // New task completely contains existing task
+          );
         });
         
         if (conflictingTasks.length > 0) {
-          // Get details about conflicting tasks
           const conflictDetails = conflictingTasks.map((task: Task) => `"${task.title}" at ${new Date(task.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`).join(", ");
           
-          // Find available time slots
-          const availableSlots = findAvailableTimeSlots(tasksOnSameDay, date);
+          // Generate postpone suggestions
+          const suggestions = findPostponeSuggestions(tasksOnSameDay, date);
+          const suggestionText = suggestions.length > 0 
+            ? ` Would you like to reschedule to one of these times instead: ${suggestions.map(d => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })).join(', ')}?`
+            : '';
           
-          if (availableSlots.length > 0) {
-            const nextSlot = availableSlots[0];
-            const formattedTime = nextSlot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            return `Time conflict with: ${conflictDetails}. Try scheduling at ${formattedTime} instead.`;
-          } else {
-            return `Time conflicts with: ${conflictDetails}. Please choose another day.`;
-          }
+          return `Time conflict with: ${conflictDetails}.${suggestionText}`;
         }
+        
+        return null;
       }
-      
-      return null;
     } catch (error) {
       console.error("Error checking time conflicts:", error);
-      return "Error checking for time conflicts. Please try again.";
+      return "Error checking for conflicts. Please try again.";
     }
   };
   
-  // Function to find available time slots
+  // Function to find available time slots on a given day
   const findAvailableTimeSlots = (tasksOnDay: Task[], preferredDate: Date): Date[] => {
-    // Default business hours: 8 AM to 6 PM, with a preference to schedule during standard work hours
-    const businessHoursStart = 8;
-    const businessHoursEnd = 18;
-    const preferredStart = 9; // Prefer to suggest slots during core work hours
-    const preferredEnd = 17;
-    
-    // Get duration of the preferred time slot (default to 1 hour)
-    const preferredDuration = 60; // minutes
-    
     // Convert tasks to busy time ranges
     const busyRanges: {start: Date, end: Date, title: string}[] = tasksOnDay
       .filter(task => !task.isAllDay)
       .map(task => {
         const start = new Date(task.date);
-        const end = task.endDate ? new Date(task.endDate) : new Date(start.getTime() + 60 * 60 * 1000);
+        const end = task.endDate ? new Date(task.endDate) : new Date(start.getTime() + 60 * 60 * 1000); // Default 1 hour
         return { start, end, title: task.title };
       });
     
-    // Sort by start time
+    // Sort busy ranges by start time
     busyRanges.sort((a, b) => a.start.getTime() - b.start.getTime());
     
-    // Find available slots (at least for duration of preferred time slot)
+    // Find available slots (assuming working hours 9 AM - 6 PM)
     const availableSlots: Date[] = [];
-    const day = preferredDate.getDate();
-    const month = preferredDate.getMonth();
-    const year = preferredDate.getFullYear();
-    
-    // When looking for available slots, consider the current time if we're scheduling for today
-    const now = new Date();
     let currentTime: Date;
     
-    if (now.getFullYear() === year && now.getMonth() === month && now.getDate() === day) {
-      // We're scheduling for today, start from the current time (rounded up to next half hour)
-      const minutes = now.getMinutes();
-      const roundedMinutes = minutes < 30 ? 30 : 0;
-      const roundedHour = minutes < 30 ? now.getHours() : now.getHours() + 1;
-      
-      if (roundedHour >= businessHoursStart && roundedHour < businessHoursEnd) {
-        currentTime = new Date(year, month, day, roundedHour, roundedMinutes);
-      } else {
-        // If current time is outside business hours, start from business hours
-        currentTime = new Date(year, month, day, businessHoursStart, 0);
-      }
-    } else {
-      // Not today, start from business hours
-      currentTime = new Date(year, month, day, businessHoursStart, 0);
+    // Set start time to 9 AM on the preferred date if before 9 AM, otherwise use the preferred time
+    const workDayStart = new Date(preferredDate);
+    workDayStart.setHours(9, 0, 0, 0);
+    
+    // Set end time to 6 PM on the preferred date
+    const workDayEnd = new Date(preferredDate);
+    workDayEnd.setHours(18, 0, 0, 0);
+    
+    // If preferred time is before work hours, start at beginning of work day
+    if (preferredDate.getTime() < workDayStart.getTime()) {
+      currentTime = new Date(workDayStart);
+    } 
+    // If preferred time is after work hours, suggest next day
+    else if (preferredDate.getTime() > workDayEnd.getTime()) {
+      const nextDay = new Date(preferredDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      nextDay.setHours(9, 0, 0, 0);
+      currentTime = nextDay;
+    } 
+    // Otherwise start at the preferred time
+    else {
+      currentTime = new Date(preferredDate);
     }
     
-    // Check each 30-minute slot within business hours
-    while (currentTime.getHours() < businessHoursEnd) {
-      const slotEnd = new Date(currentTime.getTime() + preferredDuration * 60 * 1000);
-      
-      // Check if this slot conflicts with any busy range
-      let isConflicting = false;
-      for (const range of busyRanges) {
-        // If there's an overlap
-        if (currentTime < range.end && slotEnd > range.start) {
-          isConflicting = true;
-          // Jump to the end of this busy period
-          currentTime = new Date(range.end);
-          break;
-        }
-      }
-      
-      // If no conflict found, this slot is available
-      if (!isConflicting) {
-        // Prefer slots during core work hours
-        const hour = currentTime.getHours();
-        if (hour >= preferredStart && hour < preferredEnd) {
-          availableSlots.push(new Date(currentTime));
-        } else if (availableSlots.length === 0) {
-          // Add slots outside core hours only if we haven't found any better options
-          availableSlots.push(new Date(currentTime));
-        }
-        
-        // Move to next slot (30-minute increments)
-        currentTime = new Date(currentTime.getTime() + 30 * 60 * 1000);
-      }
-      
-      // Safety check to avoid infinite loops
-      if (availableSlots.length >= 5) break; // Limit to 5 suggestions
-    }
-    
-    // Sort slots by preference (core work hours first)
-    availableSlots.sort((a, b) => {
-      const aHour = a.getHours();
-      const bHour = b.getHours();
-      
-      // Prefer core work hours
-      const aIsCore = aHour >= preferredStart && aHour < preferredEnd;
-      const bIsCore = bHour >= preferredStart && bHour < preferredEnd;
-      
-      if (aIsCore && !bIsCore) return -1;
-      if (!aIsCore && bIsCore) return 1;
-      
-      // If both are in the same category, sort chronologically
-      return a.getTime() - b.getTime();
-    });
-    
-    // Log available time slots for debugging
-    if (availableSlots.length > 0) {
-      console.log("Available time slots found:", 
-        availableSlots.map(slot => slot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    // Find 3 available slots
+    while (availableSlots.length < 3 && currentTime.getTime() < workDayEnd.getTime()) {
+      // Check if current time conflicts with any busy range
+      const isConflict = busyRanges.some(range => 
+        currentTime.getTime() >= range.start.getTime() && 
+        currentTime.getTime() < range.end.getTime()
       );
-    } else {
-      console.log("No available time slots found for this day");
+      
+      if (!isConflict) {
+        availableSlots.push(new Date(currentTime));
+        // Move to next 30-minute slot
+        currentTime.setMinutes(currentTime.getMinutes() + 30);
+      } else {
+        // Find the end of the current conflict
+        const conflictEnd = busyRanges.find(range => 
+          currentTime.getTime() >= range.start.getTime() && 
+          currentTime.getTime() < range.end.getTime()
+        )?.end;
+        
+        if (conflictEnd) {
+          currentTime = new Date(conflictEnd);
+        } else {
+          // Fallback: move 30 minutes ahead
+          currentTime.setMinutes(currentTime.getMinutes() + 30);
+        }
+      }
+    }
+    
+    // If we couldn't find enough slots today, check tomorrow
+    if (availableSlots.length < 3) {
+      const tomorrow = new Date(preferredDate);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(9, 0, 0, 0);
+      
+      // Add early morning slot
+      availableSlots.push(tomorrow);
+      
+      // Add mid-morning slot
+      const midMorning = new Date(tomorrow);
+      midMorning.setHours(11, 0, 0, 0);
+      availableSlots.push(midMorning);
+      
+      // Add afternoon slot
+      const afternoon = new Date(tomorrow);
+      afternoon.setHours(14, 0, 0, 0);
+      availableSlots.push(afternoon);
     }
     
     return availableSlots;
   };
-
+  
+  // Handle form submission
   const onSubmit = async (data: TaskFormValues) => {
     try {
-      console.log("Starting task submission"); // Debug log
-      let dateObj: Date;
-      let endDateObj: Date | undefined;
+      setIsCreatingTask(true);
       
-      // Validate form data
-      if (!data.title.trim()) {
+      // Validate required fields
+      if (!data.title) {
         toast({
           title: "Missing Information",
-          description: "Please provide a title for the task.",
+          description: "Please enter a title for the task.",
           variant: "destructive",
         });
+        setIsCreatingTask(false);
         return;
       }
       
@@ -376,7 +329,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         }
         
         // Use recurrence start date as the main date
-        dateObj = new Date(data.recurrenceStartDate);
+        let dateObj = new Date(data.recurrenceStartDate);
         
         // Validate that start date is before end date
         const startDate = new Date(data.recurrenceStartDate);
@@ -399,7 +352,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         }
         
         // Process recurrence end date
-        endDateObj = new Date(data.recurrenceEndDate);
+        let endDateObj = new Date(data.recurrenceEndDate);
         if (!isAllDay && data.endTime) {
           const [hours, minutes] = data.endTime.split(':').map(Number);
           endDateObj.setHours(hours, minutes);
@@ -453,13 +406,14 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         }
         
         // Crear la fecha combinando la fecha y hora explícitamente
-        dateObj = new Date(`${dateStr}T${timeStr}`);
+        let dateObj = new Date(`${dateStr}T${timeStr}`);
         
         // Mantenemos la fecha tal cual está, sin aplicar ajustes de zona horaria
         // Ya que el problema de la fecha está resuelto, no necesitamos compensar las horas
         // dateObj mantiene la fecha y hora exactas que el usuario seleccionó
         
         // Process regular end date if provided
+        let endDateObj;
         if (data.endDate) {
           // Crear la fecha de fin con control preciso sobre la hora local
           const endDateStr = data.endDate; // Formato YYYY-MM-DD
@@ -731,8 +685,10 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                           <SelectValue placeholder="Select recurrence type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="daily">Diario</SelectItem>
+                          <SelectItem value="weekly">Semanal</SelectItem>
+                          <SelectItem value="monthly">Mensual</SelectItem>
+                          <SelectItem value="yearly">Anual</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -754,6 +710,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                             {...field} 
                             id="recurrenceStartDate"
                             type="date" 
+                            min={new Date().toISOString().split('T')[0]} // Establecer fecha mínima como hoy
                             className="w-full border border-gray-300 rounded-lg" 
                           />
                         )}
@@ -771,6 +728,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                             {...field} 
                             id="recurrenceEndDate"
                             type="date" 
+                            min={watch("recurrenceStartDate") || new Date().toISOString().split('T')[0]} // Fecha mínima es la fecha inicio o hoy
                             className="w-full border border-gray-300 rounded-lg" 
                           />
                         )}
@@ -910,26 +868,6 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                 </div>
               </div>
             )}
-          </div>
-          
-          <div className="mb-4">
-            <Controller
-              name="isAllDay"
-              control={control}
-              render={({ field }) => (
-                <div className="flex items-center mb-2">
-                  <Checkbox 
-                    id="isAllDay" 
-                    checked={field.value}
-                    onCheckedChange={viewOnly ? undefined : field.onChange}
-                    disabled={viewOnly}
-                  />
-                  <Label htmlFor="isAllDay" className="ml-2 text-sm font-medium text-gray-700">
-                    All-day event
-                  </Label>
-                </div>
-              )}
-            />
           </div>
           
           {!isRecurring && (
@@ -1165,8 +1103,10 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                           <SelectValue placeholder="Select recurrence type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="daily">Diario</SelectItem>
+                          <SelectItem value="weekly">Semanal</SelectItem>
+                          <SelectItem value="monthly">Mensual</SelectItem>
+                          <SelectItem value="yearly">Anual</SelectItem>
                         </SelectContent>
                       </Select>
                     )}

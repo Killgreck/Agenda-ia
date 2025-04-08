@@ -8,6 +8,71 @@ interface UseTasksOptions {
   year?: number;
 }
 
+export function useTaskManager() {
+  const queryClient = useQueryClient();
+  
+  // Fetch all tasks
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['/api/tasks'],
+    queryFn: async () => {
+      const response = await fetch('/api/tasks');
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
+      }
+      const data = await response.json();
+      return data.tasks || [];
+    }
+  });
+  
+  // Create a new task
+  const { mutateAsync: createTask } = useMutation({
+    mutationFn: async (taskData: InsertTask) => {
+      const response = await apiRequest('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify(taskData)
+      });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+    }
+  });
+  
+  // Update an existing task
+  const { mutateAsync: updateTask } = useMutation({
+    mutationFn: async ({ id, taskData }: { id: number, taskData: Partial<InsertTask> }) => {
+      const response = await apiRequest(`/api/tasks/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(taskData)
+      });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+    }
+  });
+  
+  // Delete a task
+  const { mutateAsync: deleteTask } = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest(`/api/tasks/${id}`, {
+        method: 'DELETE'
+      });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+    }
+  });
+  
+  return {
+    tasks,
+    createTask,
+    updateTask,
+    deleteTask
+  };
+}
+
 export function useTasks(options?: UseTasksOptions) {
   const queryClient = useQueryClient();
   const today = new Date();

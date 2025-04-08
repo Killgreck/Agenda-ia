@@ -1,4 +1,48 @@
 import { addDays, addHours, addMinutes, format, isAfter, isWeekend } from "date-fns";
+import { Task } from "@shared/schema";
+
+/**
+ * Find available time slots to suggest when there are scheduling conflicts
+ * @param tasksOnDay List of tasks already scheduled that day
+ * @param preferredDate The date the user initially wanted to schedule
+ * @returns Array of suggested dates for rescheduling
+ */
+export function findPostponeSuggestions(tasksOnDay: Task[], preferredDate: Date): Date[] {
+  // Sort tasks by start time
+  const sortedTasks = [...tasksOnDay].sort((a, b) => 
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+  
+  // Find available 30-minute slots
+  const suggestions: Date[] = [];
+  const workdayStart = new Date(preferredDate);
+  workdayStart.setHours(9, 0, 0, 0); // 9 AM
+  
+  const workdayEnd = new Date(preferredDate);
+  workdayEnd.setHours(18, 0, 0, 0); // 6 PM
+  
+  // Generate 3 suggestions
+  // 1. Later the same day
+  let laterToday = new Date(preferredDate);
+  laterToday.setHours(laterToday.getHours() + 2); // 2 hours later
+  if (laterToday.getTime() < workdayEnd.getTime()) {
+    suggestions.push(laterToday);
+  }
+  
+  // 2. Tomorrow morning
+  const tomorrowMorning = new Date(preferredDate);
+  tomorrowMorning.setDate(tomorrowMorning.getDate() + 1);
+  tomorrowMorning.setHours(10, 0, 0, 0); // 10 AM next day
+  suggestions.push(tomorrowMorning);
+  
+  // 3. Tomorrow afternoon
+  const tomorrowAfternoon = new Date(preferredDate);
+  tomorrowAfternoon.setDate(tomorrowAfternoon.getDate() + 1);
+  tomorrowAfternoon.setHours(14, 0, 0, 0); // 2 PM next day
+  suggestions.push(tomorrowAfternoon);
+  
+  return suggestions;
+}
 
 /**
  * Generate a random suggestion for postponing a task
