@@ -341,6 +341,22 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
           return;
         }
         
+        // Verificar que la fecha de inicio de recurrencia no sea en el pasado
+        const recurrStartDate = new Date(data.recurrenceStartDate);
+        recurrStartDate.setHours(0, 0, 0, 0); // Reset time part for date comparison
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time part for date comparison
+        
+        if (recurrStartDate < today) {
+          toast({
+            title: "Invalid Start Date",
+            description: "Cannot schedule recurring events starting in the past. Please select a present or future date.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         if (!data.recurrenceEndDate) {
           toast({
             title: "Missing Information",
@@ -396,6 +412,22 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
           toast({
             title: "Missing Information",
             description: "Please select a date for the event.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Verificar que la fecha no sea en el pasado
+        const selectedDate = new Date(data.date);
+        selectedDate.setHours(0, 0, 0, 0); // Reset time part for date comparison
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time part for date comparison
+        
+        if (selectedDate < today) {
+          toast({
+            title: "Invalid Date",
+            description: "Cannot schedule tasks in the past. Please select a present or future date.",
             variant: "destructive",
           });
           return;
@@ -915,6 +947,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                         {...field} 
                         id="date"
                         type="date" 
+                        min={new Date().toISOString().split('T')[0]} // Establecer fecha mínima como hoy
                         className={`w-full border border-gray-300 rounded-lg ${viewOnly ? 'bg-gray-50' : ''}`}
                         readOnly={viewOnly}
                         disabled={viewOnly}
@@ -962,6 +995,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                         {...field} 
                         id="endDate"
                         type="date" 
+                        min={watch("date") || new Date().toISOString().split('T')[0]} // Fecha mínima es la fecha inicio o hoy
                         className={`w-full border border-gray-300 rounded-lg ${viewOnly ? 'bg-gray-50' : ''}`}
                         readOnly={viewOnly}
                         disabled={viewOnly}
@@ -1153,6 +1187,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                           {...field} 
                           id="recurrenceStartDate"
                           type="date" 
+                          min={new Date().toISOString().split('T')[0]} // Establecer fecha mínima como hoy
                           className="w-full border border-gray-300 rounded-lg" 
                         />
                       )}
@@ -1170,6 +1205,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                           {...field} 
                           id="recurrenceEndDate"
                           type="date" 
+                          min={watch("recurrenceStartDate") || new Date().toISOString().split('T')[0]} // Fecha mínima es la fecha inicio o hoy
                           className="w-full border border-gray-300 rounded-lg" 
                         />
                       )}
