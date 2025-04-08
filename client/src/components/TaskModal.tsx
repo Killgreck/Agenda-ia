@@ -442,13 +442,26 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         }
       }
 
-      // Create task object
+      // Create task object with timezone-aware approach
+      // Create a function to format dates properly preserving the local date
+      function createLocalISOString(date: Date): string {
+        // Create the ISO string but preserve local timezone info by using fixed parts
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.000Z`;
+      }
+      
       const taskData: InsertTask = {
         title: data.title,
         description: data.description || "",
         userId: 0, // This will be populated by the server based on the session
-        date: dateObj.toISOString(), // Convert to ISO string for server
-        endDate: endDateObj ? endDateObj.toISOString() : undefined,
+        date: createLocalISOString(dateObj), // Use custom function to preserve local date
+        endDate: endDateObj ? createLocalISOString(endDateObj) : undefined,
         priority: data.priority,
         location: data.location || "",
         isAllDay: data.isAllDay,
@@ -459,8 +472,8 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         skipHolidays: data.skipHolidays,
         holidayCountry: data.holidayCountry || undefined,
         recurrenceType: data.recurrenceType,
-        recurrenceStartDate: data.isRecurring ? dateObj.toISOString() : undefined,
-        recurrenceEndDate: data.isRecurring && endDateObj ? endDateObj.toISOString() : undefined,
+        recurrenceStartDate: data.isRecurring ? createLocalISOString(dateObj) : undefined,
+        recurrenceEndDate: data.isRecurring && endDateObj ? createLocalISOString(endDateObj) : undefined,
       };
       
       console.log("Attempting to create task:", taskData);

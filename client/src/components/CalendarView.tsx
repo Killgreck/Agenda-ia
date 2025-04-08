@@ -51,13 +51,28 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
     isAcceptingSuggestion 
   } = useAiSuggestions();
   
-  // Filter for tasks on a specific date
+  // Filter for tasks on a specific date with timezone correction
   const getTasksForDate = (date: Date): Task[] => {
     return tasks.filter((task: Task) => {
-      const taskDate = new Date(task.date);
-      return taskDate.getDate() === date.getDate() && 
-             taskDate.getMonth() === date.getMonth() && 
-             taskDate.getFullYear() === date.getFullYear();
+      // Create date from task.date and adjust for timezone
+      const taskDateStr = task.date;
+      const taskDate = new Date(taskDateStr);
+      
+      // Create date strings for comparison in local timezone (YYYY-MM-DD format)
+      const taskLocalDate = new Date(
+        taskDate.getFullYear(),
+        taskDate.getMonth(),
+        taskDate.getDate()
+      );
+      
+      const dateLocalDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+      );
+      
+      // Compare year, month, and day components in local timezone
+      return taskLocalDate.getTime() === dateLocalDate.getTime();
     });
   };
   
@@ -412,10 +427,24 @@ export default function CalendarView({ onDayClick }: CalendarViewProps) {
                 <div className="grid grid-cols-1 gap-3">
                   {Array.from({ length: 24 }).map((_, hour) => {
                     const hourTasks = tasks.filter((task: Task) => {
+                      // Create date from task.date and adjust for timezone
                       const taskDate = new Date(task.date);
-                      return taskDate.getDate() === currentDate.getDate() && 
-                             taskDate.getMonth() === currentDate.getMonth() && 
-                             taskDate.getFullYear() === currentDate.getFullYear() &&
+                      
+                      // First check if the date matches (year, month, day)
+                      const taskLocalDate = new Date(
+                        taskDate.getFullYear(),
+                        taskDate.getMonth(),
+                        taskDate.getDate()
+                      );
+                      
+                      const currentLocalDate = new Date(
+                        currentDate.getFullYear(),
+                        currentDate.getMonth(),
+                        currentDate.getDate()
+                      );
+                      
+                      // Check if it's the same day and the same hour
+                      return taskLocalDate.getTime() === currentLocalDate.getTime() && 
                              taskDate.getHours() === hour;
                     });
                     
