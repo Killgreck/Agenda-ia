@@ -5,7 +5,6 @@ import { InsertChatMessage, AiSuggestion } from "@shared/schema";
 import { getTaskSuggestion } from "@/lib/ai";
 import { useToast } from "@/hooks/use-toast";
 import useWebsocket from "./useWebsocket";
-import { useAuth } from "./useAuth";
 
 // Define a client-side version of ChatMessage with timestamp as string
 // This prevents type issues between server (Date) and client (string) representations
@@ -23,62 +22,41 @@ export function useAI() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  // Use the auth state from useAuth hook instead of localStorage
-  const { isAuthenticated, user } = useAuth();
+  // Check if authentication has been verified - fetch the auth status from localStorage
+  const authStorageStr = localStorage.getItem('auth-storage');
+  const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { isAuthenticated: false } };
+  const isAuthenticated = authStorage?.state?.isAuthenticated;
   
   // Use the central WebSocket hook
   const { subscribe, isConnected } = useWebsocket();
   
   // Subscribe to relevant WebSocket messages
   useEffect(() => {
-    // Don't subscribe if WebSocket isn't connected
-    if (!isConnected) {
-      console.log('WebSocket not connected, skipping chat message subscription');
-      return;
-    }
+    if (!isConnected) return;
     
     // Get user ID for message filtering
-    const userId = user?.id;
-    
-    // Only subscribe if we have a valid user ID
-    if (!userId) {
-      console.log('No user ID available, skipping chat message subscription');
-      return; 
-    }
-    
-    console.log(`Setting up WebSocket subscription for chat messages for user ${userId}`);
+    const userId = authStorage?.state?.user?.id;
     
     // Define message handler
     const handleMessage = (data: any) => {
-      try {
-        if (data.type === 'NEW_CHAT_MESSAGE') {
-          // Add the new message to the list only if it belongs to this user
-          const newMessage = data.message as ChatMessage;
-          
-          // Check if the message belongs to this user
-          // If userId isn't in the message, it's likely a broadcast intended for everyone
-          if (!newMessage.userId || newMessage.userId === userId) {
-            console.log('Received relevant chat message:', newMessage);
-            
-            if (newMessage.sender === 'ai') {
-              // Simulate AI typing before showing the message
-              setIsTyping(true);
-              setTimeout(() => {
-                setIsTyping(false);
-                setMessages(prev => [...prev, newMessage]);
-              }, 1500);
-            } else {
+      if (data.type === 'NEW_CHAT_MESSAGE') {
+        // Add the new message to the list only if it belongs to this user
+        const newMessage = data.message as ChatMessage;
+        
+        // Check if the message belongs to this user
+        // If userId isn't in the message, it's likely a broadcast intended for everyone
+        if (!newMessage.userId || newMessage.userId === userId) {
+          if (newMessage.sender === 'ai') {
+            // Simulate AI typing before showing the message
+            setIsTyping(true);
+            setTimeout(() => {
+              setIsTyping(false);
               setMessages(prev => [...prev, newMessage]);
-            }
+            }, 1500);
           } else {
-            console.log('Received message for different user, ignoring', {
-              messageUserId: newMessage.userId,
-              currentUserId: userId
-            });
+            setMessages(prev => [...prev, newMessage]);
           }
         }
-      } catch (error) {
-        console.error('Error processing WebSocket chat message:', error);
       }
     };
     
@@ -87,18 +65,17 @@ export function useAI() {
     
     // Clean up subscription when component unmounts
     return () => {
-      console.log('Cleaning up chat message subscription');
       unsubscribe();
     };
-  }, [isConnected, subscribe, user?.id]);
+  }, [isConnected, subscribe, authStorage?.state?.user?.id]);
   
   // Initialize with welcome message since messages aren't persisted anymore
   useEffect(() => {
     // Get user ID for the welcome message
-    const userId = user?.id;
+    const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
     
-    // Add welcome message only if messages array is empty and we have a valid userId
-    if (messages.length === 0 && userId) {
+    // Add welcome message only if messages array is empty
+    if (messages.length === 0) {
       const welcomeMessage: ChatMessage = {
         id: 0,
         content: "Hi there! I'm your calendar assistant and scheduling coach. I'd be happy to help you manage your schedule or provide productivity tips. What can I help you with today?",
@@ -108,18 +85,13 @@ export function useAI() {
       };
       setMessages([welcomeMessage]);
     }
-  }, [messages.length, user?.id]);
+  }, [messages.length]);
   
   // Mutation to send message
   const { mutateAsync: sendMessageMutation } = useMutation({
     mutationFn: async (content: string) => {
-      // Get user ID from auth hook
-      const userId = user?.id;
-      
-      // Only proceed if we have a valid userId
-      if (!userId) {
-        throw new Error("User not authenticated");
-      }
+      // Get user ID from auth storage
+      const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
       
       const messageData: InsertChatMessage = {
         content,
@@ -203,13 +175,8 @@ export function useAI() {
           throw new Error("AI service error detected in response");
         }
         
-        // Get user ID from auth hook for the AI suggestion
-        const userId = user?.id;
-        
-        // Only proceed if we have a valid userId
-        if (!userId) {
-          throw new Error("User not authenticated");
-        }
+        // Get user ID from auth storage for the AI suggestion
+        const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
         
         // Create the AI suggestion in the database
         const suggestionData = {
@@ -238,13 +205,7 @@ export function useAI() {
         
         // Still attempt to save this fallback in the database
         try {
-          const userId = user?.id;
-          
-          // Only proceed if we have a valid userId
-          if (!userId) {
-            throw new Error("User not authenticated");
-          }
-          
+          const userId = authStorage?.state?.user?.id || 1;
           const fallbackData = {
             suggestion: fallbackSuggestion,
             timestamp: new Date().toISOString(),
@@ -322,8 +283,10 @@ export function useAI() {
 export function useAiSuggestions() {
   const queryClient = useQueryClient();
   
-  // Use the auth state from useAuth hook
-  const { isAuthenticated, user } = useAuth();
+  // Check if authentication has been verified - fetch the auth status from localStorage
+  const authStorageStr = localStorage.getItem('auth-storage');
+  const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { isAuthenticated: false } };
+  const isAuthenticated = authStorage?.state?.isAuthenticated;
   
   // Query to get AI suggestions - only when authenticated
   const { data: suggestionsData = [] } = useQuery({

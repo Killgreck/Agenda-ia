@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import { apiRequest } from '@/lib/queryClient';
 
 interface User {
@@ -170,35 +170,6 @@ export const useAuth = create<AuthState>()(
     {
       name: 'auth-storage',
       partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
-      storage: createJSONStorage(() => {
-        return {
-          getItem: (name) => {
-            try {
-              const value = localStorage.getItem(name);
-              return value ? JSON.parse(value) : null;
-            } catch (error) {
-              console.error('Error reading from localStorage:', error);
-              return null;
-            }
-          },
-          setItem: (name, value) => {
-            try {
-              localStorage.setItem(name, JSON.stringify(value));
-            } catch (error) {
-              console.error('Error writing to localStorage:', error);
-              // Silently fail but log the error
-            }
-          },
-          removeItem: (name) => {
-            try {
-              localStorage.removeItem(name);
-            } catch (error) {
-              console.error('Error removing from localStorage:', error);
-              // Silently fail but log the error
-            }
-          }
-        };
-      })
     }
   )
 );

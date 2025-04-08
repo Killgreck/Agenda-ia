@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { WeeklyStats } from "@/types";
 import { apiRequest } from "@/lib/queryClient";
 import { useState, useEffect } from "react";
-import { useAuth } from "./useAuth";
 
 // Interface for detailed statistics
 export interface DetailedStats {
@@ -77,9 +76,11 @@ export function useStats() {
     return { startDate, endDate };
   };
 
-  // Get user ID from the useAuth hook
-  const { isAuthenticated, user } = useAuth();
-  const userId = user?.id;
+  // Get user ID from localStorage
+  const authStorageStr = localStorage.getItem('auth-storage');
+  const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { user: { id: 0 } } };
+  const userId = authStorage?.state?.user?.id || 0;
+  const isAuthenticated = authStorage?.state?.isAuthenticated || false;
   
   // Get current week's statistics
   const { 
@@ -134,7 +135,7 @@ export function useStats() {
         });
       }
     },
-    enabled: isAuthenticated && userId !== undefined && userId !== null // Only fetch when user is authenticated and we have a valid userId
+    enabled: isAuthenticated && userId > 0 // Only fetch when user is authenticated and we have a valid userId
   });
   
   // Function to generate weekly report
@@ -203,7 +204,7 @@ export function useStats() {
         return [];
       }
     },
-    enabled: isAuthenticated && userId !== undefined && userId !== null // Only fetch when user is authenticated and we have a valid userId
+    enabled: isAuthenticated && userId > 0 // Only fetch when user is authenticated
   });
   
   // Force refresh function that can be called after check-ins
