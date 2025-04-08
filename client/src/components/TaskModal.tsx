@@ -322,22 +322,34 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         
         // Verificar que la fecha de inicio de recurrencia no sea en el pasado
         const recurrStartDate = new Date(data.recurrenceStartDate);
-        recurrStartDate.setHours(0, 0, 0, 0); // Reset time part for date comparison
+        let taskStartDateTime = new Date(recurrStartDate);
         
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Reset time part for date comparison
+        // Si hay una hora específica, la consideramos
+        if (!isAllDay && data.time) {
+          const [hours, minutes] = data.time.split(':').map(Number);
+          taskStartDateTime.setHours(hours, minutes, 0, 0);
+        } else {
+          taskStartDateTime.setHours(0, 0, 0, 0);
+        }
         
-        // Cambiamos la comparación para permitir tareas que comienzan hoy
-        if (recurrStartDate.getTime() < today.getTime() && 
-            !(recurrStartDate.getDate() === today.getDate() && 
-              recurrStartDate.getMonth() === today.getMonth() && 
-              recurrStartDate.getFullYear() === today.getFullYear())) {
-          toast({
-            title: "Invalid Start Date",
-            description: "Cannot schedule recurring events starting in the past. Please select a present or future date.",
-            variant: "destructive",
-          });
-          return;
+        const now = new Date();
+        
+        // Si la fecha+hora combinada es anterior a la hora actual
+        if (taskStartDateTime < now) {
+          // Solo rechazamos si no es hoy o si es hoy pero la hora ya pasó
+          const isToday = taskStartDateTime.getDate() === now.getDate() && 
+                          taskStartDateTime.getMonth() === now.getMonth() && 
+                          taskStartDateTime.getFullYear() === now.getFullYear();
+          
+          // Si no es hoy, o si es hoy pero la hora ya pasó (y no es un evento de todo el día)
+          if (!isToday || (!isAllDay && taskStartDateTime < now)) {
+            toast({
+              title: "Invalid Start Date/Time",
+              description: "Cannot schedule recurring events starting in the past. Please select a future date or time.",
+              variant: "destructive",
+            });
+            return;
+          }
         }
         
         if (!data.recurrenceEndDate) {
@@ -402,22 +414,34 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         
         // Verificar que la fecha no sea en el pasado
         const selectedDate = new Date(data.date);
-        selectedDate.setHours(0, 0, 0, 0); // Reset time part for date comparison
+        let taskStartDateTime = new Date(selectedDate);
         
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Reset time part for date comparison
+        // Si hay una hora específica, la consideramos
+        if (!isAllDay && data.time) {
+          const [hours, minutes] = data.time.split(':').map(Number);
+          taskStartDateTime.setHours(hours, minutes, 0, 0);
+        } else {
+          taskStartDateTime.setHours(0, 0, 0, 0);
+        }
         
-        // Cambiamos la comparación para permitir tareas que comienzan hoy
-        if (selectedDate.getTime() < today.getTime() &&
-            !(selectedDate.getDate() === today.getDate() && 
-              selectedDate.getMonth() === today.getMonth() && 
-              selectedDate.getFullYear() === today.getFullYear())) {
-          toast({
-            title: "Invalid Date",
-            description: "Cannot schedule tasks in the past. Please select a present or future date.",
-            variant: "destructive",
-          });
-          return;
+        const now = new Date();
+        
+        // Si la fecha+hora combinada es anterior a la hora actual
+        if (taskStartDateTime < now) {
+          // Solo rechazamos si no es hoy o si es hoy pero la hora ya pasó
+          const isToday = taskStartDateTime.getDate() === now.getDate() && 
+                          taskStartDateTime.getMonth() === now.getMonth() && 
+                          taskStartDateTime.getFullYear() === now.getFullYear();
+          
+          // Si no es hoy, o si es hoy pero la hora ya pasó (y no es un evento de todo el día)
+          if (!isToday || (!isAllDay && taskStartDateTime < now)) {
+            toast({
+              title: "Invalid Start Date/Time",
+              description: "Cannot schedule events starting in the past. Please select a future date or time.",
+              variant: "destructive",
+            });
+            return;
+          }
         }
         
         if (!isAllDay && !data.time) {
