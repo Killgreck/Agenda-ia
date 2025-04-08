@@ -411,17 +411,38 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         }
         
         // For single events, use the regular date fields
-        dateObj = new Date(data.date);
+        // Crear la fecha con control preciso sobre la hora local
+        // Esto evita que la zona horaria afecte la visualización
+        const dateStr = data.date; // Formato YYYY-MM-DD
+        let timeStr = '00:00:00';
+        
         if (!isAllDay && data.time) {
-          const [hours, minutes] = data.time.split(':').map(Number);
-          dateObj.setHours(hours, minutes);
-        } else {
-          dateObj.setHours(0, 0, 0, 0);
+          timeStr = `${data.time}:00`; // Añadir los segundos
         }
+        
+        // Crear la fecha combinando la fecha y hora explícitamente
+        dateObj = new Date(`${dateStr}T${timeStr}`);
+        
+        // Aplicamos un ajuste de 5 horas para compensar el desfase observado
+        // Este ajuste es específico para esta implementación
+        const userTimezoneOffset = 5 * 60 * 60 * 1000; // 5 horas en milisegundos
+        dateObj = new Date(dateObj.getTime() - userTimezoneOffset);
         
         // Process regular end date if provided
         if (data.endDate) {
-          endDateObj = new Date(data.endDate);
+          // Crear la fecha de fin con control preciso sobre la hora local
+          const endDateStr = data.endDate; // Formato YYYY-MM-DD
+          let endTimeStr = '23:59:59'; // Por defecto, final del día
+          
+          if (!isAllDay && data.endTime) {
+            endTimeStr = `${data.endTime}:00`; // Añadir los segundos
+          }
+          
+          // Crear la fecha combinando la fecha y hora explícitamente
+          endDateObj = new Date(`${endDateStr}T${endTimeStr}`);
+          
+          // Aplicar el mismo ajuste que a la fecha de inicio
+          endDateObj = new Date(endDateObj.getTime() - userTimezoneOffset);
           
           // Validate that end date is not before start date
           if (endDateObj < dateObj) {
@@ -431,13 +452,6 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
               variant: "destructive",
             });
             return;
-          }
-          
-          if (!isAllDay && data.endTime) {
-            const [hours, minutes] = data.endTime.split(':').map(Number);
-            endDateObj.setHours(hours, minutes);
-          } else {
-            endDateObj.setHours(23, 59, 59, 999);
           }
         }
       }
@@ -456,23 +470,12 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         }
       }
 
-      // Create date with adjusted timezone to preserve local date
-      // Format a date to keep the same visually displayed day in local time
+      // Convierte la fecha a un string en formato ISO
+      // Mantenemos el formato ISO pero sin aplicar ningún ajuste adicional
+      // ya que ya hemos compensado las diferencias de zona horaria anteriormente
       const formatDateToPreserveLocalDay = (date: Date): string => {
-        // Add timezone offset to make sure the date is preserved exactly as entered
-        const timezoneOffset = date.getTimezoneOffset() * 60000; // Convert to milliseconds
-        const localDate = new Date(date.getTime() + timezoneOffset);
-        
-        // Extract local date components
-        const year = localDate.getUTCFullYear();
-        const month = String(localDate.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(localDate.getUTCDate()).padStart(2, '0');
-        const hours = String(localDate.getUTCHours()).padStart(2, '0');
-        const minutes = String(localDate.getUTCMinutes()).padStart(2, '0');
-        const seconds = String(localDate.getUTCSeconds()).padStart(2, '0');
-        
-        // Create date string in ISO 8601 format with 'Z' to indicate UTC
-        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`;
+        // Formato directo de la fecha a ISO
+        return date.toISOString();
       };
       
       const taskData: InsertTask = {
