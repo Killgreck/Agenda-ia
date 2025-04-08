@@ -423,10 +423,9 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         // Crear la fecha combinando la fecha y hora explícitamente
         dateObj = new Date(`${dateStr}T${timeStr}`);
         
-        // Aplicamos un ajuste de 5 horas para compensar el desfase observado
-        // Este ajuste es específico para esta implementación
-        const userTimezoneOffset = 5 * 60 * 60 * 1000; // 5 horas en milisegundos
-        dateObj = new Date(dateObj.getTime() - userTimezoneOffset);
+        // Mantenemos la fecha tal cual está, sin aplicar ajustes de zona horaria
+        // Ya que el problema de la fecha está resuelto, no necesitamos compensar las horas
+        // dateObj mantiene la fecha y hora exactas que el usuario seleccionó
         
         // Process regular end date if provided
         if (data.endDate) {
@@ -441,8 +440,8 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
           // Crear la fecha combinando la fecha y hora explícitamente
           endDateObj = new Date(`${endDateStr}T${endTimeStr}`);
           
-          // Aplicar el mismo ajuste que a la fecha de inicio
-          endDateObj = new Date(endDateObj.getTime() - userTimezoneOffset);
+          // Mantenemos la fecha tal cual está, sin aplicar ajustes de zona horaria
+          // Ya que el problema de la fecha está resuelto, no necesitamos compensar las horas
           
           // Validate that end date is not before start date
           if (endDateObj < dateObj) {
