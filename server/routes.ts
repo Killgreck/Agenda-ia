@@ -54,15 +54,13 @@ function scheduleTaskReminders(task: any, broadcastMessage: (message: any) => vo
 
 // Helper function to format dates in a way that preserves local day
 function formatDateToPreserveLocalDay(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
+  // If the date is already a UTC ISO string, return it as is
+  if (date.toISOString().endsWith('Z')) {
+    return date.toISOString();
+  }
   
-  // Create date string in format YYYY-MM-DDThh:mm:ss
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  // Otherwise, create a UTC ISO string to preserve the local date and time
+  return date.toISOString();
 }
 
 function generateRecurringTasks(taskData: any): any[] {
@@ -536,10 +534,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Date from client:", req.body.date);
       console.log("End date from client:", req.body.endDate);
       
+      // Log date format to debug timezone issues
+      console.log("Date format check - includes Z?", req.body.date?.includes('Z'));
+      
       const rawData = {
         ...req.body,
         userId, // Include the user ID from session
-        // Preserve date strings EXACTLY as received from client to maintain local day
+        // Use the dates exactly as received from client, which now include the 'Z' to indicate UTC
+        // This preserves the exact date and time as entered by the user without timezone conversion
         date: req.body.date,
         endDate: req.body.endDate,
         recurrenceStartDate: req.body.recurrenceStartDate,

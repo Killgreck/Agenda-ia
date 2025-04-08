@@ -459,16 +459,20 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
       // Create date with adjusted timezone to preserve local date
       // Format a date to keep the same visually displayed day in local time
       const formatDateToPreserveLocalDay = (date: Date): string => {
-        // Extract local date components
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
+        // Add timezone offset to make sure the date is preserved exactly as entered
+        const timezoneOffset = date.getTimezoneOffset() * 60000; // Convert to milliseconds
+        const localDate = new Date(date.getTime() + timezoneOffset);
         
-        // Create date string in format YYYY-MM-DDThh:mm:ss
-        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        // Extract local date components
+        const year = localDate.getUTCFullYear();
+        const month = String(localDate.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(localDate.getUTCDate()).padStart(2, '0');
+        const hours = String(localDate.getUTCHours()).padStart(2, '0');
+        const minutes = String(localDate.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(localDate.getUTCSeconds()).padStart(2, '0');
+        
+        // Create date string in ISO 8601 format with 'Z' to indicate UTC
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`;
       };
       
       const taskData: InsertTask = {
