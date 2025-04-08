@@ -327,7 +327,11 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Reset time part for date comparison
         
-        if (recurrStartDate < today) {
+        // Cambiamos la comparación para permitir tareas que comienzan hoy
+        if (recurrStartDate.getTime() < today.getTime() && 
+            !(recurrStartDate.getDate() === today.getDate() && 
+              recurrStartDate.getMonth() === today.getMonth() && 
+              recurrStartDate.getFullYear() === today.getFullYear())) {
           toast({
             title: "Invalid Start Date",
             description: "Cannot schedule recurring events starting in the past. Please select a present or future date.",
@@ -403,7 +407,11 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Reset time part for date comparison
         
-        if (selectedDate < today) {
+        // Cambiamos la comparación para permitir tareas que comienzan hoy
+        if (selectedDate.getTime() < today.getTime() &&
+            !(selectedDate.getDate() === today.getDate() && 
+              selectedDate.getMonth() === today.getMonth() && 
+              selectedDate.getFullYear() === today.getFullYear())) {
           toast({
             title: "Invalid Date",
             description: "Cannot schedule tasks in the past. Please select a present or future date.",
