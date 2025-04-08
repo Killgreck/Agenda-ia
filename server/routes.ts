@@ -168,33 +168,42 @@ function generateRecurringTasks(taskData: any): any[] {
     const dayOfMonth = currentDate.getDate(); // Get the day of month from start date
     
     while (currentDate <= endDate) {
-      // Check if current date has same day of month
-      if (currentDate.getDate() === dayOfMonth) {
-        // Create a new task instance
-        const taskInstance = { ...taskData };
+      // Create a new task instance
+      const taskInstance = { ...taskData };
+      
+      // Set the date for this instance
+      if (!taskData.isAllDay) {
+        // Combine date and time
+        const dateStr = format(currentDate, "yyyy-MM-dd");
+        const dateWithTime = new Date(`${dateStr}T${startTime}`);
+        taskInstance.date = formatDateToPreserveLocalDay(dateWithTime);
         
-        // Set the date for this instance
-        if (!taskData.isAllDay) {
-          // Combine date and time
-          const dateStr = format(currentDate, "yyyy-MM-dd");
-          const dateWithTime = new Date(`${dateStr}T${startTime}`);
-          taskInstance.date = formatDateToPreserveLocalDay(dateWithTime);
-          
-          if (endTime) {
-            const endDateWithTime = new Date(`${dateStr}T${endTime}`);
-            taskInstance.endDate = formatDateToPreserveLocalDay(endDateWithTime);
-          }
-        } else {
-          // All-day event
-          taskInstance.date = formatDateToPreserveLocalDay(currentDate);
+        if (endTime) {
+          const endDateWithTime = new Date(`${dateStr}T${endTime}`);
+          taskInstance.endDate = formatDateToPreserveLocalDay(endDateWithTime);
         }
-        
-        // Add to task list
-        tasks.push(taskInstance);
+      } else {
+        // All-day event
+        taskInstance.date = formatDateToPreserveLocalDay(currentDate);
       }
       
-      // Move to next day
-      currentDate = addDays(currentDate, 1);
+      // Add to task list
+      tasks.push(taskInstance);
+      
+      // Advance to next month
+      const nextMonth = new Date(currentDate);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      
+      // Handle month with fewer days (e.g., trying to go from Jan 31 to Feb 31)
+      // If the day doesn't exist in the next month, we'll get the last day of that month
+      if (nextMonth.getDate() !== dayOfMonth) {
+        // Go to the first day of the month
+        nextMonth.setDate(1);
+        // Then go back one day to get the last day of the previous month
+        nextMonth.setDate(0);
+      }
+      
+      currentDate = nextMonth;
     }
   }
   
@@ -205,33 +214,46 @@ function generateRecurringTasks(taskData: any): any[] {
     const dayOfMonth = currentDate.getDate(); // Get day of month
     
     while (currentDate <= endDate) {
-      // Check if current date has same month and day of month (same day of year)
-      if (currentDate.getMonth() === monthOfYear && currentDate.getDate() === dayOfMonth) {
-        // Create a new task instance
-        const taskInstance = { ...taskData };
+      // Create a new task instance
+      const taskInstance = { ...taskData };
+      
+      // Set the date for this instance
+      if (!taskData.isAllDay) {
+        // Combine date and time
+        const dateStr = format(currentDate, "yyyy-MM-dd");
+        const dateWithTime = new Date(`${dateStr}T${startTime}`);
+        taskInstance.date = formatDateToPreserveLocalDay(dateWithTime);
         
-        // Set the date for this instance
-        if (!taskData.isAllDay) {
-          // Combine date and time
-          const dateStr = format(currentDate, "yyyy-MM-dd");
-          const dateWithTime = new Date(`${dateStr}T${startTime}`);
-          taskInstance.date = formatDateToPreserveLocalDay(dateWithTime);
-          
-          if (endTime) {
-            const endDateWithTime = new Date(`${dateStr}T${endTime}`);
-            taskInstance.endDate = formatDateToPreserveLocalDay(endDateWithTime);
-          }
-        } else {
-          // All-day event
-          taskInstance.date = formatDateToPreserveLocalDay(currentDate);
+        if (endTime) {
+          const endDateWithTime = new Date(`${dateStr}T${endTime}`);
+          taskInstance.endDate = formatDateToPreserveLocalDay(endDateWithTime);
         }
-        
-        // Add to task list
-        tasks.push(taskInstance);
+      } else {
+        // All-day event
+        taskInstance.date = formatDateToPreserveLocalDay(currentDate);
       }
       
-      // Move to next day
-      currentDate = addDays(currentDate, 1);
+      // Add to task list
+      tasks.push(taskInstance);
+      
+      // Advance to next year
+      const nextYear = new Date(currentDate);
+      nextYear.setFullYear(nextYear.getFullYear() + 1);
+      
+      // Handle leap years properly (Feb 29)
+      if (monthOfYear === 1 && dayOfMonth === 29) {
+        // Check if next year is a leap year
+        const isLeapYear = (year: number) => {
+          return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+        };
+        
+        if (!isLeapYear(nextYear.getFullYear())) {
+          // If not a leap year, use Feb 28
+          nextYear.setDate(28);
+        }
+      }
+      
+      currentDate = nextYear;
     }
   }
   

@@ -49,6 +49,28 @@ function formatDateToPreserveLocalDay(date: Date): string {
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
 
+// Function to suggest end date based on recurrence type
+function suggestEndDateForRecurrence(startDate: Date, recurrenceType: string): Date {
+  switch(recurrenceType) {
+    case 'daily':
+      return addDays(startDate, 7); // 1 week for daily recurrence
+    case 'weekly':
+      return addDays(startDate, 28); // 4 weeks for weekly recurrence
+    case 'monthly':
+      // Add 1 month - same day next month
+      const nextMonth = new Date(startDate);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      return nextMonth;
+    case 'yearly':
+      // Add 1 year - same day next year
+      const nextYear = new Date(startDate);
+      nextYear.setFullYear(nextYear.getFullYear() + 1);
+      return nextYear;
+    default:
+      return addDays(startDate, 7); // Default to 1 week
+  }
+}
+
 interface TaskModalProps {
   open: boolean;
   onClose: () => void;
@@ -282,6 +304,10 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         return;
       }
       
+      // Initialize date variables at a higher scope
+      let dateObj: Date;
+      let endDateObj: Date | undefined;
+      
       // Handle different date logic for recurring vs single events
       if (data.isRecurring) {
         // For recurring events, validate recurrence settings
@@ -329,7 +355,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         }
         
         // Use recurrence start date as the main date
-        let dateObj = new Date(data.recurrenceStartDate);
+        dateObj = new Date(data.recurrenceStartDate);
         
         // Validate that start date is before end date
         const startDate = new Date(data.recurrenceStartDate);
@@ -352,7 +378,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         }
         
         // Process recurrence end date
-        let endDateObj = new Date(data.recurrenceEndDate);
+        endDateObj = new Date(data.recurrenceEndDate);
         if (!isAllDay && data.endTime) {
           const [hours, minutes] = data.endTime.split(':').map(Number);
           endDateObj.setHours(hours, minutes);
@@ -406,14 +432,13 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         }
         
         // Crear la fecha combinando la fecha y hora explícitamente
-        let dateObj = new Date(`${dateStr}T${timeStr}`);
+        dateObj = new Date(`${dateStr}T${timeStr}`);
         
         // Mantenemos la fecha tal cual está, sin aplicar ajustes de zona horaria
         // Ya que el problema de la fecha está resuelto, no necesitamos compensar las horas
         // dateObj mantiene la fecha y hora exactas que el usuario seleccionó
         
         // Process regular end date if provided
-        let endDateObj;
         if (data.endDate) {
           // Crear la fecha de fin con control preciso sobre la hora local
           const endDateStr = data.endDate; // Formato YYYY-MM-DD
@@ -442,7 +467,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
       }
 
       // Check for time conflicts for non-recurring events
-      if (!data.isRecurring) {
+      if (!data.isRecurring && dateObj) {
         const conflictMessage = await checkTimeConflicts(dateObj, endDateObj, data.isAllDay);
         if (conflictMessage) {
           toast({
@@ -529,6 +554,23 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
   
   // Update holiday check when date or country changes
   const recurrenceStartDate = watch("recurrenceStartDate");
+  
+  // Update end date when recurrence type or start date changes
+  useEffect(() => {
+    // Only update if we're dealing with recurring events and have a start date
+    if (isRecurring && recurrenceStartDate) {
+      try {
+        const startDate = new Date(recurrenceStartDate);
+        // Make sure we have a valid date before proceeding
+        if (!isNaN(startDate.getTime())) {
+          const suggestedEndDate = suggestEndDateForRecurrence(startDate, recurrenceType || "daily");
+          setValue("recurrenceEndDate", format(suggestedEndDate, "yyyy-MM-dd"));
+        }
+      } catch (error) {
+        console.error("Error updating recurrence end date:", error);
+      }
+    }
+  }, [isRecurring, recurrenceType, recurrenceStartDate, setValue]);
   
   useEffect(() => {
     // Check holidays based on whether it's recurring or not
@@ -685,10 +727,10 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                           <SelectValue placeholder="Select recurrence type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="daily">Diario</SelectItem>
-                          <SelectItem value="weekly">Semanal</SelectItem>
-                          <SelectItem value="monthly">Mensual</SelectItem>
-                          <SelectItem value="yearly">Anual</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="yearly">Yearly</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -1103,10 +1145,10 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                           <SelectValue placeholder="Select recurrence type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="daily">Diario</SelectItem>
-                          <SelectItem value="weekly">Semanal</SelectItem>
-                          <SelectItem value="monthly">Mensual</SelectItem>
-                          <SelectItem value="yearly">Anual</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="yearly">Yearly</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
