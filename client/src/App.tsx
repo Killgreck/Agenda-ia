@@ -69,6 +69,64 @@ function Router() {
 function App() {
   const { checkAuthStatus, isAuthenticated } = useAuth();
   
+  // Cargar configuración de tema del localStorage al inicio
+  useEffect(() => {
+    // Aplicar tema guardado si existe
+    const savedTheme = localStorage.getItem('user-theme');
+    if (savedTheme) {
+      try {
+        const themeConfig = JSON.parse(savedTheme);
+        
+        // Aplicar color primario
+        if (themeConfig.primary) {
+          document.documentElement.style.setProperty('--primary', themeConfig.primary);
+        }
+        
+        // Aplicar radio de bordes y otros atributos
+        if (themeConfig.radius !== undefined) {
+          document.documentElement.setAttribute('data-theme-radius', themeConfig.radius.toString());
+        }
+        
+        if (themeConfig.appearance) {
+          document.documentElement.setAttribute('data-theme-appearance', themeConfig.appearance);
+        }
+        
+        if (themeConfig.variant) {
+          document.documentElement.setAttribute('data-theme-variant', themeConfig.variant);
+        }
+        
+        console.log("Tema cargado desde localStorage:", themeConfig);
+      } catch (error) {
+        console.error("Error al parsear la configuración del tema:", error);
+      }
+    }
+    
+    // Cargar otras preferencias de personalización
+    const fontFamily = localStorage.getItem('user-font-family');
+    if (fontFamily) {
+      document.documentElement.style.setProperty('--font-family', fontFamily);
+    }
+    
+    const fontSize = localStorage.getItem('user-font-size');
+    if (fontSize) {
+      document.documentElement.style.setProperty('--font-size-base', fontSize);
+    }
+    
+    // Aplicar clases CSS para otros ajustes
+    if (localStorage.getItem('compact-mode') === 'true') {
+      document.documentElement.classList.add('compact-mode');
+    }
+    
+    if (localStorage.getItem('animations-disabled') === 'true') {
+      document.documentElement.classList.add('no-animations');
+    }
+    
+    if (localStorage.getItem('high-contrast') === 'true') {
+      document.documentElement.classList.add('high-contrast');
+    }
+    
+  }, []);
+  
   // Check authentication status when the app loads
   useEffect(() => {
     console.log("App mounted - checking authentication status");

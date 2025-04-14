@@ -28,6 +28,13 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+// Mapeo de tamaños de fuente
+const fontSizeMap: Record<string, string> = {
+  small: '0.875rem',
+  medium: '1rem',
+  large: '1.125rem'
+};
+
 // Define the schema for the appearance settings
 const appearanceFormSchema = z.object({
   // Theme settings
@@ -92,8 +99,17 @@ export default function AppearanceSettings() {
         radius: data.borderRadius
       };
       
-      // Guardar tema en localStorage para aplicarlo inmediatamente
+      // Guardar tema y otras preferencias en localStorage para aplicarlo inmediatamente
       localStorage.setItem('user-theme', JSON.stringify(themeConfig));
+      localStorage.setItem('user-font-family', data.fontFamily);
+      
+      // Guardar el tamaño de fuente en formato CSS
+      localStorage.setItem('user-font-size', fontSizeMap[data.fontSize]);
+      
+      // Guardar otros ajustes como valores booleanos
+      localStorage.setItem('compact-mode', data.compactMode ? 'true' : 'false');
+      localStorage.setItem('animations-disabled', !data.animationsEnabled ? 'true' : 'false');
+      localStorage.setItem('high-contrast', data.highContrastMode ? 'true' : 'false');
       
       // Aplicar cambios inmediatamente (sin necesidad de recargar)
       document.documentElement.style.setProperty('--primary', data.primaryColor);
@@ -105,11 +121,6 @@ export default function AppearanceSettings() {
       document.documentElement.style.setProperty('--font-family', data.fontFamily);
       
       // Aplicar tamaño de fuente
-      const fontSizeMap: Record<string, string> = {
-        small: '0.875rem',
-        medium: '1rem',
-        large: '1.125rem'
-      };
       document.documentElement.style.setProperty('--font-size-base', fontSizeMap[data.fontSize]);
       
       // Aplicar configuración de animaciones
@@ -432,11 +443,6 @@ export default function AppearanceSettings() {
                           onValueChange={(value) => {
                             field.onChange(value);
                             // Aplicar cambio de tamaño de fuente inmediatamente
-                            const fontSizeMap: Record<string, string> = {
-                              small: '0.875rem',
-                              medium: '1rem',
-                              large: '1.125rem'
-                            };
                             document.documentElement.style.setProperty('--font-size-base', fontSizeMap[value]);
                           }} 
                           defaultValue={field.value}
@@ -552,7 +558,15 @@ export default function AppearanceSettings() {
                         <FormControl>
                           <Switch
                             checked={field.value}
-                            onCheckedChange={field.onChange}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked);
+                              // Aplicar modo alto contraste inmediatamente
+                              if (checked) {
+                                document.documentElement.classList.add('high-contrast');
+                              } else {
+                                document.documentElement.classList.remove('high-contrast');
+                              }
+                            }}
                           />
                         </FormControl>
                       </FormItem>
