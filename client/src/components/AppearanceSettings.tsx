@@ -82,10 +82,9 @@ export default function AppearanceSettings() {
     setIsSubmitting(true);
     
     try {
-      // Here we would typically save the theme to the server
-      console.log("Saving appearance settings:", data);
+      console.log("Guardando configuración de apariencia:", data);
       
-      // For now, we'll just update the theme.json values
+      // Crear objeto de configuración del tema
       const themeConfig = {
         variant: data.themeVariant,
         primary: data.primaryColor,
@@ -93,21 +92,60 @@ export default function AppearanceSettings() {
         radius: data.borderRadius
       };
       
-      // This is a placeholder - in a real app we would call an API to update the theme
-      // For now, we'll just simulate a successful update
+      // Guardar tema en localStorage para aplicarlo inmediatamente
+      localStorage.setItem('user-theme', JSON.stringify(themeConfig));
+      
+      // Aplicar cambios inmediatamente (sin necesidad de recargar)
+      document.documentElement.style.setProperty('--primary', data.primaryColor);
+      document.documentElement.setAttribute('data-theme-radius', data.borderRadius.toString());
+      document.documentElement.setAttribute('data-theme-appearance', data.themeMode);
+      document.documentElement.setAttribute('data-theme-variant', data.themeVariant);
+      
+      // Aplicar familia de fuente
+      document.documentElement.style.setProperty('--font-family', data.fontFamily);
+      
+      // Aplicar tamaño de fuente
+      const fontSizeMap: Record<string, string> = {
+        small: '0.875rem',
+        medium: '1rem',
+        large: '1.125rem'
+      };
+      document.documentElement.style.setProperty('--font-size-base', fontSizeMap[data.fontSize]);
+      
+      // Aplicar configuración de animaciones
+      if (!data.animationsEnabled) {
+        document.documentElement.classList.add('no-animations');
+      } else {
+        document.documentElement.classList.remove('no-animations');
+      }
+      
+      // Aplicar modo compacto
+      if (data.compactMode) {
+        document.documentElement.classList.add('compact-mode');
+      } else {
+        document.documentElement.classList.remove('compact-mode');
+      }
+      
+      // Aplicar modo alto contraste
+      if (data.highContrastMode) {
+        document.documentElement.classList.add('high-contrast');
+      } else {
+        document.documentElement.classList.remove('high-contrast');
+      }
+      
+      // Simular tiempo de guardado
       await new Promise(resolve => setTimeout(resolve, 500));
       
       toast({
-        title: "Appearance settings updated",
-        description: "Your preferences have been saved. Some changes may require a page refresh.",
+        title: "Apariencia actualizada",
+        description: "Tus preferencias de apariencia han sido guardadas y aplicadas.",
       });
       
-      // In a real app, we might reload the page or update the theme without a reload
     } catch (error) {
-      console.error("Error saving appearance settings:", error);
+      console.error("Error al guardar configuración de apariencia:", error);
       toast({
-        title: "Error saving settings",
-        description: "There was a problem saving your appearance settings.",
+        title: "Error al guardar configuración",
+        description: "Hubo un problema al guardar tus preferencias de apariencia.",
         variant: "destructive"
       });
     } finally {
@@ -141,18 +179,60 @@ export default function AppearanceSettings() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Color Principal</FormLabel>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-4">
                             <FormControl>
-                              <Input {...field} />
+                              <Input {...field} type="text" onChange={(e) => {
+                                field.onChange(e.target.value);
+                                // Actualizar el color directamente para vista previa instantánea
+                                if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                                  document.documentElement.style.setProperty('--primary', e.target.value);
+                                }
+                              }} />
                             </FormControl>
-                            <div 
-                              className="w-10 h-10 rounded-md border" 
-                              style={{ backgroundColor: selectedColor }}
-                            />
+                            <FormControl>
+                              <Input 
+                                type="color" 
+                                value={field.value} 
+                                onChange={(e) => {
+                                  field.onChange(e.target.value);
+                                  // Actualizar el color directamente para vista previa instantánea
+                                  document.documentElement.style.setProperty('--primary', e.target.value);
+                                }}
+                                className="w-12 h-10 p-1 cursor-pointer" 
+                              />
+                            </FormControl>
                           </div>
-                          <FormDescription>
-                            Ingresa un código de color hexadecimal (e.j. #3B82F6 para azul)
-                          </FormDescription>
+                          <div className="mt-4 space-y-2">
+                            <FormDescription className="mb-2">
+                              Selecciona un color predefinido o ingresa un código hexadecimal
+                            </FormDescription>
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                { color: "#3B82F6", name: "Azul" },
+                                { color: "#10B981", name: "Verde" },
+                                { color: "#EF4444", name: "Rojo" },
+                                { color: "#F59E0B", name: "Naranja" },
+                                { color: "#8B5CF6", name: "Morado" },
+                                { color: "#EC4899", name: "Rosa" }
+                              ].map(({ color, name }) => (
+                                <Button
+                                  key={color}
+                                  type="button"
+                                  variant="outline"
+                                  className="h-8 px-2"
+                                  onClick={() => {
+                                    field.onChange(color);
+                                    // Actualizar el color directamente para vista previa instantánea
+                                    document.documentElement.style.setProperty('--primary', color);
+                                  }}
+                                  style={{ backgroundColor: color, borderColor: color }}
+                                  title={name}
+                                >
+                                  <span className="sr-only">{name}</span>
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
                         </FormItem>
                       )}
                     />
@@ -313,7 +393,11 @@ export default function AppearanceSettings() {
                       <FormItem>
                         <FormLabel>Familia de Fuente</FormLabel>
                         <Select 
-                          onValueChange={field.onChange} 
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            // Aplicar cambio de fuente inmediatamente
+                            document.documentElement.style.setProperty('--font-family', value);
+                          }} 
                           defaultValue={field.value}
                         >
                           <FormControl>
@@ -345,7 +429,16 @@ export default function AppearanceSettings() {
                       <FormItem>
                         <FormLabel>Tamaño de Fuente</FormLabel>
                         <Select 
-                          onValueChange={field.onChange} 
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            // Aplicar cambio de tamaño de fuente inmediatamente
+                            const fontSizeMap: Record<string, string> = {
+                              small: '0.875rem',
+                              medium: '1rem',
+                              large: '1.125rem'
+                            };
+                            document.documentElement.style.setProperty('--font-size-base', fontSizeMap[value]);
+                          }} 
                           defaultValue={field.value}
                         >
                           <FormControl>
@@ -401,7 +494,15 @@ export default function AppearanceSettings() {
                         <FormControl>
                           <Switch
                             checked={field.value}
-                            onCheckedChange={field.onChange}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked);
+                              // Aplicar modo compacto inmediatamente
+                              if (checked) {
+                                document.documentElement.classList.add('compact-mode');
+                              } else {
+                                document.documentElement.classList.remove('compact-mode');
+                              }
+                            }}
                           />
                         </FormControl>
                       </FormItem>
@@ -422,7 +523,15 @@ export default function AppearanceSettings() {
                         <FormControl>
                           <Switch
                             checked={field.value}
-                            onCheckedChange={field.onChange}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked);
+                              // Aplicar configuración de animaciones inmediatamente
+                              if (!checked) {
+                                document.documentElement.classList.add('no-animations');
+                              } else {
+                                document.documentElement.classList.remove('no-animations');
+                              }
+                            }}
                           />
                         </FormControl>
                       </FormItem>

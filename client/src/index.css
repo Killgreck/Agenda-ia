@@ -3,16 +3,56 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --primary: #3B82F6;
+    --font-family: system-ui;
+    --font-size-base: 1rem;
+  }
+  
   * {
     @apply border-border;
   }
 
   html, body {
-    @apply font-sans antialiased bg-background text-foreground h-full overflow-auto;
+    @apply antialiased bg-background text-foreground h-full overflow-auto;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
   }
 
   #root {
     @apply h-full overflow-auto;
+  }
+  
+  /* Estilos para modo alto contraste */
+  html.high-contrast {
+    --contrast-multiplier: 1.3;
+    filter: contrast(var(--contrast-multiplier));
+  }
+  
+  /* Estilos para modo compacto */
+  html.compact-mode {
+    --spacing-multiplier: 0.75;
+  }
+  
+  html.compact-mode .p-4 {
+    padding: calc(1rem * var(--spacing-multiplier));
+  }
+  
+  html.compact-mode .py-4 {
+    padding-top: calc(1rem * var(--spacing-multiplier));
+    padding-bottom: calc(1rem * var(--spacing-multiplier));
+  }
+  
+  html.compact-mode .space-y-4 > * + * {
+    margin-top: calc(1rem * var(--spacing-multiplier));
+  }
+  
+  /* Estilos para desactivar animaciones */
+  html.no-animations *,
+  html.no-animations *::before,
+  html.no-animations *::after {
+    transition: none !important;
+    animation: none !important;
   }
 }
 
