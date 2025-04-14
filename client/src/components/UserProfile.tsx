@@ -26,20 +26,22 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AppearanceSettings from "./AppearanceSettings";
 
 const profileFormSchema = z.object({
-  name: z.string().optional().nullable(),
-  email: z.string().email({ message: "Please enter a valid email address" }).min(1, { message: "Email is required" }),
-  phoneNumber: z.string().min(1, { message: "Phone number is required" }),
-  address: z.string().optional().nullable(),
-  city: z.string().optional().nullable(),
-  state: z.string().optional().nullable(),
-  zipCode: z.string().optional().nullable(),
-  country: z.string().optional().nullable(),
-  company: z.string().optional().nullable(),
-  jobTitle: z.string().optional().nullable(),
-  bio: z.string().optional().nullable(),
-  birthdate: z.string().optional().nullable(),
+  name: z.string().optional(),
+  email: z.string().email({ message: "Por favor ingresa un correo electrónico válido" }).min(1, { message: "El correo electrónico es requerido" }),
+  phoneNumber: z.string().min(1, { message: "El número de teléfono es requerido" }),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zipCode: z.string().optional(),
+  country: z.string().optional(),
+  company: z.string().optional(),
+  jobTitle: z.string().optional(),
+  bio: z.string().optional(),
+  birthdate: z.string().optional(),
   darkMode: z.boolean().optional(),
   emailNotifications: z.boolean().optional(),
   smsNotifications: z.boolean().optional(),
@@ -100,18 +102,24 @@ export default function UserProfile() {
     setIsSubmitting(true);
     
     try {
-      const success = await updateProfile(data);
+      // Convertir los valores null a undefined para que coincidan con UpdateProfileData
+      const profileData = Object.entries(data).reduce((acc: Record<string, any>, [key, value]) => {
+        acc[key] = value === null ? undefined : value;
+        return acc;
+      }, {});
+      
+      const success = await updateProfile(profileData);
       
       if (success) {
         toast({
-          title: "Profile updated",
-          description: "Your profile information has been updated.",
+          title: "Perfil actualizado",
+          description: "Tu información de perfil ha sido actualizada.",
           variant: "default",
         });
       } else {
         toast({
-          title: "Update failed",
-          description: "There was an error updating your profile. Please try again.",
+          title: "Error al actualizar",
+          description: "Hubo un error al actualizar tu perfil. Por favor intenta de nuevo.",
           variant: "destructive",
         });
       }
@@ -119,7 +127,7 @@ export default function UserProfile() {
       console.error("Error updating profile:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: "Ocurrió un error inesperado. Por favor intenta de nuevo.",
         variant: "destructive",
       });
     } finally {
@@ -129,280 +137,295 @@ export default function UserProfile() {
 
   return (
     <div className="container mx-auto py-6 space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Profile</CardTitle>
-          <CardDescription>Manage your personal information and preferences</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Personal Information</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="John Doe" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder="john.doe@example.com" type="email" required {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormDescription>
-                          Email is required for account notifications
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="phoneNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="+1 (123) 456-7890" type="tel" required {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormDescription>
-                          Required for SMS notifications and reminders
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="birthdate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Birthdate</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
+      <Tabs defaultValue="info" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsTrigger value="info">Mi Perfil</TabsTrigger>
+          <TabsTrigger value="appearance">Personalización</TabsTrigger>
+        </TabsList>
+        
+        {/* Profile Information Tab */}
+        <TabsContent value="info">
+          <Card>
+            <CardHeader>
+              <CardTitle>Mi Perfil</CardTitle>
+              <CardDescription>Administra tu información personal y preferencias</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Información Personal</h3>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nombre Completo</FormLabel>
+                            <FormControl>
+                              <Input placeholder="John Doe" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Correo Electrónico</FormLabel>
+                            <FormControl>
+                              <Input placeholder="john.doe@example.com" type="email" required {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormDescription>
+                              El correo es requerido para notificaciones de la cuenta
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="phoneNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Número de Teléfono</FormLabel>
+                            <FormControl>
+                              <Input placeholder="+1 (123) 456-7890" type="tel" required {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormDescription>
+                              Requerido para notificaciones SMS y recordatorios
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="birthdate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Fecha de Nacimiento</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
-              <Separator />
+                  <Separator />
 
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Contact Information</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder="123 Main St" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>City</FormLabel>
-                        <FormControl>
-                          <Input placeholder="New York" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="state"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>State / Province</FormLabel>
-                        <FormControl>
-                          <Input placeholder="NY" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="zipCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ZIP / Postal Code</FormLabel>
-                        <FormControl>
-                          <Input placeholder="10001" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country</FormLabel>
-                        <FormControl>
-                          <Input placeholder="United States" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Información de Contacto</h3>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="address"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Dirección</FormLabel>
+                            <FormControl>
+                              <Input placeholder="123 Main St" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="city"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Ciudad</FormLabel>
+                            <FormControl>
+                              <Input placeholder="New York" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="state"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Estado / Provincia</FormLabel>
+                            <FormControl>
+                              <Input placeholder="NY" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="zipCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Código Postal</FormLabel>
+                            <FormControl>
+                              <Input placeholder="10001" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="country"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>País</FormLabel>
+                            <FormControl>
+                              <Input placeholder="United States" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
-              <Separator />
+                  <Separator />
 
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Professional Information</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="company"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Company / Organization</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Acme Inc." {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="jobTitle"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Job Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Product Manager" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="bio"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bio</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Tell us a bit about yourself..." 
-                          {...field} 
-                          value={field.value || ""}
-                          className="min-h-[100px]"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Información Profesional</h3>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="company"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Empresa / Organización</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Acme Inc." {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="jobTitle"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Puesto</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Product Manager" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="bio"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Biografía</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Cuéntanos un poco sobre ti..." 
+                              {...field} 
+                              value={field.value || ""}
+                              className="min-h-[100px]"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-              <Separator />
+                  <Separator />
 
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Preferences</h3>
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="darkMode"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Dark Mode</FormLabel>
-                          <FormDescription>
-                            Enable dark mode for the application interface
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="emailNotifications"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Email Notifications</FormLabel>
-                          <FormDescription>
-                            Receive task reminders and updates via email
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="smsNotifications"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">SMS Notifications</FormLabel>
-                          <FormDescription>
-                            Receive task reminders and updates via text message
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Preferencias</h3>
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="darkMode"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">Modo Oscuro</FormLabel>
+                              <FormDescription>
+                                Activar el modo oscuro para la interfaz
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="emailNotifications"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">Notificaciones por Email</FormLabel>
+                              <FormDescription>
+                                Recibir recordatorios y actualizaciones por correo
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="smsNotifications"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">Notificaciones SMS</FormLabel>
+                              <FormDescription>
+                                Recibir recordatorios y actualizaciones por mensaje de texto
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
-              <CardFooter className="flex justify-end px-0">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Saving..." : "Save Changes"}
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                  <CardFooter className="flex justify-end px-0">
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? "Guardando..." : "Guardar Cambios"}
+                    </Button>
+                  </CardFooter>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Appearance Customization Tab */}
+        <TabsContent value="appearance">
+          <AppearanceSettings />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
