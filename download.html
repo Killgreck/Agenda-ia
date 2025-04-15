@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Download Project Archive</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .download-btn {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        h1 {
+            color: #333;
+        }
+        ul {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Agenda-IA Project Archive</h1>
+        <p>This archive contains all the source code for your Agenda-IA project, ready to be uploaded to GitHub.</p>
+        
+        <div style="text-align: center; margin: 20px 0; padding: 15px; background-color: #f0f8ff; border-radius: 5px; border: 1px solid #b0e0e6;">
+            <h3 style="margin-top: 0;">Quick Download</h3>
+            <a href="agenda-ia-project.tar.gz" download class="download-btn" style="font-size: 16px; padding: 12px 24px;">Download Project Archive (15MB)</a>
+            <p><small>Download this file to get all project code (excluding node_modules)</small></p>
+        </div>
+        
+        <h2>Instructions for GitHub Upload:</h2>
+        <ol>
+            <li>Go to <a href="https://github.com/Killgreck/Agenda-ia" target="_blank">https://github.com/Killgreck/Agenda-ia</a></li>
+            <li>Click on the "Upload files" button</li>
+            <li>Drag and drop all files from the project directory (excluding node_modules)</li>
+            <li>Add a commit message like "Initial upload of Agenda-IA project"</li>
+            <li>Click "Commit changes"</li>
+        </ol>
+        
+        <h2>What's included in your project:</h2>
+        <ul>
+            <li>README.md - Project documentation</li>
+            <li>LICENSE - MIT License</li>
+            <li>.gitignore - Git configuration</li>
+            <li>All source code files for both frontend and backend</li>
+            <li>Configuration files (package.json, etc.)</li>
+        </ul>
+        
+        <p><b>Note:</b> When uploading to GitHub, exclude the node_modules directory as it's very large and not needed in the repository. Users can run npm install after cloning.</p>
+        
+        <h2>Alternative Method: Using Git Command Line</h2>
+        <p>If you prefer using the Git command line, you can clone the empty repository and push your code:</p>
+        <pre>
+git clone https://github.com/Killgreck/Agenda-ia.git
+# Copy all files (except node_modules) to the cloned directory
+cd Agenda-ia
+git add .
+git commit -m "Initial upload of Agenda-IA project"
+git push
+        </pre>
+        
+        <p>You'll need to authenticate with your GitHub credentials when pushing.</p>
+        
+        <h2>Download Project Archive</h2>
+        <p>To make the process easier, you can download a compressed archive of the project files:</p>
+        <a href="agenda-ia-project.tar.gz" download class="download-btn">Download Project Archive (15MB)</a>
+        <p><small>After downloading, extract the archive on your computer, then you can upload the files to GitHub.</small></p>
+    </div>
+</body>
+</html>

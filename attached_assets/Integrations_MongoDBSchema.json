@@ -1,0 +1,183 @@
+{
+  "$jsonSchema" : {
+    "bsonType" : "object",
+    "properties" : {
+      "createdAt" : {
+        "bsonType" : "date"
+      },
+      "_id" : {
+        "bsonType" : "objectId"
+      },
+      "id" : {
+        "bsonType" : "int"
+      },
+      "serviceName" : {
+        "bsonType" : "string"
+      },
+      "accessToken" : {
+        "bsonType" : "string"
+      },
+      "userId" : {
+        "bsonType" : "int"
+      },
+      "user" : {
+        "bsonType" : "object",
+        "properties" : {
+          "analytics" : {
+            "bsonType" : "array",
+            "items" : {
+              "bsonType" : "object",
+              "properties" : {
+                "date" : {
+                  "bsonType" : "date"
+                },
+                "createdAt" : {
+                  "bsonType" : "date"
+                },
+                "eventCompletionRate" : {
+                  "bsonType" : "double"
+                },
+                "productivityScore" : {
+                  "bsonType" : "int"
+                },
+                "id" : {
+                  "bsonType" : "int"
+                },
+                "userId" : {
+                  "bsonType" : "int"
+                }
+              }
+            }
+          },
+          "createdAt" : {
+            "bsonType" : "date"
+          },
+          "preferences" : {
+            "bsonType" : "object"
+          },
+          "userSetting" : {
+            "bsonType" : "object",
+            "properties" : {
+              "createdAt" : {
+                "bsonType" : "date"
+              },
+              "displayPreferences" : {
+                "bsonType" : "object"
+              },
+              "notificationPreferences" : {
+                "bsonType" : "object"
+              },
+              "id" : {
+                "bsonType" : "int"
+              },
+              "userId" : {
+                "bsonType" : "int"
+              },
+              "updatedAt" : {
+                "bsonType" : "date"
+              }
+            }
+          },
+          "timezone" : {
+            "bsonType" : "string"
+          },
+          "name" : {
+            "bsonType" : "string"
+          },
+          "aiPreference" : {
+            "bsonType" : "object",
+            "properties" : {
+              "createdAt" : {
+                "bsonType" : "date"
+              },
+              "learningPatterns" : {
+                "bsonType" : "object"
+              },
+              "id" : {
+                "bsonType" : "int"
+              },
+              "userId" : {
+                "bsonType" : "int"
+              },
+              "optimizationRules" : {
+                "bsonType" : "object"
+              },
+              "updatedAt" : {
+                "bsonType" : "date"
+              }
+            }
+          },
+          "id" : {
+            "bsonType" : "int"
+          },
+          "email" : {
+            "bsonType" : "string"
+          },
+          "passwordHash" : {
+            "bsonType" : "string"
+          },
+          "events" : {
+            "bsonType" : "array",
+            "items" : {
+              "bsonType" : "object",
+              "properties" : {
+                "description" : {
+                  "bsonType" : "string"
+                },
+                "recurrenceRule" : {
+                  "bsonType" : "string"
+                },
+                "title" : {
+                  "bsonType" : "string"
+                },
+                "priority" : {
+                  "bsonType" : "int"
+                },
+                "userId" : {
+                  "bsonType" : "int"
+                },
+                "createdAt" : {
+                  "bsonType" : "date"
+                },
+                "isAllDay" : {
+                  "bsonType" : "bool"
+                },
+                "startTime" : {
+                  "bsonType" : "date"
+                },
+                "location" : {
+                  "bsonType" : "string"
+                },
+                "id" : {
+                  "bsonType" : "int"
+                },
+                "endTime" : {
+                  "bsonType" : "date"
+                },
+                "status" : {
+                  "bsonType" : "string"
+                },
+                "updatedAt" : {
+                  "bsonType" : "date"
+                }
+              }
+            }
+          },
+          "updatedAt" : {
+            "bsonType" : "date"
+          }
+        }
+      },
+      "refreshToken" : {
+        "bsonType" : "string"
+      },
+      "status" : {
+        "bsonType" : "string"
+      },
+      "updatedAt" : {
+        "bsonType" : "date"
+      }
+    },
+    "title" : "integrations"
+  }
+}

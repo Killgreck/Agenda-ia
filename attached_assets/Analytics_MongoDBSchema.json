@@ -1,0 +1,29 @@
+{
+  "$jsonSchema" : {
+    "bsonType" : "object",
+    "properties" : {
+      "date" : {
+        "bsonType" : "date"
+      },
+      "createdAt" : {
+        "bsonType" : "date"
+      },
+      "eventCompletionRate" : {
+        "bsonType" : "double"
+      },
+      "productivityScore" : {
+        "bsonType" : "int"
+      },
+      "_id" : {
+        "bsonType" : "objectId"
+      },
+      "id" : {
+        "bsonType" : "int"
+      },
+      "userId" : {
+        "bsonType" : "int"
+      }
+    },
+    "title" : "analytics"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$jsonSchema" : {
+    "bsonType" : "object",
+    "properties" : {
+      "createdAt" : {
+        "bsonType" : "date"
+      },
+      "learningPatterns" : {
+        "bsonType" : "object"
+      },
+      "_id" : {
+        "bsonType" : "objectId"
+      },
+      "id" : {
+        "bsonType" : "int"
+      },
+      "userId" : {
+        "bsonType" : "int"
+      },
+      "optimizationRules" : {
+        "bsonType" : "object"
+      },
+      "updatedAt" : {
+        "bsonType" : "date"
+      }
+    },
+    "title" : "aiPreferences"
+  }
+}

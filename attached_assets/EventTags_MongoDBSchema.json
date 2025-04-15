@@ -1,0 +1,17 @@
+{
+  "$jsonSchema" : {
+    "bsonType" : "object",
+    "properties" : {
+      "eventId" : {
+        "bsonType" : "int"
+      },
+      "tagId" : {
+        "bsonType" : "int"
+      },
+      "_id" : {
+        "bsonType" : "objectId"
+      }
+    },
+    "title" : "eventTags"
+  }
+}

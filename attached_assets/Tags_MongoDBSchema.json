@@ -1,0 +1,23 @@
+{
+  "$jsonSchema" : {
+    "bsonType" : "object",
+    "properties" : {
+      "createdAt" : {
+        "bsonType" : "date"
+      },
+      "color" : {
+        "bsonType" : "string"
+      },
+      "name" : {
+        "bsonType" : "string"
+      },
+      "_id" : {
+        "bsonType" : "objectId"
+      },
+      "id" : {
+        "bsonType" : "int"
+      }
+    },
+    "title" : "tags"
+  }
+}
