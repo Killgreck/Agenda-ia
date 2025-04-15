@@ -1,0 +1,19 @@
+modules = ["nodejs-20", "web"]
+run = "node server/download-server.js"
+hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
+
+[workflows]
+runButton = "Download Server"
+
+[[workflows.workflow]]
+name = "Download Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node server/download-server.js"
+waitForPort = 3000
