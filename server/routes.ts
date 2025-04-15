@@ -1330,6 +1330,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GitHub repository download routes
+  app.get("/download", (req: Request, res: Response) => {
+    res.sendFile(path.resolve(__dirname, "..", "download.html"));
+  });
+
+  app.get("/github-archive", (req: Request, res: Response) => {
+    res.download(path.resolve(__dirname, "..", "agenda-ia-project.tar.gz"), "agenda-ia-project.tar.gz");
+  });
+
   return httpServer;
 }
 
