@@ -28,6 +28,15 @@ export const users = pgTable("users", {
   language: text("language").default("en"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastLogin: timestamp("last_login"),
+  // 2FA and security related fields
+  twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
+  twoFactorSecret: text("two_factor_secret"),
+  lastFailedLoginAttempt: timestamp("last_failed_login_attempt"),
+  failedLoginAttempts: integer("failed_login_attempts").default(0).notNull(),
+  accountLocked: boolean("account_locked").default(false).notNull(),
+  accountLockedUntil: timestamp("account_locked_until"),
+  passwordResetToken: text("password_reset_token"),
+  passwordResetExpiry: timestamp("password_reset_expiry"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -53,7 +62,12 @@ export const insertUserSchema = createInsertSchema(users).pick({
   calendarIntegration: true,
   language: true,
 }).extend({
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
   email: z.string().email("Invalid email address").optional().nullable(), // Optional for now
   phoneNumber: z.string().min(10, "Phone number must be at least 10 digits").optional().nullable(), // Optional for now
   name: z.string().optional().nullable(),
@@ -264,3 +278,27 @@ export type InsertStatistic = z.infer<typeof insertStatisticsSchema>;
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+// Login attempts table to track authentication attempts and enable rate limiting
+export const loginAttempts = pgTable("login_attempts", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull(),
+  ipAddress: text("ip_address").notNull(),
+  userAgent: text("user_agent"),
+  successful: boolean("successful").default(false).notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  blockedUntil: timestamp("blocked_until"),
+});
+
+// Create the login attempt insert schema
+const baseInsertLoginAttemptSchema = createInsertSchema(loginAttempts).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertLoginAttemptSchema = baseInsertLoginAttemptSchema.extend({
+  blockedUntil: z.string().optional(),
+});
+
+export type LoginAttempt = typeof loginAttempts.$inferSelect;
+export type InsertLoginAttempt = z.infer<typeof insertLoginAttemptSchema>;

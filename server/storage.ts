@@ -5,7 +5,8 @@ import {
   chatMessages, type ChatMessage, type InsertChatMessage,
   aiSuggestions, type AiSuggestion, type InsertAiSuggestion,
   statistics, type Statistic, type InsertStatistic,
-  notifications, type Notification, type InsertNotification
+  notifications, type Notification, type InsertNotification,
+  loginAttempts, type LoginAttempt, type InsertLoginAttempt
 } from "@shared/schema";
 import { eq, and, gte, lte, desc, asc, count } from "drizzle-orm";
 import { db } from "./db";
@@ -16,6 +17,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, userData: Partial<Omit<InsertUser, 'password'>>): Promise<User | undefined>;
+  updateUserPassword(id: number, hashedPassword: string): Promise<User | undefined>;
   
   // Task operations
   createTask(task: InsertTask): Promise<Task>;
@@ -50,6 +52,15 @@ export interface IStorage {
   getNotifications(userId: number, limit?: number, includeRead?: boolean): Promise<Notification[]>;
   getUnreadNotificationCount(userId: number): Promise<number>;
   markAllNotificationsAsRead(userId: number): Promise<void>;
+  
+  // Login security operations
+  createLoginAttempt(attempt: InsertLoginAttempt): Promise<LoginAttempt>;
+  getRecentLoginAttempts(username: string, minutes: number): Promise<LoginAttempt[]>;
+  getRecentLoginAttemptsFromIp(ipAddress: string, minutes: number): Promise<LoginAttempt[]>;
+  incrementFailedLoginAttempts(userId: number): Promise<User | undefined>;
+  resetFailedLoginAttempts(userId: number): Promise<User | undefined>;
+  lockUserAccount(userId: number, minutes: number): Promise<User | undefined>;
+  unlockUserAccount(userId: number): Promise<User | undefined>;
 }
 
 export class MemStorage implements IStorage {
