@@ -61,6 +61,13 @@ export const insertUserSchema = createInsertSchema(users).pick({
   smsNotifications: true,
   calendarIntegration: true,
   language: true,
+  createdAt: true,
+  twoFactorEnabled: true,
+  failedLoginAttempts: true,
+  accountLocked: true,
+  accountLockedUntil: true,
+  twoFactorSecret: true,
+  lastFailedLoginAttempt: true
 }).extend({
   password: z.string()
     .min(8, "Password must be at least 8 characters")
@@ -87,6 +94,13 @@ export const insertUserSchema = createInsertSchema(users).pick({
   smsNotifications: z.boolean().optional(),
   calendarIntegration: z.string().optional().nullable(),
   language: z.string().optional().nullable(),
+  createdAt: z.date().optional(),
+  twoFactorEnabled: z.boolean().optional().default(false),
+  failedLoginAttempts: z.number().optional().default(0),
+  accountLocked: z.boolean().optional().default(false),
+  accountLockedUntil: z.date().optional().nullable(),
+  twoFactorSecret: z.string().optional().nullable(),
+  lastFailedLoginAttempt: z.date().optional().nullable()
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

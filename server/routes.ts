@@ -312,19 +312,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Hash password
-      const salt = await bcrypt.genSalt(10);
+      // Validate password strength
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      if (!passwordRegex.test(password)) {
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 8 characters and include uppercase, lowercase, number, and special character"
+        });
+      }
+      
+      // Hash password with stronger work factor
+      const salt = await bcrypt.genSalt(12);
       const hashedPassword = await bcrypt.hash(password, salt);
       
-      // Create the user
+      // Create the user with security defaults
       const userData = {
         username,
         password: hashedPassword,
         email: email || null,
         phoneNumber: phoneNumber || null,
-        name: name || null
+        name: name || null,
+        createdAt: new Date(),
+        twoFactorEnabled: false,
+        failedLoginAttempts: 0,
+        accountLocked: false
       };
       
+      // Validate and create the user
       const validatedUserData = insertUserSchema.parse(userData);
       const user = await storage.createUser(validatedUserData);
       
