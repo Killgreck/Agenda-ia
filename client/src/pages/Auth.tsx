@@ -77,10 +77,10 @@ export default function Auth() {
   const onLoginSubmit = async (data: LoginValues) => {
     try {
       console.log('Starting login process for:', data.username);
-      const success = await login(data.username, data.password);
-      console.log('Login result:', success);
+      const result = await login(data.username, data.password);
+      console.log('Login result:', result);
       
-      if (success) {
+      if (result.success) {
         toast({
           title: 'Welcome back!',
           description: 'You have been successfully logged in.',
@@ -92,11 +92,25 @@ export default function Auth() {
           setLocation('/dashboard');
         }, 500);
       } else {
-        toast({
-          title: 'Login failed',
-          description: 'Invalid username or password. Please try again.',
-          variant: 'destructive',
-        });
+        // Handle account locking information
+        if (result.accountLocked) {
+          const lockedUntilDate = result.lockedUntil ? new Date(result.lockedUntil) : null;
+          const formattedTime = lockedUntilDate ? 
+            `${lockedUntilDate.toLocaleDateString()} at ${lockedUntilDate.toLocaleTimeString()}` : 
+            'some time';
+          
+          toast({
+            title: 'Account locked',
+            description: `Your account has been temporarily locked due to too many failed login attempts. Please try again after ${formattedTime}.`,
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Login failed',
+            description: result.message || 'Invalid username or password. Please try again.',
+            variant: 'destructive',
+          });
+        }
       }
     } catch (error) {
       console.error('Error during login:', error);
