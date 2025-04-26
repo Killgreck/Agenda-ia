@@ -401,13 +401,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const user = await storage.getUserByUsername(username);
           if (user) {
             // Lock the account for 30 minutes
-            await storage.lockUserAccount(user.id, 30);
+            const updatedUser = await storage.lockUserAccount(user.id, 30);
+            
+            await storage.createLoginAttempt(loginAttempt);
+            return res.status(429).json({
+              success: false,
+              message: "Account locked due to too many failed login attempts. Please try again later or reset your password.",
+              accountLocked: true,
+              lockedUntil: updatedUser.accountLockedUntil?.toISOString()
+            });
           }
           
           await storage.createLoginAttempt(loginAttempt);
           return res.status(429).json({
             success: false,
-            message: "Account locked due to too many failed login attempts. Please try again later or reset your password."
+            message: "Too many login attempts. Please try again later."
           });
         }
       }
@@ -456,7 +464,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createLoginAttempt(loginAttempt);
           return res.status(401).json({
             success: false,
-            message: "Account is locked due to too many failed login attempts. Please try again later or reset your password."
+            message: "Account is locked due to too many failed login attempts. Please try again later or reset your password.",
+            accountLocked: true,
+            lockedUntil: user.accountLockedUntil.toISOString()
           });
         } else if (user.accountLockedUntil) {
           // Lock period has expired, unlock the account
@@ -485,10 +495,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // If too many failed attempts, lock the account
         if (user.failedLoginAttempts >= 4) { // This would be the 5th attempt
-          await storage.lockUserAccount(user.id, 30); // Lock for 30 minutes
+          // Lock for 30 minutes
+          const updatedUser = await storage.lockUserAccount(user.id, 30);
           return res.status(401).json({
             success: false,
-            message: "Account locked due to too many failed login attempts. Please try again later or reset your password."
+            message: "Account locked due to too many failed login attempts. Please try again later or reset your password.",
+            accountLocked: true,
+            lockedUntil: updatedUser.accountLockedUntil?.toISOString()
           });
         }
         
