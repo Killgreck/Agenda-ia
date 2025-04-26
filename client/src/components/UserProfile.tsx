@@ -409,7 +409,6 @@ export default function UserProfile() {
               </Form>
             </CardContent>
           </Card>
-        </div>
       </div>
     );
   
