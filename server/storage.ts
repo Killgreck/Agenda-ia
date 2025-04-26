@@ -71,6 +71,7 @@ export class MemStorage implements IStorage {
   private aiSuggestions: Map<number, AiSuggestion>;
   private statistics: Map<number, Statistic>;
   private notifications: Map<number, Notification>;
+  private loginAttempts: Map<number, LoginAttempt>;
   
   private currentUserIds: number;
   private currentTaskIds: number;
@@ -79,6 +80,7 @@ export class MemStorage implements IStorage {
   private currentAiSuggestionIds: number;
   private currentStatisticsIds: number;
   private currentNotificationIds: number;
+  private currentLoginAttemptIds: number;
 
   constructor() {
     this.users = new Map();
@@ -88,6 +90,7 @@ export class MemStorage implements IStorage {
     this.aiSuggestions = new Map();
     this.statistics = new Map();
     this.notifications = new Map();
+    this.loginAttempts = new Map();
     
     this.currentUserIds = 1;
     this.currentTaskIds = 1;
@@ -96,6 +99,7 @@ export class MemStorage implements IStorage {
     this.currentAiSuggestionIds = 1;
     this.currentStatisticsIds = 1;
     this.currentNotificationIds = 1;
+    this.currentLoginAttemptIds = 1;
   }
 
   // User operations
@@ -356,9 +360,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
+    // Set default values for the new security fields
+    const userWithDefaults = {
+      ...insertUser,
+      twoFactorEnabled: false,
+      failedLoginAttempts: 0,
+      accountLocked: false
+    };
+    
     const [user] = await db
       .insert(users)
-      .values(insertUser)
+      .values(userWithDefaults)
       .returning();
     return user;
   }
@@ -384,6 +396,119 @@ export class DatabaseStorage implements IStorage {
       .set(cleanedUpdate)
       .where(eq(users.id, id))
       .returning();
+    return updatedUser || undefined;
+  }
+  
+  async updateUserPassword(id: number, hashedPassword: string): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser || undefined;
+  }
+  
+  async createLoginAttempt(attempt: InsertLoginAttempt): Promise<LoginAttempt> {
+    const [loginAttempt] = await db
+      .insert(loginAttempts)
+      .values(attempt)
+      .returning();
+    return loginAttempt;
+  }
+  
+  async getRecentLoginAttempts(username: string, minutes: number): Promise<LoginAttempt[]> {
+    const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
+    
+    const attempts = await db
+      .select()
+      .from(loginAttempts)
+      .where(
+        and(
+          eq(loginAttempts.username, username),
+          gte(loginAttempts.timestamp, cutoffTime)
+        )
+      )
+      .orderBy(desc(loginAttempts.timestamp));
+    
+    return attempts;
+  }
+  
+  async getRecentLoginAttemptsFromIp(ipAddress: string, minutes: number): Promise<LoginAttempt[]> {
+    const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
+    
+    const attempts = await db
+      .select()
+      .from(loginAttempts)
+      .where(
+        and(
+          eq(loginAttempts.ipAddress, ipAddress),
+          gte(loginAttempts.timestamp, cutoffTime)
+        )
+      )
+      .orderBy(desc(loginAttempts.timestamp));
+    
+    return attempts;
+  }
+  
+  async incrementFailedLoginAttempts(userId: number): Promise<User | undefined> {
+    // Get current user to get the current number of failed attempts
+    const user = await this.getUser(userId);
+    if (!user) return undefined;
+    
+    // Increment failed login attempts and set last failed login time
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        failedLoginAttempts: (user.failedLoginAttempts || 0) + 1,
+        lastFailedLoginAttempt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser || undefined;
+  }
+  
+  async resetFailedLoginAttempts(userId: number): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        failedLoginAttempts: 0,
+        lastFailedLoginAttempt: null,
+        accountLocked: false,
+        accountLockedUntil: null
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser || undefined;
+  }
+  
+  async lockUserAccount(userId: number, minutes: number): Promise<User | undefined> {
+    const lockUntil = new Date(Date.now() + minutes * 60 * 1000);
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        accountLocked: true,
+        accountLockedUntil: lockUntil
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser || undefined;
+  }
+  
+  async unlockUserAccount(userId: number): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        accountLocked: false,
+        accountLockedUntil: null,
+        failedLoginAttempts: 0
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
     return updatedUser || undefined;
   }
   
