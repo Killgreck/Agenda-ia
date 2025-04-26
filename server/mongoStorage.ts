@@ -20,6 +20,195 @@ export class MongoDBStorage implements IStorage {
   constructor() {
     log('MongoDB storage adapter initialized', 'mongodb');
   }
+  
+  // LoginAttempt operations
+  async createLoginAttempt(attempt: any): Promise<any> {
+    try {
+      // This would be implemented using the MongoDB schema for LoginAttempt
+      // Since we don't have a specific MongoDB schema for login attempts yet,
+      // we'll log this and return a mock response
+      log(`MongoDB createLoginAttempt called - not implemented yet`, 'mongodb');
+      return {
+        ...attempt,
+        id: 0,
+        timestamp: new Date()
+      };
+    } catch (error) {
+      log(`MongoDB createLoginAttempt error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+  
+  async getRecentLoginAttempts(username: string, minutes: number): Promise<any[]> {
+    try {
+      log(`MongoDB getRecentLoginAttempts called - not implemented yet`, 'mongodb');
+      return [];
+    } catch (error) {
+      log(`MongoDB getRecentLoginAttempts error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+  
+  async getRecentLoginAttemptsFromIp(ipAddress: string, minutes: number): Promise<any[]> {
+    try {
+      log(`MongoDB getRecentLoginAttemptsFromIp called - not implemented yet`, 'mongodb');
+      return [];
+    } catch (error) {
+      log(`MongoDB getRecentLoginAttemptsFromIp error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+  
+  // User security operations
+  async updateUserPassword(id: number, hashedPassword: string): Promise<any> {
+    try {
+      const user = await User.findOneAndUpdate(
+        { id },
+        { password: hashedPassword },
+        { new: true }
+      );
+      
+      if (!user) {
+        return undefined;
+      }
+      
+      const userObj = user.toObject();
+      
+      // Remove MongoDB-specific fields for compatibility
+      // @ts-ignore
+      delete userObj._id;
+      // @ts-ignore
+      delete userObj.__v;
+      
+      return userObj;
+    } catch (error) {
+      log(`MongoDB updateUserPassword error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+  
+  async incrementFailedLoginAttempts(userId: number): Promise<any> {
+    try {
+      const user = await User.findOne({ id: userId });
+      if (!user) {
+        return undefined;
+      }
+      
+      // Increment failed login attempts
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      user.lastFailedLoginAttempt = new Date();
+      
+      await user.save();
+      
+      const userObj = user.toObject();
+      
+      // Remove MongoDB-specific fields for compatibility
+      // @ts-ignore
+      delete userObj._id;
+      // @ts-ignore
+      delete userObj.__v;
+      
+      return userObj;
+    } catch (error) {
+      log(`MongoDB incrementFailedLoginAttempts error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+  
+  async resetFailedLoginAttempts(userId: number): Promise<any> {
+    try {
+      const user = await User.findOneAndUpdate(
+        { id: userId },
+        { 
+          failedLoginAttempts: 0,
+          lastFailedLoginAttempt: null,
+          accountLocked: false,
+          accountLockedUntil: null
+        },
+        { new: true }
+      );
+      
+      if (!user) {
+        return undefined;
+      }
+      
+      const userObj = user.toObject();
+      
+      // Remove MongoDB-specific fields for compatibility
+      // @ts-ignore
+      delete userObj._id;
+      // @ts-ignore
+      delete userObj.__v;
+      
+      return userObj;
+    } catch (error) {
+      log(`MongoDB resetFailedLoginAttempts error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+  
+  async lockUserAccount(userId: number, minutes: number): Promise<any> {
+    try {
+      const lockUntil = new Date(Date.now() + minutes * 60 * 1000);
+      
+      const user = await User.findOneAndUpdate(
+        { id: userId },
+        { 
+          accountLocked: true,
+          accountLockedUntil: lockUntil
+        },
+        { new: true }
+      );
+      
+      if (!user) {
+        return undefined;
+      }
+      
+      const userObj = user.toObject();
+      
+      // Remove MongoDB-specific fields for compatibility
+      // @ts-ignore
+      delete userObj._id;
+      // @ts-ignore
+      delete userObj.__v;
+      
+      return userObj;
+    } catch (error) {
+      log(`MongoDB lockUserAccount error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+  
+  async unlockUserAccount(userId: number): Promise<any> {
+    try {
+      const user = await User.findOneAndUpdate(
+        { id: userId },
+        { 
+          accountLocked: false,
+          accountLockedUntil: null,
+          failedLoginAttempts: 0
+        },
+        { new: true }
+      );
+      
+      if (!user) {
+        return undefined;
+      }
+      
+      const userObj = user.toObject();
+      
+      // Remove MongoDB-specific fields for compatibility
+      // @ts-ignore
+      delete userObj._id;
+      // @ts-ignore
+      delete userObj.__v;
+      
+      return userObj;
+    } catch (error) {
+      log(`MongoDB unlockUserAccount error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
 
   // User operations
   async getUser(id: number): Promise<any> {

@@ -26,6 +26,15 @@ export interface IUser extends mongoose.Document {
   isActive: boolean;
   accountType: string;
   language: string | null;
+  // Security fields
+  twoFactorEnabled: boolean;
+  twoFactorSecret: string | null;
+  failedLoginAttempts: number;
+  lastFailedLoginAttempt: Date | null;
+  accountLocked: boolean;
+  accountLockedUntil: Date | null;
+  passwordResetToken: string | null;
+  passwordResetExpiry: Date | null;
 }
 
 const userSchema = new Schema<IUser>({
@@ -51,7 +60,16 @@ const userSchema = new Schema<IUser>({
   lastLogin: { type: Date, default: null },
   isActive: { type: Boolean, default: true },
   accountType: { type: String, default: 'free' },
-  language: { type: String, default: null }
+  language: { type: String, default: null },
+  // Security fields
+  twoFactorEnabled: { type: Boolean, default: false },
+  twoFactorSecret: { type: String, default: null },
+  failedLoginAttempts: { type: Number, default: 0 },
+  lastFailedLoginAttempt: { type: Date, default: null },
+  accountLocked: { type: Boolean, default: false },
+  accountLockedUntil: { type: Date, default: null },
+  passwordResetToken: { type: String, default: null },
+  passwordResetExpiry: { type: Date, default: null }
 });
 
 // User Settings schema

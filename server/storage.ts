@@ -346,6 +346,105 @@ export class MemStorage implements IStorage {
       });
     }
   }
+  
+  // User security methods
+  async updateUserPassword(id: number, hashedPassword: string): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) return undefined;
+    
+    const updatedUser = { ...existingUser, password: hashedPassword };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+  
+  async createLoginAttempt(attempt: InsertLoginAttempt): Promise<LoginAttempt> {
+    const id = this.currentLoginAttemptIds++;
+    const loginAttempt: LoginAttempt = { 
+      ...attempt, 
+      id,
+      timestamp: new Date()
+    };
+    this.loginAttempts.set(id, loginAttempt);
+    return loginAttempt;
+  }
+  
+  async getRecentLoginAttempts(username: string, minutes: number): Promise<LoginAttempt[]> {
+    const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
+    
+    return Array.from(this.loginAttempts.values())
+      .filter(attempt => 
+        attempt.username === username && 
+        new Date(attempt.timestamp) >= cutoffTime
+      )
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+  
+  async getRecentLoginAttemptsFromIp(ipAddress: string, minutes: number): Promise<LoginAttempt[]> {
+    const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
+    
+    return Array.from(this.loginAttempts.values())
+      .filter(attempt => 
+        attempt.ipAddress === ipAddress && 
+        new Date(attempt.timestamp) >= cutoffTime
+      )
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+  
+  async incrementFailedLoginAttempts(userId: number): Promise<User | undefined> {
+    const existingUser = this.users.get(userId);
+    if (!existingUser) return undefined;
+    
+    const updatedUser = { 
+      ...existingUser, 
+      failedLoginAttempts: (existingUser.failedLoginAttempts || 0) + 1,
+      lastFailedLoginAttempt: new Date()
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+  
+  async resetFailedLoginAttempts(userId: number): Promise<User | undefined> {
+    const existingUser = this.users.get(userId);
+    if (!existingUser) return undefined;
+    
+    const updatedUser = { 
+      ...existingUser, 
+      failedLoginAttempts: 0,
+      lastFailedLoginAttempt: null,
+      accountLocked: false,
+      accountLockedUntil: null
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+  
+  async lockUserAccount(userId: number, minutes: number): Promise<User | undefined> {
+    const existingUser = this.users.get(userId);
+    if (!existingUser) return undefined;
+    
+    const lockUntil = new Date(Date.now() + minutes * 60 * 1000);
+    const updatedUser = { 
+      ...existingUser, 
+      accountLocked: true,
+      accountLockedUntil: lockUntil
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+  
+  async unlockUserAccount(userId: number): Promise<User | undefined> {
+    const existingUser = this.users.get(userId);
+    if (!existingUser) return undefined;
+    
+    const updatedUser = { 
+      ...existingUser, 
+      accountLocked: false,
+      accountLockedUntil: null,
+      failedLoginAttempts: 0
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -944,6 +1043,94 @@ export const storage = {
     } catch (err) {
       log(`Error in updateUser: ${err}`, 'storage');
       return await dbStorage.updateUser(id, userData);
+    }
+  },
+  
+  updateUserPassword: async (id: number, hashedPassword: string) => {
+    try {
+      return isMongoAvailable 
+        ? await mongoStorage.updateUserPassword(id, hashedPassword) 
+        : await dbStorage.updateUserPassword(id, hashedPassword);
+    } catch (err) {
+      log(`Error in updateUserPassword: ${err}`, 'storage');
+      return await dbStorage.updateUserPassword(id, hashedPassword);
+    }
+  },
+  
+  createLoginAttempt: async (attempt: InsertLoginAttempt) => {
+    try {
+      return isMongoAvailable 
+        ? await mongoStorage.createLoginAttempt(attempt as any) 
+        : await dbStorage.createLoginAttempt(attempt);
+    } catch (err) {
+      log(`Error in createLoginAttempt: ${err}`, 'storage');
+      return await dbStorage.createLoginAttempt(attempt);
+    }
+  },
+  
+  getRecentLoginAttempts: async (username: string, minutes: number) => {
+    try {
+      return isMongoAvailable 
+        ? await mongoStorage.getRecentLoginAttempts(username, minutes) 
+        : await dbStorage.getRecentLoginAttempts(username, minutes);
+    } catch (err) {
+      log(`Error in getRecentLoginAttempts: ${err}`, 'storage');
+      return await dbStorage.getRecentLoginAttempts(username, minutes);
+    }
+  },
+  
+  getRecentLoginAttemptsFromIp: async (ipAddress: string, minutes: number) => {
+    try {
+      return isMongoAvailable 
+        ? await mongoStorage.getRecentLoginAttemptsFromIp(ipAddress, minutes) 
+        : await dbStorage.getRecentLoginAttemptsFromIp(ipAddress, minutes);
+    } catch (err) {
+      log(`Error in getRecentLoginAttemptsFromIp: ${err}`, 'storage');
+      return await dbStorage.getRecentLoginAttemptsFromIp(ipAddress, minutes);
+    }
+  },
+  
+  incrementFailedLoginAttempts: async (userId: number) => {
+    try {
+      return isMongoAvailable 
+        ? await mongoStorage.incrementFailedLoginAttempts(userId) 
+        : await dbStorage.incrementFailedLoginAttempts(userId);
+    } catch (err) {
+      log(`Error in incrementFailedLoginAttempts: ${err}`, 'storage');
+      return await dbStorage.incrementFailedLoginAttempts(userId);
+    }
+  },
+  
+  resetFailedLoginAttempts: async (userId: number) => {
+    try {
+      return isMongoAvailable 
+        ? await mongoStorage.resetFailedLoginAttempts(userId) 
+        : await dbStorage.resetFailedLoginAttempts(userId);
+    } catch (err) {
+      log(`Error in resetFailedLoginAttempts: ${err}`, 'storage');
+      return await dbStorage.resetFailedLoginAttempts(userId);
+    }
+  },
+  
+  lockUserAccount: async (userId: number, minutes: number) => {
+    try {
+      return isMongoAvailable 
+        ? await mongoStorage.lockUserAccount(userId, minutes) 
+        : await dbStorage.lockUserAccount(userId, minutes);
+    } catch (err) {
+      log(`Error in lockUserAccount: ${err}`, 'storage');
+      return await dbStorage.lockUserAccount(userId, minutes);
+    }
+  },
+  
+  unlockUserAccount: async (userId: number) => {
+    try {
+      return isMongoAvailable 
+        ? await mongoStorage.unlockUserAccount(userId) 
+        : await dbStorage.unlockUserAccount(userId);
+    } catch (err) {
+      log(`Error in unlockUserAccount: ${err}`, 'storage');
+      return await dbStorage.unlockUserAccount(userId);
     }
   },
   
