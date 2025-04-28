@@ -1,6 +1,12 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import path from "path";
+import { fileURLToPath } from "url";
 import { storage } from "./storage";
+
+// Get __dirname equivalent in ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { 
   insertTaskSchema, 
   insertCheckInSchema, 
@@ -519,7 +525,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup WebSocket for real-time communications
   const wss = new WebSocketServer({ 
     server: httpServer,
-    path: '/ws'  // Use a specific path for our websocket to avoid conflicts with Vite's HMR
+    path: '/ws',  // Use a specific path for our websocket to avoid conflicts with Vite's HMR
+    perMessageDeflate: false // Disable compression to avoid potential issues
   });
   
   // Map to store WebSocket connections by user ID
@@ -1328,6 +1335,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
+
+  // GitHub repository download routes
+  app.get("/download", (req: Request, res: Response) => {
+    res.sendFile(path.resolve(__dirname, "..", "download.html"));
+  });
+
+  app.get("/github-archive", (req: Request, res: Response) => {
+    res.download(path.resolve(__dirname, "..", "agenda-ia-project.tar.gz"), "agenda-ia-project.tar.gz");
   });
 
   return httpServer;
