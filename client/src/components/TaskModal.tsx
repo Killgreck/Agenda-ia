@@ -42,9 +42,7 @@ const taskFormSchema = z.object({
 
 // Function to format date to preserve the local day when converting to ISO
 function formatDateToPreserveLocalDay(date: Date): string {
-  const offset = date.getTimezoneOffset();
-  const adjustedDate = new Date(date.getTime() - offset * 60 * 1000);
-  return adjustedDate.toISOString().split('T')[0];
+  return date.toISOString();
 }
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -319,12 +317,10 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
           });
           return;
         }
-        
-        // Verificar que la fecha de inicio de recurrencia no sea en el pasado
+
         const recurrStartDate = new Date(data.recurrenceStartDate);
         let taskStartDateTime = new Date(recurrStartDate);
         
-        // Si hay una hora específica, la consideramos
         if (!isAllDay && data.time) {
           const [hours, minutes] = data.time.split(':').map(Number);
           taskStartDateTime.setHours(hours, minutes, 0, 0);
@@ -333,24 +329,26 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         }
         
         const now = new Date();
+        const isSameDay = taskStartDateTime.toDateString() === now.toDateString();
         
-        // Si la fecha+hora combinada es anterior a la hora actual
-        if (taskStartDateTime < now) {
-          // Solo rechazamos si no es hoy o si es hoy pero la hora ya pasó
-          const isToday = taskStartDateTime.getDate() === now.getDate() && 
-                          taskStartDateTime.getMonth() === now.getMonth() && 
-                          taskStartDateTime.getFullYear() === now.getFullYear();
+        if (isSameDay && !isAllDay) {
+          // Comparar solo las horas y minutos, no los segundos ni milisegundos
+          const nowHours = now.getHours();
+          const nowMinutes = now.getMinutes();
+          const taskHours = taskStartDateTime.getHours();
+          const taskMinutes = taskStartDateTime.getMinutes();
           
-          // Si no es hoy, o si es hoy pero la hora ya pasó (y no es un evento de todo el día)
-          if (!isToday || (!isAllDay && taskStartDateTime < now)) {
+          // Verificar si la hora de la tarea ya pasó
+          if ((taskHours < nowHours) || (taskHours === nowHours && taskMinutes < nowMinutes)) {
             toast({
-              title: "Invalid Start Date/Time",
-              description: "Cannot schedule recurring events starting in the past. Please select a future date or time.",
+              title: "Invalid Time",
+              description: "The selected start time has already passed today.",
               variant: "destructive",
             });
             return;
           }
         }
+        
         
         if (!data.recurrenceEndDate) {
           toast({
@@ -423,27 +421,29 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         } else {
           taskStartDateTime.setHours(0, 0, 0, 0);
         }
-        
+
         const now = new Date();
+        const isSameDay = taskStartDateTime.toDateString() === now.toDateString();
         
-        // Si la fecha+hora combinada es anterior a la hora actual
-        if (taskStartDateTime < now) {
-          // Solo rechazamos si no es hoy o si es hoy pero la hora ya pasó
-          const isToday = taskStartDateTime.getDate() === now.getDate() && 
-                          taskStartDateTime.getMonth() === now.getMonth() && 
-                          taskStartDateTime.getFullYear() === now.getFullYear();
+        if (isSameDay && !isAllDay) {
+          // Comparar solo las horas y minutos, no los segundos ni milisegundos
+          const nowHours = now.getHours();
+          const nowMinutes = now.getMinutes();
+          const taskHours = taskStartDateTime.getHours();
+          const taskMinutes = taskStartDateTime.getMinutes();
           
-          // Si no es hoy, o si es hoy pero la hora ya pasó (y no es un evento de todo el día)
-          if (!isToday || (!isAllDay && taskStartDateTime < now)) {
+          // Verificar si la hora de la tarea ya pasó
+          if ((taskHours < nowHours) || (taskHours === nowHours && taskMinutes < nowMinutes)) {
             toast({
-              title: "Invalid Start Date/Time",
-              description: "Cannot schedule events starting in the past. Please select a future date or time.",
+              title: "Invalid Time",
+              description: "The selected start time has already passed today.",
               variant: "destructive",
             });
             return;
           }
         }
         
+
         if (!isAllDay && !data.time) {
           toast({
             title: "Missing Information",
@@ -784,7 +784,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
                             {...field} 
                             id="recurrenceStartDate"
                             type="date" 
-                            min={new Date().toISOString().split('T')[0]} // Establecer fecha mínima como hoy
+                            min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
                             className="w-full border border-gray-300 rounded-lg" 
                           />
                         )}
