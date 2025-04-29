@@ -119,5 +119,5 @@ back/
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 ## 📞 Contact
 
-- Developers: [Killgreck](https://github.com/Killgreck), [Tiassssss](https://github.com/Tiassssss),[Soomri](https://github.com/Soomri), [MateoOrtizZ](https://github.com/MateoOrtizZ)
+- Developers: [Killgreck](https://github.com/Killgreck), [Tiassssss](https://github.com/Tiassssss),[Soomri](https://github.com/Soomri)
 - Project Link: [https://github.com/Killgreck/Agenda-ia](https://github.com/Killgreck/Agenda-ia)
