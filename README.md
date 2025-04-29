@@ -114,9 +114,11 @@ back/
 - **Ejecutando la aplicación**: `npm run dev`
 - **Edificio para producción**: `npm run build`
 - **Iniciando el servidor de producción**: `npm run start`
-## 📝 License
+## Información Legal
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- [Licencia](./LICENSE)
+- [Política de Privacidad](./PRIVACY.md)
+- [Términos de Servicio](./TERMS.md)
 ## 📞 Contact
 
 - Developers: [Killgreck](https://github.com/Killgreck), [Tiassssss](https://github.com/Tiassssss),[Soomri](https://github.com/Soomri)
