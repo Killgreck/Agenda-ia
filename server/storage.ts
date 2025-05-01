@@ -14,8 +14,15 @@ export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByVerificationToken(token: string): Promise<User | undefined>;
+  getUserByPasswordResetToken(token: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, userData: Partial<Omit<InsertUser, 'password'>>): Promise<User | undefined>;
+  setEmailVerificationToken(userId: number, token: string, expires: Date): Promise<boolean>;
+  verifyEmail(token: string): Promise<User | undefined>;
+  setPasswordResetToken(userId: number, token: string, expires: Date): Promise<boolean>;
+  resetPassword(token: string, newPassword: string): Promise<User | undefined>;
   
   // Task operations
   createTask(task: InsertTask): Promise<Task>;
@@ -97,10 +104,41 @@ export class MemStorage implements IStorage {
       (user) => user.username === username,
     );
   }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email === email,
+    );
+  }
+  
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => (user as any).emailVerificationToken === token && 
+        (user as any).emailVerificationExpires && 
+        new Date((user as any).emailVerificationExpires) > new Date(),
+    );
+  }
+  
+  async getUserByPasswordResetToken(token: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => (user as any).passwordResetToken === token && 
+        (user as any).passwordResetExpires && 
+        new Date((user as any).passwordResetExpires) > new Date(),
+    );
+  }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserIds++;
-    const user: User = { ...insertUser, id };
+    const user: User = { 
+      ...insertUser, 
+      id,
+      // Agregar campos para email verification
+      isEmailVerified: false,
+      emailVerificationToken: null,
+      emailVerificationExpires: null,
+      passwordResetToken: null,
+      passwordResetExpires: null
+    } as any;
     this.users.set(id, user);
     return user;
   }
@@ -111,6 +149,64 @@ export class MemStorage implements IStorage {
     
     const updatedUser = { ...existingUser, ...userData };
     this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+  
+  async setEmailVerificationToken(userId: number, token: string, expires: Date): Promise<boolean> {
+    const user = this.users.get(userId);
+    if (!user) return false;
+    
+    const updatedUser = { 
+      ...user, 
+      emailVerificationToken: token,
+      emailVerificationExpires: expires
+    } as any;
+    
+    this.users.set(userId, updatedUser);
+    return true;
+  }
+  
+  async verifyEmail(token: string): Promise<User | undefined> {
+    const user = this.getUserByVerificationToken(token);
+    if (!user) return undefined;
+    
+    const updatedUser = { 
+      ...user, 
+      isEmailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpires: null
+    } as any;
+    
+    this.users.set(updatedUser.id, updatedUser);
+    return updatedUser;
+  }
+  
+  async setPasswordResetToken(userId: number, token: string, expires: Date): Promise<boolean> {
+    const user = this.users.get(userId);
+    if (!user) return false;
+    
+    const updatedUser = { 
+      ...user, 
+      passwordResetToken: token,
+      passwordResetExpires: expires
+    } as any;
+    
+    this.users.set(userId, updatedUser);
+    return true;
+  }
+  
+  async resetPassword(token: string, newPassword: string): Promise<User | undefined> {
+    const user = await this.getUserByPasswordResetToken(token);
+    if (!user) return undefined;
+    
+    const updatedUser = { 
+      ...user, 
+      password: newPassword, // Nota: en la implementación real, esto debería estar hasheado
+      passwordResetToken: null,
+      passwordResetExpires: null
+    } as any;
+    
+    this.users.set(updatedUser.id, updatedUser);
     return updatedUser;
   }
   
@@ -343,6 +439,24 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user || undefined;
   }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    // Esta función se implementará cuando actualicemos el esquema Postgres
+    console.warn('getUserByEmail no está completamente implementado en DatabaseStorage');
+    return undefined;
+  }
+  
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    // Esta función se implementará cuando actualicemos el esquema Postgres
+    console.warn('getUserByVerificationToken no está completamente implementado en DatabaseStorage');
+    return undefined;
+  }
+  
+  async getUserByPasswordResetToken(token: string): Promise<User | undefined> {
+    // Esta función se implementará cuando actualicemos el esquema Postgres
+    console.warn('getUserByPasswordResetToken no está completamente implementado en DatabaseStorage');
+    return undefined;
+  }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
@@ -350,6 +464,30 @@ export class DatabaseStorage implements IStorage {
       .values(insertUser)
       .returning();
     return user;
+  }
+  
+  async setEmailVerificationToken(userId: number, token: string, expires: Date): Promise<boolean> {
+    // Esta función se implementará cuando actualicemos el esquema Postgres
+    console.warn('setEmailVerificationToken no está completamente implementado en DatabaseStorage');
+    return false;
+  }
+  
+  async verifyEmail(token: string): Promise<User | undefined> {
+    // Esta función se implementará cuando actualicemos el esquema Postgres
+    console.warn('verifyEmail no está completamente implementado en DatabaseStorage');
+    return undefined;
+  }
+  
+  async setPasswordResetToken(userId: number, token: string, expires: Date): Promise<boolean> {
+    // Esta función se implementará cuando actualicemos el esquema Postgres
+    console.warn('setPasswordResetToken no está completamente implementado en DatabaseStorage');
+    return false;
+  }
+  
+  async resetPassword(token: string, newPassword: string): Promise<User | undefined> {
+    // Esta función se implementará cuando actualicemos el esquema Postgres
+    console.warn('resetPassword no está completamente implementado en DatabaseStorage');
+    return undefined;
   }
   
   async updateUser(id: number, userData: Partial<Omit<InsertUser, 'password'>>): Promise<User | undefined> {

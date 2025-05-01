@@ -17,11 +17,17 @@ import {
   insertNotificationSchema
 } from "@shared/schema";
 import axios from "axios";
+import { 
+  sendEmail, 
+  generateSecureToken, 
+  getVerificationEmailTemplate, 
+  getPasswordResetEmailTemplate 
+} from "./email";
 import { WebSocketServer } from "ws";
 import schedule from "node-schedule";
 import session from "express-session";
 import { randomBytes } from "crypto";
-import bcrypt from "bcryptjs";
+import * as bcrypt from "bcryptjs";
 import MemoryStore from "memorystore";
 import { callAbacusLLM, generateTaskSuggestion, generateWeeklyReportSummary } from "./abacusLLM";
 import { addDays, format, isSameDay, getDay, isWithinInterval } from "date-fns";
@@ -298,6 +304,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
   
+  // Helper functions for email verification and password reset
+  async function sendVerificationEmail(user: any): Promise<boolean> {
+    // Generate a secure token
+    const token = generateSecureToken(32);
+    
+    // Set expiration time (24 hours from now)
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 24);
+    
+    // Store the token and expiration in the user's record
+    const success = await storage.setEmailVerificationToken(user.id, token, expires);
+    
+    if (!success) {
+      return false;
+    }
+    
+    // Create verification link
+    const verificationLink = `${process.env.BASE_URL || 'http://localhost:5000'}/api/auth/verify-email/${token}`;
+    
+    // Generate email template
+    const emailTemplate = getVerificationEmailTemplate(user.username, verificationLink);
+    
+    // Send email
+    return await sendEmail({
+      to: user.email,
+      subject: "Verify Your Email Address",
+      html: emailTemplate
+    });
+  }
+
+  async function sendPasswordResetEmail(user: any): Promise<boolean> {
+    // Generate a secure token
+    const token = generateSecureToken(32);
+    
+    // Set expiration time (1 hour from now)
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 1);
+    
+    // Store the token and expiration in the user's record
+    const success = await storage.setPasswordResetToken(user.id, token, expires);
+    
+    if (!success) {
+      return false;
+    }
+    
+    // Create reset link
+    const resetLink = `${process.env.BASE_URL || 'http://localhost:5000'}/reset-password/${token}`;
+    
+    // Generate email template
+    const emailTemplate = getPasswordResetEmailTemplate(user.username, resetLink);
+    
+    // Send email
+    return await sendEmail({
+      to: user.email,
+      subject: "Reset Your Password",
+      html: emailTemplate
+    });
+  }
+  
   // Authentication routes
   app.post("/api/auth/signup", async (req: Request, res: Response) => {
     try {
@@ -310,6 +375,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: false,
           message: "Username already exists"
         });
+      }
+
+      // Check if email already exists (if provided)
+      if (email) {
+        const existingEmail = await storage.getUserByEmail(email);
+        if (existingEmail) {
+          return res.status(400).json({
+            success: false,
+            message: "Email already in use"
+          });
+        }
       }
       
       // Hash password
@@ -331,6 +407,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Set user session
       req.session.userId = user.id;
       req.session.username = user.username;
+      
+      // Send verification email if email is provided
+      if (email) {
+        try {
+          await sendVerificationEmail(user);
+        } catch (emailError) {
+          console.error("Error sending verification email:", emailError);
+          // Continue with user creation even if email fails
+        }
+      }
       
       // Remove password from response
       const { password: _, ...userWithoutPassword } = user;
