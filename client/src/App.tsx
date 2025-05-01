@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import AuthPage from "@/pages/Auth";
 import Profile from "@/pages/Profile";
+import ResetPassword from "@/pages/ResetPassword";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
@@ -57,6 +58,9 @@ function Router() {
         <ProtectedRoute>
           <Profile />
         </ProtectedRoute>
+      </Route>
+      <Route path="/reset-password/:token">
+        <ResetPassword />
       </Route>
       <Route path="/">
         <Redirect to={isAuthenticated ? "/dashboard" : "/auth"} />

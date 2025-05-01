@@ -509,6 +509,205 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
+  // Verificación de correo electrónico
+  app.get("/api/auth/verify-email/:token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+      
+      // Buscar usuario con el token de verificación
+      const user = await storage.getUserByVerificationToken(token);
+      
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or expired verification token"
+        });
+      }
+      
+      // Verificar el correo electrónico
+      const updatedUser = await storage.verifyEmail(token);
+      
+      if (!updatedUser) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to verify email"
+        });
+      }
+      
+      // Devolver respuesta exitosa
+      res.json({
+        success: true,
+        message: "Email verified successfully"
+      });
+    } catch (error: any) {
+      console.error("Error verifying email:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+  
+  // Solicitud de restablecimiento de contraseña
+  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required"
+        });
+      }
+      
+      // Buscar usuario por correo electrónico
+      const user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        // Por razones de seguridad, no revelar si el correo existe o no
+        return res.json({
+          success: true,
+          message: "If the email is registered, a password reset link will be sent"
+        });
+      }
+      
+      // Enviar correo de restablecimiento
+      const success = await sendPasswordResetEmail(user);
+      
+      if (!success) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to send password reset email"
+        });
+      }
+      
+      // Devolver respuesta exitosa
+      res.json({
+        success: true,
+        message: "Password reset instructions sent to your email"
+      });
+    } catch (error: any) {
+      console.error("Error in forgot password:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+  
+  // Restablecimiento de contraseña
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: "Token and new password are required"
+        });
+      }
+      
+      // Verificar que la contraseña cumpla con requisitos mínimos
+      if (newPassword.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 8 characters long"
+        });
+      }
+      
+      // Buscar usuario con el token de restablecimiento
+      const user = await storage.getUserByPasswordResetToken(token);
+      
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or expired password reset token"
+        });
+      }
+      
+      // Hash de la nueva contraseña
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+      
+      // Actualizar la contraseña
+      const updatedUser = await storage.resetPassword(token, hashedPassword);
+      
+      if (!updatedUser) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to reset password"
+        });
+      }
+      
+      // Devolver respuesta exitosa
+      res.json({
+        success: true,
+        message: "Password has been reset successfully"
+      });
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+  
+  // Reenvío de correo de verificación
+  app.post("/api/auth/resend-verification", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      
+      // Obtener usuario
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found"
+        });
+      }
+      
+      // Verificar si el correo ya está verificado
+      if (user.isEmailVerified) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is already verified"
+        });
+      }
+      
+      // Verificar que el usuario tenga un correo electrónico
+      if (!user.email) {
+        return res.status(400).json({
+          success: false,
+          message: "No email address associated with this account"
+        });
+      }
+      
+      // Enviar correo de verificación
+      const success = await sendVerificationEmail(user);
+      
+      if (!success) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to send verification email"
+        });
+      }
+      
+      // Devolver respuesta exitosa
+      res.json({
+        success: true,
+        message: "Verification email sent successfully"
+      });
+    } catch (error: any) {
+      console.error("Error sending verification email:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+  
   app.get("/api/auth/status", (req: Request, res: Response) => {
     if (req.session && req.session.userId) {
       storage.getUser(req.session.userId)

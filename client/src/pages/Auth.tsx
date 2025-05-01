@@ -11,6 +11,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 // Login form schema
 const loginSchema = z.object({
@@ -209,10 +218,23 @@ export default function Auth() {
                     )}
                   />
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex flex-col gap-4">
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Logging in...' : 'Login'}
                   </Button>
+                  <div className="text-center">
+                    <Button
+                      variant="link"
+                      className="text-sm text-muted-foreground hover:text-primary"
+                      type="button"
+                      onClick={() => {
+                        // Mostrar modal de recuperación de contraseña o redirigir a una página
+                        setForgotPasswordModalOpen(true);
+                      }}
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </Button>
+                  </div>
                 </CardFooter>
               </form>
             </Form>
