@@ -15,22 +15,14 @@ import { Eye, EyeOff } from 'lucide-react';
 // Login form schema
 const loginSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
 });
-
-// Password validation schema
-const passwordSchema = z.string()
-  .min(8, "Password must be at least 8 characters")
-  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-  .regex(/[0-9]/, "Password must contain at least one number")
-  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
 
 // Signup form schema
 const signupSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
-  password: passwordSchema,
-  confirmPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string().min(6, 'Password must be at least 6 characters'),
   email: z.string().email('Please enter a valid email').optional().or(z.literal('')),
   name: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -77,10 +69,10 @@ export default function Auth() {
   const onLoginSubmit = async (data: LoginValues) => {
     try {
       console.log('Starting login process for:', data.username);
-      const result = await login(data.username, data.password);
-      console.log('Login result:', result);
+      const success = await login(data.username, data.password);
+      console.log('Login result:', success);
       
-      if (result.success) {
+      if (success) {
         toast({
           title: 'Welcome back!',
           description: 'You have been successfully logged in.',
@@ -92,25 +84,11 @@ export default function Auth() {
           setLocation('/dashboard');
         }, 500);
       } else {
-        // Handle account locking information
-        if (result.accountLocked) {
-          const lockedUntilDate = result.lockedUntil ? new Date(result.lockedUntil) : null;
-          const formattedTime = lockedUntilDate ? 
-            `${lockedUntilDate.toLocaleDateString()} at ${lockedUntilDate.toLocaleTimeString()}` : 
-            'some time';
-          
-          toast({
-            title: 'Account locked',
-            description: `Your account has been temporarily locked due to too many failed login attempts. Please try again after ${formattedTime}.`,
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Login failed',
-            description: result.message || 'Invalid username or password. Please try again.',
-            variant: 'destructive',
-          });
-        }
+        toast({
+          title: 'Login failed',
+          description: 'Invalid username or password. Please try again.',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
       console.error('Error during login:', error);
@@ -219,9 +197,9 @@ export default function Auth() {
                               tabIndex={-1}
                             >
                               {showLoginPassword ? (
-                                <EyeOff className="h-4 w-4 text-foreground" />
+                                <EyeOff className="h-4 w-4 text-gray-500" />
                               ) : (
-                                <Eye className="h-4 w-4 text-foreground" />
+                                <Eye className="h-4 w-4 text-gray-500" />
                               )}
                             </Button>
                           </div>
@@ -283,9 +261,9 @@ export default function Auth() {
                               tabIndex={-1}
                             >
                               {showSignupPassword ? (
-                                <EyeOff className="h-4 w-4 text-foreground" />
+                                <EyeOff className="h-4 w-4 text-gray-500" />
                               ) : (
-                                <Eye className="h-4 w-4 text-foreground" />
+                                <Eye className="h-4 w-4 text-gray-500" />
                               )}
                             </Button>
                           </div>
@@ -316,9 +294,9 @@ export default function Auth() {
                               tabIndex={-1}
                             >
                               {showConfirmPassword ? (
-                                <EyeOff className="h-4 w-4 text-foreground" />
+                                <EyeOff className="h-4 w-4 text-gray-500" />
                               ) : (
-                                <Eye className="h-4 w-4 text-foreground" />
+                                <Eye className="h-4 w-4 text-gray-500" />
                               )}
                             </Button>
                           </div>

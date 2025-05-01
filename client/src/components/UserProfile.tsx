@@ -26,6 +26,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AppearanceSettings from "./AppearanceSettings";
 
 const profileFormSchema = z.object({
   name: z.string().optional(),
@@ -135,14 +137,22 @@ export default function UserProfile() {
 
   return (
     <div className="container mx-auto py-6 space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Mi Perfil</CardTitle>
-          <CardDescription>Administra tu información personal y preferencias</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <Tabs defaultValue="info" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsTrigger value="info">Mi Perfil</TabsTrigger>
+          <TabsTrigger value="appearance">Personalización</TabsTrigger>
+        </TabsList>
+        
+        {/* Profile Information Tab */}
+        <TabsContent value="info">
+          <Card>
+            <CardHeader>
+              <CardTitle>Mi Perfil</CardTitle>
+              <CardDescription>Administra tu información personal y preferencias</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Información Personal</h3>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -409,7 +419,13 @@ export default function UserProfile() {
               </Form>
             </CardContent>
           </Card>
-      </div>
-    );
-  
+        </TabsContent>
+        
+        {/* Appearance Customization Tab */}
+        <TabsContent value="appearance">
+          <AppearanceSettings />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 }

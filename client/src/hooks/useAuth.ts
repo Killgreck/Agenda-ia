@@ -25,11 +25,6 @@ interface User {
   calendarIntegration?: string | null;
   language?: string | null;
   lastLogin?: string | null;
-  createdAt?: string | null;
-  twoFactorEnabled?: boolean;
-  failedLoginAttempts?: number;
-  accountLocked?: boolean;
-  accountLockedUntil?: string | null;
 }
 
 interface AuthResponse {
@@ -37,8 +32,6 @@ interface AuthResponse {
   user?: User;
   message?: string;
   isAuthenticated?: boolean;
-  accountLocked?: boolean;
-  lockedUntil?: string;
 }
 
 interface UpdateProfileData {
@@ -63,18 +56,11 @@ interface UpdateProfileData {
   language?: string;
 }
 
-interface LoginResult {
-  success: boolean;
-  message?: string;
-  accountLocked?: boolean;
-  lockedUntil?: string;
-}
-
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<LoginResult>;
+  login: (username: string, password: string) => Promise<boolean>;
   signup: (username: string, password: string, email?: string, name?: string) => Promise<boolean>;
   logout: () => void;
   checkAuthStatus: () => Promise<boolean>;
@@ -98,26 +84,14 @@ export const useAuth = create<AuthState>()(
 
           if (response && response.success && response.user) {
             set({ user: response.user, isAuthenticated: true, isLoading: false });
-            return { 
-              success: true 
-            };
+            return true;
           } else {
             set({ isLoading: false });
-            // Return detailed response with account locking information
-            return { 
-              success: false, 
-              message: response?.message || 'Login failed',
-              accountLocked: response?.accountLocked || false,
-              lockedUntil: response?.lockedUntil
-            };
+            return false;
           }
         } catch (error) {
-          console.error('Login error:', error);
           set({ isLoading: false });
-          return { 
-            success: false, 
-            message: 'An error occurred during login'
-          };
+          return false;
         }
       },
 

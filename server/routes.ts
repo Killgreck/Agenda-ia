@@ -312,33 +312,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Validate password strength
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-      if (!passwordRegex.test(password)) {
-        return res.status(400).json({
-          success: false,
-          message: "Password must be at least 8 characters and include uppercase, lowercase, number, and special character"
-        });
-      }
-      
-      // Hash password with stronger work factor
-      const salt = await bcrypt.genSalt(12);
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
       
-      // Create the user with security defaults
+      // Create the user
       const userData = {
         username,
         password: hashedPassword,
         email: email || null,
         phoneNumber: phoneNumber || null,
-        name: name || null,
-        createdAt: new Date(),
-        twoFactorEnabled: false,
-        failedLoginAttempts: 0,
-        accountLocked: false
+        name: name || null
       };
       
-      // Validate and create the user
       const validatedUserData = insertUserSchema.parse(userData);
       const user = await storage.createUser(validatedUserData);
       
@@ -363,115 +349,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Rate limiting middleware for login attempts
-  const loginRateLimiter = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { username } = req.body;
-      const ipAddress = req.ip || req.socket.remoteAddress || '';
-      
-      // Record the login attempt regardless of success/failure
-      const loginAttempt = {
-        username,
-        ipAddress,
-        userAgent: req.headers['user-agent'] || '',
-        successful: false // Will update to true later if successful
-      };
-      
-      // Check for too many recent login attempts from this IP
-      const recentIpAttempts = await storage.getRecentLoginAttemptsFromIp(ipAddress, 15); // last 15 minutes
-      if (recentIpAttempts.length >= 10) {
-        // Too many attempts from this IP
-        console.log(`Rate limit exceeded: IP ${ipAddress} has made ${recentIpAttempts.length} login attempts in the last 15 minutes`);
-        await storage.createLoginAttempt(loginAttempt);
-        return res.status(429).json({
-          success: false,
-          message: "Too many login attempts. Please try again later."
-        });
-      }
-      
-      // If username provided, check account-specific limits
-      if (username) {
-        // Check for too many recent login attempts for this username
-        const recentUserAttempts = await storage.getRecentLoginAttempts(username, 15); // last 15 minutes
-        if (recentUserAttempts.length >= 5) {
-          // Too many attempts for this username
-          console.log(`Rate limit exceeded: Username ${username} has had ${recentUserAttempts.length} login attempts in the last 15 minutes`);
-          
-          // Find the user to lock their account
-          const user = await storage.getUserByUsername(username);
-          if (user) {
-            // Lock the account for 30 minutes
-            const updatedUser = await storage.lockUserAccount(user.id, 30);
-            
-            await storage.createLoginAttempt(loginAttempt);
-            return res.status(429).json({
-              success: false,
-              message: "Account locked due to too many failed login attempts. Please try again later or reset your password.",
-              accountLocked: true,
-              lockedUntil: updatedUser.accountLockedUntil?.toISOString()
-            });
-          }
-          
-          await storage.createLoginAttempt(loginAttempt);
-          return res.status(429).json({
-            success: false,
-            message: "Too many login attempts. Please try again later."
-          });
-        }
-      }
-      
-      // If we get here, rate limits not exceeded, proceed to login
-      next();
-    } catch (error) {
-      console.error("Error in login rate limiter:", error);
-      next(); // Proceed anyway on error in the rate limiter
-    }
-  };
-
-  app.post("/api/auth/login", loginRateLimiter, async (req: Request, res: Response) => {
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
       const { username, password } = req.body;
-      const ipAddress = req.ip || req.socket.remoteAddress || '';
       
       console.log("Login attempt for username:", username);
-      
-      // Create login attempt record
-      const loginAttempt = {
-        username,
-        ipAddress,
-        userAgent: req.headers['user-agent'] || '',
-        successful: false // Will update to true if login succeeds
-      };
       
       // Find user
       const user = await storage.getUserByUsername(username);
       console.log("User found:", user ? "Yes" : "No");
       
       if (!user) {
-        // Record failed login attempt
-        await storage.createLoginAttempt(loginAttempt);
         return res.status(401).json({
           success: false,
           message: "Invalid username or password"
         });
-      }
-      
-      // Check if account is locked
-      if (user.accountLocked) {
-        const now = new Date();
-        if (user.accountLockedUntil && user.accountLockedUntil > now) {
-          // Account is still locked
-          await storage.createLoginAttempt(loginAttempt);
-          return res.status(401).json({
-            success: false,
-            message: "Account is locked due to too many failed login attempts. Please try again later or reset your password.",
-            accountLocked: true,
-            lockedUntil: user.accountLockedUntil.toISOString()
-          });
-        } else if (user.accountLockedUntil) {
-          // Lock period has expired, unlock the account
-          await storage.unlockUserAccount(user.id);
-        }
       }
       
       console.log("Retrieved user data:", { 
@@ -487,39 +379,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Password match result:", isMatch);
       
       if (!isMatch) {
-        // Increment failed login attempts
-        await storage.incrementFailedLoginAttempts(user.id);
-        
-        // Record failed login attempt
-        await storage.createLoginAttempt(loginAttempt);
-        
-        // If too many failed attempts, lock the account
-        if (user.failedLoginAttempts >= 4) { // This would be the 5th attempt
-          // Lock for 30 minutes
-          const updatedUser = await storage.lockUserAccount(user.id, 30);
-          return res.status(401).json({
-            success: false,
-            message: "Account locked due to too many failed login attempts. Please try again later or reset your password.",
-            accountLocked: true,
-            lockedUntil: updatedUser.accountLockedUntil?.toISOString()
-          });
-        }
-        
         return res.status(401).json({
           success: false,
           message: "Invalid username or password"
         });
       }
-      
-      // Login successful - reset failed attempts counter
-      await storage.resetFailedLoginAttempts(user.id);
-      
-      // Update login attempt as successful
-      loginAttempt.successful = true;
-      await storage.createLoginAttempt(loginAttempt);
-      
-      // Update last login timestamp
-      await storage.updateUser(user.id, { lastLogin: new Date() });
       
       // Set user session
       req.session.userId = user.id;
@@ -658,157 +522,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Password change route - requires user to be authenticated and provide old password
-  app.post("/api/user/change-password", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = req.session.userId;
-      const { currentPassword, newPassword } = req.body;
-      
-      // Validate inputs
-      if (!currentPassword || !newPassword) {
-        return res.status(400).json({
-          success: false,
-          message: "Current password and new password are required"
-        });
-      }
-      
-      // Get the user
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found"
-        });
-      }
-      
-      // Verify current password
-      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
-      if (!isCurrentPasswordValid) {
-        return res.status(401).json({
-          success: false,
-          message: "Current password is incorrect"
-        });
-      }
-      
-      // Strong password validation
-      const passwordRegex = {
-        minLength: /.{8,}/,
-        uppercase: /[A-Z]/,
-        lowercase: /[a-z]/,
-        number: /[0-9]/,
-        special: /[^A-Za-z0-9]/
-      };
-      
-      const validations = [
-        { isValid: passwordRegex.minLength.test(newPassword), message: "Password must be at least 8 characters" },
-        { isValid: passwordRegex.uppercase.test(newPassword), message: "Password must contain at least one uppercase letter" },
-        { isValid: passwordRegex.lowercase.test(newPassword), message: "Password must contain at least one lowercase letter" },
-        { isValid: passwordRegex.number.test(newPassword), message: "Password must contain at least one number" },
-        { isValid: passwordRegex.special.test(newPassword), message: "Password must contain at least one special character" }
-      ];
-      
-      const failedValidations = validations.filter(v => !v.isValid);
-      if (failedValidations.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: failedValidations[0].message
-        });
-      }
-      
-      // Ensure new password is different from current password
-      if (currentPassword === newPassword) {
-        return res.status(400).json({
-          success: false,
-          message: "New password must be different from current password"
-        });
-      }
-      
-      // Hash the new password
-      const salt = await bcrypt.genSalt(10);
-      const hashedNewPassword = await bcrypt.hash(newPassword, salt);
-      
-      // Update the password
-      const updatedUser = await storage.updateUserPassword(userId, hashedNewPassword);
-      
-      if (!updatedUser) {
-        return res.status(500).json({
-          success: false,
-          message: "Failed to update password"
-        });
-      }
-      
-      res.json({
-        success: true,
-        message: "Password updated successfully"
-      });
-    } catch (error: any) {
-      console.error("Error updating password:", error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-  });
-  
-  // Account security settings route
-  app.patch("/api/user/security", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = req.session.userId;
-      
-      // Get the user
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found"
-        });
-      }
-      
-      // Update security settings
-      const securitySettings: any = {};
-      const allowedSecurityFields = [
-        'twoFactorEnabled',
-        'emailNotifications',
-        'smsNotifications'
-      ];
-      
-      allowedSecurityFields.forEach(field => {
-        if (req.body[field] !== undefined) {
-          securitySettings[field] = req.body[field];
-        }
-      });
-      
-      // Update the user's security settings
-      const updatedUser = await storage.updateUser(userId, securitySettings);
-      
-      if (!updatedUser) {
-        return res.status(500).json({
-          success: false,
-          message: "Failed to update security settings"
-        });
-      }
-      
-      // Remove password from response
-      const { password: _, ...userWithoutPassword } = updatedUser;
-      
-      res.json({
-        success: true,
-        message: "Security settings updated successfully",
-        user: userWithoutPassword
-      });
-    } catch (error: any) {
-      console.error("Error updating security settings:", error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-  });
-  
   // Setup WebSocket for real-time communications
   const wss = new WebSocketServer({ 
     server: httpServer,
-    path: '/ws'  // Use a specific path for our websocket to avoid conflicts with Vite's HMR
+    path: '/ws',  // Use a specific path for our websocket to avoid conflicts with Vite's HMR
+    perMessageDeflate: false // Disable compression to avoid potential issues
   });
   
   // Map to store WebSocket connections by user ID

@@ -5,8 +5,7 @@ import {
   chatMessages, type ChatMessage, type InsertChatMessage,
   aiSuggestions, type AiSuggestion, type InsertAiSuggestion,
   statistics, type Statistic, type InsertStatistic,
-  notifications, type Notification, type InsertNotification,
-  loginAttempts, type LoginAttempt, type InsertLoginAttempt
+  notifications, type Notification, type InsertNotification
 } from "@shared/schema";
 import { eq, and, gte, lte, desc, asc, count } from "drizzle-orm";
 import { db } from "./db";
@@ -17,7 +16,6 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, userData: Partial<Omit<InsertUser, 'password'>>): Promise<User | undefined>;
-  updateUserPassword(id: number, hashedPassword: string): Promise<User | undefined>;
   
   // Task operations
   createTask(task: InsertTask): Promise<Task>;
@@ -52,15 +50,6 @@ export interface IStorage {
   getNotifications(userId: number, limit?: number, includeRead?: boolean): Promise<Notification[]>;
   getUnreadNotificationCount(userId: number): Promise<number>;
   markAllNotificationsAsRead(userId: number): Promise<void>;
-  
-  // Login security operations
-  createLoginAttempt(attempt: InsertLoginAttempt): Promise<LoginAttempt>;
-  getRecentLoginAttempts(username: string, minutes: number): Promise<LoginAttempt[]>;
-  getRecentLoginAttemptsFromIp(ipAddress: string, minutes: number): Promise<LoginAttempt[]>;
-  incrementFailedLoginAttempts(userId: number): Promise<User | undefined>;
-  resetFailedLoginAttempts(userId: number): Promise<User | undefined>;
-  lockUserAccount(userId: number, minutes: number): Promise<User | undefined>;
-  unlockUserAccount(userId: number): Promise<User | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -71,7 +60,6 @@ export class MemStorage implements IStorage {
   private aiSuggestions: Map<number, AiSuggestion>;
   private statistics: Map<number, Statistic>;
   private notifications: Map<number, Notification>;
-  private loginAttempts: Map<number, LoginAttempt>;
   
   private currentUserIds: number;
   private currentTaskIds: number;
@@ -80,7 +68,6 @@ export class MemStorage implements IStorage {
   private currentAiSuggestionIds: number;
   private currentStatisticsIds: number;
   private currentNotificationIds: number;
-  private currentLoginAttemptIds: number;
 
   constructor() {
     this.users = new Map();
@@ -90,7 +77,6 @@ export class MemStorage implements IStorage {
     this.aiSuggestions = new Map();
     this.statistics = new Map();
     this.notifications = new Map();
-    this.loginAttempts = new Map();
     
     this.currentUserIds = 1;
     this.currentTaskIds = 1;
@@ -99,7 +85,6 @@ export class MemStorage implements IStorage {
     this.currentAiSuggestionIds = 1;
     this.currentStatisticsIds = 1;
     this.currentNotificationIds = 1;
-    this.currentLoginAttemptIds = 1;
   }
 
   // User operations
@@ -346,105 +331,6 @@ export class MemStorage implements IStorage {
       });
     }
   }
-  
-  // User security methods
-  async updateUserPassword(id: number, hashedPassword: string): Promise<User | undefined> {
-    const existingUser = this.users.get(id);
-    if (!existingUser) return undefined;
-    
-    const updatedUser = { ...existingUser, password: hashedPassword };
-    this.users.set(id, updatedUser);
-    return updatedUser;
-  }
-  
-  async createLoginAttempt(attempt: InsertLoginAttempt): Promise<LoginAttempt> {
-    const id = this.currentLoginAttemptIds++;
-    const loginAttempt: LoginAttempt = { 
-      ...attempt, 
-      id,
-      timestamp: new Date()
-    };
-    this.loginAttempts.set(id, loginAttempt);
-    return loginAttempt;
-  }
-  
-  async getRecentLoginAttempts(username: string, minutes: number): Promise<LoginAttempt[]> {
-    const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
-    
-    return Array.from(this.loginAttempts.values())
-      .filter(attempt => 
-        attempt.username === username && 
-        new Date(attempt.timestamp) >= cutoffTime
-      )
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }
-  
-  async getRecentLoginAttemptsFromIp(ipAddress: string, minutes: number): Promise<LoginAttempt[]> {
-    const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
-    
-    return Array.from(this.loginAttempts.values())
-      .filter(attempt => 
-        attempt.ipAddress === ipAddress && 
-        new Date(attempt.timestamp) >= cutoffTime
-      )
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }
-  
-  async incrementFailedLoginAttempts(userId: number): Promise<User | undefined> {
-    const existingUser = this.users.get(userId);
-    if (!existingUser) return undefined;
-    
-    const updatedUser = { 
-      ...existingUser, 
-      failedLoginAttempts: (existingUser.failedLoginAttempts || 0) + 1,
-      lastFailedLoginAttempt: new Date()
-    };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
-  }
-  
-  async resetFailedLoginAttempts(userId: number): Promise<User | undefined> {
-    const existingUser = this.users.get(userId);
-    if (!existingUser) return undefined;
-    
-    const updatedUser = { 
-      ...existingUser, 
-      failedLoginAttempts: 0,
-      lastFailedLoginAttempt: null,
-      accountLocked: false,
-      accountLockedUntil: null
-    };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
-  }
-  
-  async lockUserAccount(userId: number, minutes: number): Promise<User | undefined> {
-    const existingUser = this.users.get(userId);
-    if (!existingUser) return undefined;
-    
-    const lockUntil = new Date(Date.now() + minutes * 60 * 1000);
-    const updatedUser = { 
-      ...existingUser, 
-      accountLocked: true,
-      accountLockedUntil: lockUntil
-    };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
-  }
-  
-  async unlockUserAccount(userId: number): Promise<User | undefined> {
-    const existingUser = this.users.get(userId);
-    if (!existingUser) return undefined;
-    
-    const updatedUser = { 
-      ...existingUser, 
-      accountLocked: false,
-      accountLockedUntil: null,
-      failedLoginAttempts: 0
-    };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
-  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -459,17 +345,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    // Set default values for the new security fields
-    const userWithDefaults = {
-      ...insertUser,
-      twoFactorEnabled: false,
-      failedLoginAttempts: 0,
-      accountLocked: false
-    };
-    
     const [user] = await db
       .insert(users)
-      .values(userWithDefaults)
+      .values(insertUser)
       .returning();
     return user;
   }
@@ -495,119 +373,6 @@ export class DatabaseStorage implements IStorage {
       .set(cleanedUpdate)
       .where(eq(users.id, id))
       .returning();
-    return updatedUser || undefined;
-  }
-  
-  async updateUserPassword(id: number, hashedPassword: string): Promise<User | undefined> {
-    const [updatedUser] = await db
-      .update(users)
-      .set({ password: hashedPassword })
-      .where(eq(users.id, id))
-      .returning();
-    return updatedUser || undefined;
-  }
-  
-  async createLoginAttempt(attempt: InsertLoginAttempt): Promise<LoginAttempt> {
-    const [loginAttempt] = await db
-      .insert(loginAttempts)
-      .values(attempt)
-      .returning();
-    return loginAttempt;
-  }
-  
-  async getRecentLoginAttempts(username: string, minutes: number): Promise<LoginAttempt[]> {
-    const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
-    
-    const attempts = await db
-      .select()
-      .from(loginAttempts)
-      .where(
-        and(
-          eq(loginAttempts.username, username),
-          gte(loginAttempts.timestamp, cutoffTime)
-        )
-      )
-      .orderBy(desc(loginAttempts.timestamp));
-    
-    return attempts;
-  }
-  
-  async getRecentLoginAttemptsFromIp(ipAddress: string, minutes: number): Promise<LoginAttempt[]> {
-    const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
-    
-    const attempts = await db
-      .select()
-      .from(loginAttempts)
-      .where(
-        and(
-          eq(loginAttempts.ipAddress, ipAddress),
-          gte(loginAttempts.timestamp, cutoffTime)
-        )
-      )
-      .orderBy(desc(loginAttempts.timestamp));
-    
-    return attempts;
-  }
-  
-  async incrementFailedLoginAttempts(userId: number): Promise<User | undefined> {
-    // Get current user to get the current number of failed attempts
-    const user = await this.getUser(userId);
-    if (!user) return undefined;
-    
-    // Increment failed login attempts and set last failed login time
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        failedLoginAttempts: (user.failedLoginAttempts || 0) + 1,
-        lastFailedLoginAttempt: new Date()
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    
-    return updatedUser || undefined;
-  }
-  
-  async resetFailedLoginAttempts(userId: number): Promise<User | undefined> {
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        failedLoginAttempts: 0,
-        lastFailedLoginAttempt: null,
-        accountLocked: false,
-        accountLockedUntil: null
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    
-    return updatedUser || undefined;
-  }
-  
-  async lockUserAccount(userId: number, minutes: number): Promise<User | undefined> {
-    const lockUntil = new Date(Date.now() + minutes * 60 * 1000);
-    
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        accountLocked: true,
-        accountLockedUntil: lockUntil
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    
-    return updatedUser || undefined;
-  }
-  
-  async unlockUserAccount(userId: number): Promise<User | undefined> {
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        accountLocked: false,
-        accountLockedUntil: null,
-        failedLoginAttempts: 0
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    
     return updatedUser || undefined;
   }
   
@@ -1043,94 +808,6 @@ export const storage = {
     } catch (err) {
       log(`Error in updateUser: ${err}`, 'storage');
       return await dbStorage.updateUser(id, userData);
-    }
-  },
-  
-  updateUserPassword: async (id: number, hashedPassword: string) => {
-    try {
-      return isMongoAvailable 
-        ? await mongoStorage.updateUserPassword(id, hashedPassword) 
-        : await dbStorage.updateUserPassword(id, hashedPassword);
-    } catch (err) {
-      log(`Error in updateUserPassword: ${err}`, 'storage');
-      return await dbStorage.updateUserPassword(id, hashedPassword);
-    }
-  },
-  
-  createLoginAttempt: async (attempt: InsertLoginAttempt) => {
-    try {
-      return isMongoAvailable 
-        ? await mongoStorage.createLoginAttempt(attempt as any) 
-        : await dbStorage.createLoginAttempt(attempt);
-    } catch (err) {
-      log(`Error in createLoginAttempt: ${err}`, 'storage');
-      return await dbStorage.createLoginAttempt(attempt);
-    }
-  },
-  
-  getRecentLoginAttempts: async (username: string, minutes: number) => {
-    try {
-      return isMongoAvailable 
-        ? await mongoStorage.getRecentLoginAttempts(username, minutes) 
-        : await dbStorage.getRecentLoginAttempts(username, minutes);
-    } catch (err) {
-      log(`Error in getRecentLoginAttempts: ${err}`, 'storage');
-      return await dbStorage.getRecentLoginAttempts(username, minutes);
-    }
-  },
-  
-  getRecentLoginAttemptsFromIp: async (ipAddress: string, minutes: number) => {
-    try {
-      return isMongoAvailable 
-        ? await mongoStorage.getRecentLoginAttemptsFromIp(ipAddress, minutes) 
-        : await dbStorage.getRecentLoginAttemptsFromIp(ipAddress, minutes);
-    } catch (err) {
-      log(`Error in getRecentLoginAttemptsFromIp: ${err}`, 'storage');
-      return await dbStorage.getRecentLoginAttemptsFromIp(ipAddress, minutes);
-    }
-  },
-  
-  incrementFailedLoginAttempts: async (userId: number) => {
-    try {
-      return isMongoAvailable 
-        ? await mongoStorage.incrementFailedLoginAttempts(userId) 
-        : await dbStorage.incrementFailedLoginAttempts(userId);
-    } catch (err) {
-      log(`Error in incrementFailedLoginAttempts: ${err}`, 'storage');
-      return await dbStorage.incrementFailedLoginAttempts(userId);
-    }
-  },
-  
-  resetFailedLoginAttempts: async (userId: number) => {
-    try {
-      return isMongoAvailable 
-        ? await mongoStorage.resetFailedLoginAttempts(userId) 
-        : await dbStorage.resetFailedLoginAttempts(userId);
-    } catch (err) {
-      log(`Error in resetFailedLoginAttempts: ${err}`, 'storage');
-      return await dbStorage.resetFailedLoginAttempts(userId);
-    }
-  },
-  
-  lockUserAccount: async (userId: number, minutes: number) => {
-    try {
-      return isMongoAvailable 
-        ? await mongoStorage.lockUserAccount(userId, minutes) 
-        : await dbStorage.lockUserAccount(userId, minutes);
-    } catch (err) {
-      log(`Error in lockUserAccount: ${err}`, 'storage');
-      return await dbStorage.lockUserAccount(userId, minutes);
-    }
-  },
-  
-  unlockUserAccount: async (userId: number) => {
-    try {
-      return isMongoAvailable 
-        ? await mongoStorage.unlockUserAccount(userId) 
-        : await dbStorage.unlockUserAccount(userId);
-    } catch (err) {
-      log(`Error in unlockUserAccount: ${err}`, 'storage');
-      return await dbStorage.unlockUserAccount(userId);
     }
   },
   
