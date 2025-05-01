@@ -26,6 +26,11 @@ export interface IUser extends mongoose.Document {
   isActive: boolean;
   accountType: string;
   language: string | null;
+  isEmailVerified: boolean;
+  emailVerificationToken: string | null;
+  emailVerificationExpires: Date | null;
+  passwordResetToken: string | null;
+  passwordResetExpires: Date | null;
 }
 
 const userSchema = new Schema<IUser>({
@@ -48,6 +53,11 @@ const userSchema = new Schema<IUser>({
   profileImage: { type: String, default: null },
   preferredLanguage: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
+  isEmailVerified: { type: Boolean, default: false },
+  emailVerificationToken: { type: String, default: null },
+  emailVerificationExpires: { type: Date, default: null },
+  passwordResetToken: { type: String, default: null },
+  passwordResetExpires: { type: Date, default: null },
   lastLogin: { type: Date, default: null },
   isActive: { type: Boolean, default: true },
   accountType: { type: String, default: 'free' },

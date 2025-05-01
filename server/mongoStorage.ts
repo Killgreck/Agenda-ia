@@ -68,6 +68,83 @@ export class MongoDBStorage implements IStorage {
     }
   }
   
+  async getUserByEmail(email: string): Promise<any> {
+    try {
+      const user = await User.findOne({ email });
+      if (!user) {
+        return undefined;
+      }
+      
+      // Create a plain object from the Mongoose document
+      const userObj = user.toObject();
+      
+      // Remove MongoDB-specific fields for compatibility
+      // @ts-ignore
+      delete userObj._id;
+      // @ts-ignore
+      delete userObj.__v;
+      
+      return userObj;
+    } catch (error) {
+      log(`MongoDB getUserByEmail error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+
+  async getUserByVerificationToken(token: string): Promise<any> {
+    try {
+      const user = await User.findOne({ 
+        emailVerificationToken: token,
+        emailVerificationExpires: { $gt: new Date() }
+      });
+      
+      if (!user) {
+        return undefined;
+      }
+      
+      // Create a plain object from the Mongoose document
+      const userObj = user.toObject();
+      
+      // Remove MongoDB-specific fields for compatibility
+      // @ts-ignore
+      delete userObj._id;
+      // @ts-ignore
+      delete userObj.__v;
+      
+      return userObj;
+    } catch (error) {
+      log(`MongoDB getUserByVerificationToken error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+
+  async getUserByPasswordResetToken(token: string): Promise<any> {
+    try {
+      const user = await User.findOne({ 
+        passwordResetToken: token,
+        passwordResetExpires: { $gt: new Date() }
+      });
+      
+      if (!user) {
+        return undefined;
+      }
+      
+      // Create a plain object from the Mongoose document
+      const userObj = user.toObject();
+      
+      // Remove MongoDB-specific fields for compatibility
+      // @ts-ignore
+      delete userObj._id;
+      // @ts-ignore
+      delete userObj.__v;
+      
+      return userObj;
+    } catch (error) {
+      log(`MongoDB getUserByPasswordResetToken error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+  
   async createUser(userData: any): Promise<any> {
     try {
       // Generate a sequential ID for the user
@@ -80,6 +157,7 @@ export class MongoDBStorage implements IStorage {
       const newUser = new User({
         id,
         ...userData,
+        isEmailVerified: false,
         createdAt: new Date(),
       });
       
@@ -134,6 +212,124 @@ export class MongoDBStorage implements IStorage {
       return userObj;
     } catch (error) {
       log(`MongoDB updateUser error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+  
+  async setEmailVerificationToken(userId: number, token: string, expires: Date): Promise<boolean> {
+    try {
+      const user = await User.findOneAndUpdate(
+        { id: userId },
+        { 
+          $set: { 
+            emailVerificationToken: token,
+            emailVerificationExpires: expires
+          } 
+        },
+        { new: true }
+      );
+      
+      return !!user;
+    } catch (error) {
+      log(`MongoDB setEmailVerificationToken error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+
+  async verifyEmail(token: string): Promise<any> {
+    try {
+      const user = await User.findOneAndUpdate(
+        { 
+          emailVerificationToken: token,
+          emailVerificationExpires: { $gt: new Date() }
+        },
+        { 
+          $set: { 
+            isEmailVerified: true,
+            emailVerificationToken: null,
+            emailVerificationExpires: null
+          } 
+        },
+        { new: true }
+      );
+      
+      if (!user) {
+        return undefined;
+      }
+      
+      // Create a plain object from the Mongoose document
+      const userObj = user.toObject();
+      
+      // Remove MongoDB-specific fields for compatibility
+      // @ts-ignore
+      delete userObj._id;
+      // @ts-ignore
+      delete userObj.__v;
+      
+      return userObj;
+    } catch (error) {
+      log(`MongoDB verifyEmail error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+
+  async setPasswordResetToken(userId: number, token: string, expires: Date): Promise<boolean> {
+    try {
+      const user = await User.findOneAndUpdate(
+        { id: userId },
+        { 
+          $set: { 
+            passwordResetToken: token,
+            passwordResetExpires: expires
+          } 
+        },
+        { new: true }
+      );
+      
+      return !!user;
+    } catch (error) {
+      log(`MongoDB setPasswordResetToken error: ${error}`, 'mongodb');
+      throw error;
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<any> {
+    try {
+      // Hash the new password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+      
+      const user = await User.findOneAndUpdate(
+        { 
+          passwordResetToken: token,
+          passwordResetExpires: { $gt: new Date() }
+        },
+        { 
+          $set: { 
+            password: hashedPassword,
+            passwordResetToken: null,
+            passwordResetExpires: null
+          } 
+        },
+        { new: true }
+      );
+      
+      if (!user) {
+        return undefined;
+      }
+      
+      // Create a plain object from the Mongoose document
+      const userObj = user.toObject();
+      
+      // Remove MongoDB-specific fields for compatibility
+      // @ts-ignore
+      delete userObj._id;
+      // @ts-ignore
+      delete userObj.__v;
+      
+      return userObj;
+    } catch (error) {
+      log(`MongoDB resetPassword error: ${error}`, 'mongodb');
       throw error;
     }
   }
