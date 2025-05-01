@@ -42,6 +42,13 @@ const signupSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 type SignupValues = z.infer<typeof signupSchema>;
 
+// Esquema para el formulario de recuperación de contraseña
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Por favor, introduce un correo electrónico válido')
+});
+
+type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
+
 export default function Auth() {
   const { login, signup, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
@@ -52,6 +59,11 @@ export default function Auth() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Estado para el modal de recuperación de contraseña
+  const [forgotPasswordModalOpen, setForgotPasswordModalOpen] = useState(false);
+  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   // Login form
   const loginForm = useForm<LoginValues>({
@@ -144,8 +156,116 @@ export default function Auth() {
     }
   };
 
+  // Formulario de recuperación de contraseña
+  const forgotPasswordForm = useForm<ForgotPasswordValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: ''
+    }
+  });
+  
+  // Manejar el envío del formulario de recuperación de contraseña
+  const onForgotPasswordSubmit = async (data: ForgotPasswordValues) => {
+    setIsSubmittingReset(true);
+    
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: data.email })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        setResetEmailSent(true);
+        toast({
+          title: "Correo enviado",
+          description: "Si la dirección existe en nuestro sistema, recibirás un enlace para restablecer tu contraseña.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.message || "No se pudo procesar tu solicitud",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error al solicitar restablecimiento de contraseña:", error);
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al conectar con el servidor",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingReset(false);
+    }
+  };
+  
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      {/* Modal de recuperación de contraseña */}
+      <Dialog open={forgotPasswordModalOpen} onOpenChange={setForgotPasswordModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Recuperar contraseña</DialogTitle>
+            <DialogDescription>
+              Ingresa tu correo electrónico para recibir instrucciones de restablecimiento de contraseña.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {resetEmailSent ? (
+            <div className="py-6 text-center">
+              <h3 className="text-lg font-medium text-green-600 mb-2">¡Correo enviado!</h3>
+              <p className="text-sm text-muted-foreground">
+                Si la dirección existe en nuestro sistema, recibirás un enlace para restablecer tu contraseña.
+                Revisa tu bandeja de entrada (y la carpeta de spam).
+              </p>
+            </div>
+          ) : (
+            <Form {...forgotPasswordForm}>
+              <form onSubmit={forgotPasswordForm.handleSubmit(onForgotPasswordSubmit)} className="space-y-4">
+                <FormField
+                  control={forgotPasswordForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Correo electrónico</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="tu@email.com" 
+                          type="email" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <DialogFooter className="mt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setForgotPasswordModalOpen(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmittingReset}
+                  >
+                    {isSubmittingReset ? "Enviando..." : "Enviar enlace"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          )}
+        </DialogContent>
+      </Dialog>
+      
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
