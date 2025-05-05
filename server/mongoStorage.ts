@@ -12,7 +12,8 @@ import {
   EventRecurrence,
   EventReminder,
   Tag,
-  Integration
+  Integration,
+  ChatMessage
 } from './mongoModels';
 
 // MongoDB storage adapter implementing the IStorage interface

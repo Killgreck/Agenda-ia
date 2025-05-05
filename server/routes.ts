@@ -1174,19 +1174,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const messageData = insertChatMessageSchema.parse(rawData);
       
-      // Create a message object with an ID for the client
-      // but don't store it in the database
-      const messageWithId = {
-        ...messageData,
-        id: Date.now() // Generate a simple client-side ID
-      };
+      // Store the message in the database
+      const savedMessage = await storage.createChatMessage(messageData);
       
       // If the message is from the user, generate AI response
       if (messageData.sender === 'user') {
         // Broadcast user message only to this user's connections
         broadcastMessage({ 
           type: 'NEW_CHAT_MESSAGE', 
-          message: messageWithId,
+          message: savedMessage,
           userId: userId  // Include userId to target specific connections
         });
         
@@ -1201,14 +1197,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             content: aiResponse,
             timestamp: now.toISOString(),
             sender: 'ai',
-            userId: userId, // Include the userId for proper routing
-            id: Date.now() + 1 // Simple ID for the response
+            userId: userId // Include the userId for proper routing
           };
+          
+          // Store AI response in the database
+          const savedAiResponse = await storage.createChatMessage(aiResponseData);
           
           // Broadcast AI response only to this user's connections
           broadcastMessage({ 
             type: 'NEW_CHAT_MESSAGE', 
-            message: aiResponseData,
+            message: savedAiResponse,
             userId: userId  // Include userId to target specific connections
           });
         } catch (error) {
@@ -1218,29 +1216,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
             content: "I'm having trouble connecting to my knowledge base at the moment. Please try again in a moment.",
             timestamp: new Date().toISOString(),
             sender: 'ai',
-            userId: userId, // Include userId for proper routing
-            id: Date.now() + 1
+            userId: userId // Include userId for proper routing
           };
+          
+          // Store error message in the database
+          const savedErrorResponse = await storage.createChatMessage(fallbackResponse);
+          
           broadcastMessage({ 
             type: 'NEW_CHAT_MESSAGE', 
-            message: fallbackResponse,
+            message: savedErrorResponse,
             userId: userId  // Include userId to target specific connections
           });
         }
       }
       
-      // Return the message with ID but don't store it
-      res.status(201).json(messageWithId);
+      // Return the saved message
+      res.status(201).json(savedMessage);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
   });
   
-  // Instead of retrieving from database, we'll return an empty array as messages are not saved
+  // Retrieve chat messages from database
   app.get("/api/chat-messages", async (req: Request, res: Response) => {
     try {
-      // Return empty array since we're no longer storing chat messages
-      res.json([]);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50; // Default to 50 messages
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : 1; // Default to user 1 for testing
+      
+      const messages = await storage.getChatMessages(limit, userId);
+      res.json(messages);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
