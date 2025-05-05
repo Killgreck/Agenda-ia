@@ -29,7 +29,7 @@ import session from "express-session";
 import { randomBytes } from "crypto";
 import * as bcrypt from "bcryptjs";
 import MemoryStore from "memorystore";
-import { callAbacusLLM, generateTaskSuggestion, generateWeeklyReportSummary } from "./abacusLLM";
+import { callGeminiLLM, generateTaskSuggestion, generateWeeklyReportSummary } from "./geminiLLM";
 import { addDays, format, isSameDay, getDay, isWithinInterval } from "date-fns";
 
 // Extend express-session declarations
@@ -1227,7 +1227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 : '';
                 
               // Call Abacus LLM with user message and calendar context
-              const aiResponse = await callAbacusLLM(messageData.content);
+              const aiResponse = await callGeminiLLM(messageData.content, userId);
               
               // Create AI response with timestamp as string (ISO format)
               const now = new Date();
@@ -1318,8 +1318,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Title is required' });
       }
       
-      // Call the Abacus LLM to generate a suggestion
-      // We're using the imported function from line 20
+      // Call the Gemini LLM to generate a suggestion
+      // We're using the imported function from our geminiLLM.ts module
       const suggestion = await generateTaskSuggestion(title, description);
       
       // Return the suggestion
@@ -1498,7 +1498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         statistics = await storage.createStatistics(statsData);
       }
       
-      // Use Abacus LLM to generate a personalized weekly report
+      // Use Gemini LLM to generate a personalized weekly report
       try {
         const report = await generateWeeklyReportSummary(statsData);
         res.json({ 
