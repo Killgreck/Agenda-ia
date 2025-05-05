@@ -9,12 +9,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 
-// Esquema de validación para el formulario
+// Validation schema for the form
 const resetPasswordSchema = z.object({
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string()
 }).refine(data => data.password === data.confirmPassword, {
-  message: "Las contraseñas no coinciden",
+  message: "Passwords don't match",
   path: ["confirmPassword"]
 });
 
@@ -27,17 +27,17 @@ export default function ResetPassword() {
   const [resetSuccess, setResetSuccess] = useState(false);
   const { toast } = useToast();
   
-  // Extraer el token de la URL
+  // Extract token from URL
   useEffect(() => {
     const path = window.location.pathname;
     const tokenMatch = /\/reset-password\/([^\/]+)/.exec(path);
     if (tokenMatch && tokenMatch[1]) {
       setToken(tokenMatch[1]);
     } else {
-      // Si no hay token, redirigir a la página de inicio de sesión
+      // If there's no token, redirect to login page
       toast({
         title: "Error",
-        description: "Token de restablecimiento no válido o ausente",
+        description: "Invalid or missing reset token",
         variant: "destructive"
       });
       navigate("/auth");
@@ -56,7 +56,7 @@ export default function ResetPassword() {
     if (!token) {
       toast({
         title: "Error",
-        description: "Token de restablecimiento no válido",
+        description: "Invalid reset token",
         variant: "destructive"
       });
       return;
@@ -81,28 +81,28 @@ export default function ResetPassword() {
       if (response.ok && result.success) {
         setResetSuccess(true);
         toast({
-          title: "Éxito",
-          description: "Tu contraseña ha sido restablecida correctamente"
+          title: "Success",
+          description: "Your password has been reset successfully"
         });
         
-        // Redirigir a la página de inicio de sesión después de 3 segundos
+        // Redirect to login page after 3 seconds
         setTimeout(() => {
           navigate("/auth");
         }, 3000);
       } else {
         toast({
           title: "Error",
-          description: result.message || "Error al restablecer la contraseña",
+          description: result.message || "Error resetting password",
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Ocurrió un error al conectar con el servidor",
+        description: "Error connecting to the server",
         variant: "destructive"
       });
-      console.error("Error al restablecer la contraseña:", error);
+      console.error("Error resetting password:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -112,9 +112,9 @@ export default function ResetPassword() {
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Restablecer contraseña</CardTitle>
+          <CardTitle>Reset Password</CardTitle>
           <CardDescription>
-            Crea una nueva contraseña para tu cuenta
+            Create a new password for your account
           </CardDescription>
         </CardHeader>
         
@@ -122,10 +122,10 @@ export default function ResetPassword() {
           {resetSuccess ? (
             <div className="text-center py-4">
               <h3 className="text-lg font-semibold text-green-600 mb-2">
-                ¡Contraseña restablecida!
+                Password Reset!
               </h3>
               <p className="text-sm text-muted-foreground">
-                Tu contraseña ha sido actualizada correctamente. Serás redirigido a la página de inicio de sesión.
+                Your password has been updated successfully. You will be redirected to the login page.
               </p>
             </div>
           ) : (
@@ -136,11 +136,11 @@ export default function ResetPassword() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nueva contraseña</FormLabel>
+                      <FormLabel>New Password</FormLabel>
                       <FormControl>
                         <Input 
                           type="password" 
-                          placeholder="Mínimo 8 caracteres" 
+                          placeholder="Minimum 8 characters" 
                           {...field}
                         />
                       </FormControl>
@@ -154,11 +154,11 @@ export default function ResetPassword() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Confirmar contraseña</FormLabel>
+                      <FormLabel>Confirm Password</FormLabel>
                       <FormControl>
                         <Input 
                           type="password" 
-                          placeholder="Confirma tu nueva contraseña" 
+                          placeholder="Confirm your new password" 
                           {...field}
                         />
                       </FormControl>
@@ -172,7 +172,7 @@ export default function ResetPassword() {
                   className="w-full" 
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Procesando..." : "Restablecer contraseña"}
+                  {isSubmitting ? "Processing..." : "Reset Password"}
                 </Button>
               </form>
             </Form>
@@ -184,7 +184,7 @@ export default function ResetPassword() {
             variant="link" 
             onClick={() => navigate("/auth")}
           >
-            Volver a iniciar sesión
+            Back to Login
           </Button>
         </CardFooter>
       </Card>

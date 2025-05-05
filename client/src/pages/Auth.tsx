@@ -210,18 +210,18 @@ export default function Auth() {
       <Dialog open={forgotPasswordModalOpen} onOpenChange={setForgotPasswordModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Recuperar contraseña</DialogTitle>
+            <DialogTitle>Reset Password</DialogTitle>
             <DialogDescription>
-              Ingresa tu correo electrónico para recibir instrucciones de restablecimiento de contraseña.
+              Enter your email address to receive password reset instructions.
             </DialogDescription>
           </DialogHeader>
           
           {resetEmailSent ? (
             <div className="py-6 text-center">
-              <h3 className="text-lg font-medium text-green-600 mb-2">¡Correo enviado!</h3>
+              <h3 className="text-lg font-medium text-green-600 mb-2">Email Sent!</h3>
               <p className="text-sm text-muted-foreground">
-                Si la dirección existe en nuestro sistema, recibirás un enlace para restablecer tu contraseña.
-                Revisa tu bandeja de entrada (y la carpeta de spam).
+                If the address exists in our system, you will receive a link to reset your password.
+                Please check your inbox (and spam folder).
               </p>
             </div>
           ) : (
@@ -232,10 +232,10 @@ export default function Auth() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Correo electrónico</FormLabel>
+                      <FormLabel>Email address</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="tu@email.com" 
+                          placeholder="your@email.com" 
                           type="email" 
                           {...field} 
                         />
@@ -251,13 +251,13 @@ export default function Auth() {
                     variant="outline" 
                     onClick={() => setForgotPasswordModalOpen(false)}
                   >
-                    Cancelar
+                    Cancel
                   </Button>
                   <Button 
                     type="submit" 
                     disabled={isSubmittingReset}
                   >
-                    {isSubmittingReset ? "Enviando..." : "Enviar enlace"}
+                    {isSubmittingReset ? "Sending..." : "Send Link"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -348,11 +348,11 @@ export default function Auth() {
                       className="text-sm text-muted-foreground hover:text-primary"
                       type="button"
                       onClick={() => {
-                        // Mostrar modal de recuperación de contraseña o redirigir a una página
+                        // Show password recovery modal
                         setForgotPasswordModalOpen(true);
                       }}
                     >
-                      ¿Olvidaste tu contraseña?
+                      Forgot your password?
                     </Button>
                   </div>
                 </CardFooter>
