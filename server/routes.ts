@@ -349,8 +349,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return false;
     }
     
-    // Create reset link
-    const resetLink = `${process.env.BASE_URL || 'http://localhost:5000'}/reset-password/${token}`;
+    // Create reset link - make sure this matches the frontend route
+    const resetLink = `${process.env.BASE_URL || 'http://localhost:5000'}/#/reset-password/${token}`;
     
     // Generate email template
     const emailTemplate = getPasswordResetEmailTemplate(user.username, resetLink);

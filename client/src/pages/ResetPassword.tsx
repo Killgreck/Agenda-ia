@@ -29,7 +29,7 @@ export default function ResetPassword() {
   
   // Extract token from URL
   useEffect(() => {
-    const path = window.location.pathname;
+    const path = window.location.hash || window.location.pathname;
     const tokenMatch = /\/reset-password\/([^\/]+)/.exec(path);
     if (tokenMatch && tokenMatch[1]) {
       setToken(tokenMatch[1]);
