@@ -320,7 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return false;
     }
     
-    // Create verification link
+    // Create verification link - make sure this matches the frontend route
     const verificationLink = `${process.env.BASE_URL || 'http://localhost:5000'}/api/auth/verify-email/${token}`;
     
     // Generate email template
@@ -518,33 +518,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserByVerificationToken(token);
       
       if (!user) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid or expired verification token"
-        });
+        // Redirect to frontend with error status
+        return res.redirect('/#/auth?verificationStatus=failed&reason=invalid');
       }
       
       // Verificar el correo electrónico
       const updatedUser = await storage.verifyEmail(token);
       
       if (!updatedUser) {
-        return res.status(500).json({
-          success: false,
-          message: "Failed to verify email"
-        });
+        // Redirect to frontend with error status
+        return res.redirect('/#/auth?verificationStatus=failed&reason=server');
       }
       
-      // Devolver respuesta exitosa
-      res.json({
-        success: true,
-        message: "Email verified successfully"
-      });
+      // Redirect to frontend with success message
+      res.redirect('/#/auth?verificationStatus=success');
     } catch (error: any) {
       console.error("Error verifying email:", error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      // Redirect to frontend with error status
+      res.redirect('/#/auth?verificationStatus=failed&reason=error');
     }
   });
   

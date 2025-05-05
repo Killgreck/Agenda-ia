@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -52,12 +52,47 @@ type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 export default function Auth() {
   const { login, signup, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   
   // States to control password visibility
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
+  
+  // State for email verification status
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
+  
+  // Check for verification status in URL query parameters
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const status = searchParams.get('verificationStatus');
+    if (status) {
+      setVerificationStatus(status);
+      
+      if (status === 'success') {
+        toast({
+          title: "Email Verified",
+          description: "Your email has been successfully verified. You can now log in.",
+          variant: "default"
+        });
+      } else if (status === 'failed') {
+        const reason = searchParams.get('reason') || 'unknown';
+        let message = "Failed to verify your email.";
+        
+        if (reason === 'invalid') {
+          message = "Invalid or expired verification token.";
+        } else if (reason === 'server') {
+          message = "Server error occurred during verification.";
+        }
+        
+        toast({
+          title: "Verification Failed",
+          description: message,
+          variant: "destructive"
+        });
+      }
+    }
+  }, [toast]);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // State for password recovery modal
@@ -206,6 +241,14 @@ export default function Auth() {
   
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      {/* Email Verification Status Banner */}
+      {verificationStatus === 'success' && (
+        <div className="fixed top-0 left-0 right-0 bg-green-100 border-b border-green-200 px-4 py-3 text-green-700 flex items-center justify-center">
+          <CheckCircle className="h-5 w-5 mr-2" />
+          <span>Your email has been successfully verified. You can now log in.</span>
+        </div>
+      )}
+      
       {/* Password Recovery Modal */}
       <Dialog open={forgotPasswordModalOpen} onOpenChange={setForgotPasswordModalOpen}>
         <DialogContent className="sm:max-w-md">
