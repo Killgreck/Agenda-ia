@@ -1,10 +1,86 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { log } from './vite';
-import { Event } from './mongoModels';
+import { Event, User, ChatMessage } from './mongoModels';
 
 // Initialize the Google Generative AI with the API key
 const API_KEY = process.env.GEMINI_API_KEY;
 const MODEL_NAME = 'gemini-1.5-pro';
+
+// Function to get user profile as text
+export async function getUserProfileAsText(userId: number): Promise<string> {
+  try {
+    // Query user from the database
+    const user = await User.findOne({ id: userId });
+    
+    if (!user) {
+      return "User profile information not available.";
+    }
+    
+    // Format user profile as text
+    let profileText = "User Profile:\n";
+    
+    if (user.name) {
+      profileText += `Name: ${user.name}\n`;
+    } else {
+      profileText += `Username: ${user.username}\n`;
+    }
+    
+    if (user.email) {
+      profileText += `Email: ${user.email}\n`;
+    }
+    
+    if (user.timezone) {
+      profileText += `Timezone: ${user.timezone}\n`;
+    }
+    
+    if (user.occupation) {
+      profileText += `Occupation: ${user.occupation}\n`;
+    }
+    
+    if (user.company) {
+      profileText += `Company: ${user.company}\n`;
+    }
+    
+    if (user.language) {
+      profileText += `Preferred Language: ${user.language}\n`;
+    }
+    
+    return profileText;
+  } catch (error) {
+    log(`Error getting user profile as text: ${error}`, 'error');
+    return "User profile information not available.";
+  }
+}
+
+// Function to get previous messages as text
+export async function getPreviousMessagesAsText(userId: number, limit: number = 10): Promise<string> {
+  try {
+    // Query messages from the database
+    const messages = await ChatMessage.find({ userId })
+      .sort({ timestamp: -1 })
+      .limit(limit);
+    
+    if (!messages || messages.length === 0) {
+      return "No previous conversation history available.";
+    }
+    
+    // Reverse the messages to get chronological order (oldest first)
+    const chronologicalMessages = [...messages].reverse();
+    
+    // Format messages as text conversation
+    let messagesText = "Previous Conversation:\n\n";
+    
+    chronologicalMessages.forEach((message) => {
+      const sender = message.sender === 'user' ? 'User' : 'Assistant';
+      messagesText += `${sender}: ${message.content}\n\n`;
+    });
+    
+    return messagesText;
+  } catch (error) {
+    log(`Error getting previous messages as text: ${error}`, 'error');
+    return "Previous conversation history not available.";
+  }
+}
 
 // Function to get calendar events as text
 export async function getCalendarEventsAsText(userId: number): Promise<string> {
@@ -81,6 +157,12 @@ export async function callGeminiLLM(userMessage: string, userId: number = 1): Pr
     // Get calendar events as text to provide context
     const calendarEvents = await getCalendarEventsAsText(userId);
     
+    // Get user profile as text to provide personalization
+    const userProfile = await getUserProfileAsText(userId);
+    
+    // Get previous conversation messages for context
+    const previousMessages = await getPreviousMessagesAsText(userId, 5);
+    
     // Initialize the Gemini API
     const genAI = new GoogleGenerativeAI(API_KEY);
     const model = genAI.getGenerativeModel({ model: MODEL_NAME });
@@ -133,13 +215,26 @@ export async function callGeminiLLM(userMessage: string, userId: number = 1): Pr
       - Should we skip holidays?
     - Reminder: How many minutes before should you be reminded?
     
-    Here are the user's current calendar events:
+    // User Profile Information
+    ${userProfile}
+    
+    // Previous Conversation History
+    ${previousMessages}
+    
+    // Calendar Information
     ${calendarEvents}
     
-    The user is currently accessing the AI assistant feature of the application. Be helpful, friendly, and proactive in suggesting improvements to their schedule. ALWAYS suggest specific available time slots based on the existing calendar.`;
+    The user is currently accessing the AI assistant feature of the application. Be helpful, friendly, and proactive in suggesting improvements to their schedule. 
+    
+    IMPORTANT GUIDELINES:
+    1. Address the user by their name if available
+    2. Refer to previous conversations when relevant
+    3. ALWAYS suggest specific available time slots based on the existing calendar
+    4. Be aware of the user's timezone and language preferences if provided
+    5. Be concise but helpful - don't be overly verbose`;
 
     // Generate content
-    // Gemini no admite el rol 'system', así que combinamos el mensaje del sistema con el mensaje del usuario
+    // Gemini doesn't support 'system' role, so we combine system message with user message
     const combinedPrompt = `${systemMessage}\n\nUser: ${userMessage}`;
     
     const result = await model.generateContent({
