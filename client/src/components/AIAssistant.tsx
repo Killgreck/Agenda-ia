@@ -312,12 +312,12 @@ export default function AIAssistant() {
           <Bot className="text-accent mr-2 h-5 w-5" />
           AI Assistant
         </h2>
-        <p className="text-sm text-gray-500 mt-1">Powered by Abacus LLM</p>
+        <p className="text-sm text-gray-500 mt-1">Powered by Gemini AI</p>
         
         {apiError && (
           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
             <p>
-              <strong>Connection Issue:</strong> Currently unable to connect to the Abacus AI service. The system is 
+              <strong>Connection Issue:</strong> Currently unable to connect to the Gemini AI service. The system is 
               still operational, but advanced AI features are limited until connectivity is restored.
             </p>
             <p className="mt-1 text-xs text-red-600">
@@ -340,7 +340,7 @@ export default function AIAssistant() {
             className={`flex items-start ${msg.sender === 'ai' ? '' : 'justify-end'}`}
           >
             {msg.sender === 'ai' && (
-              <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0 text-white">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 text-white">
                 <Bot className="h-4 w-4" />
               </div>
             )}
@@ -348,7 +348,7 @@ export default function AIAssistant() {
             <div 
               className={`${
                 msg.sender === 'ai' 
-                  ? 'ml-3 bg-accent text-white rounded-lg rounded-tl-none relative ai-message' 
+                  ? 'ml-3 bg-blue-600 text-white rounded-lg rounded-tl-none relative ai-message' 
                   : 'mr-3 bg-primary text-white rounded-lg rounded-tr-none relative user-message'
               } p-3 max-w-[80%]`}
             >
