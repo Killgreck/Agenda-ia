@@ -1271,7 +1271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Generate task suggestions using the Abacus LLM
+  // Generate task suggestions using the Gemini LLM
   app.post("/api/ai-suggestions/generate", async (req: Request, res: Response) => {
     try {
       const { title, description } = req.body;
@@ -1289,10 +1289,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error generating task suggestion:', error);
       
-      // Check if the error is related to the Abacus API key
+      // Check if the error is related to the Gemini API key
       if (error instanceof Error && error.message && error.message.includes('API key')) {
         return res.status(503).json({ 
-          error: 'Abacus API service unavailable',
+          error: 'Gemini API service unavailable',
           message: 'The AI service is currently unavailable. Please try again later.'
         });
       }
