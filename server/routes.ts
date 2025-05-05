@@ -1191,79 +1191,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         try {
-          // Fetch user's calendar events for better context
-          // Get current date and next 30 days
-          const startDate = new Date();
-          const endDate = new Date();
-          endDate.setDate(endDate.getDate() + 30);
+          // Our geminiLLM implementation will automatically fetch and format calendar events
+          // Call Gemini LLM with user message (this will internally get calendar data)
+          const aiResponse = await callGeminiLLM(messageData.content, userId);
           
-          // Get user's tasks (calendar events)
-          storage.getTasks({ userId, startDate, endDate })
-            .then(async (tasks) => {
-              console.log(`Retrieved ${tasks.length} calendar events for AI context for user ${userId}`);
-              
-              // Format tasks for friendly display to the AI
-              const formattedTasks = tasks.map(task => {
-                const dateStr = new Date(task.date).toLocaleDateString('en-US', { weekday: 'long', month: 'numeric', day: 'numeric' });
-                let timeStr = '';
-                
-                if (task.isAllDay) {
-                  timeStr = 'All Day';
-                } else {
-                  const startTime = new Date(task.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                  const endTime = task.endDate 
-                    ? new Date(task.endDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-                    : '';
-                  timeStr = endTime ? `${startTime} - ${endTime}` : startTime;
-                }
-                
-                return `- ${task.title} (${dateStr}, ${timeStr})`;
-              }).join('\n');
-              
-              // Use Abacus LLM API to generate a response with real calendar context
-              // If no tasks, we won't change the example ones in the system message
-              const userTasksContext = tasks.length > 0 
-                ? `Here are the user's current calendar events:\n${formattedTasks}\n\n` 
-                : '';
-                
-              // Call Abacus LLM with user message and calendar context
-              const aiResponse = await callGeminiLLM(messageData.content, userId);
-              
-              // Create AI response with timestamp as string (ISO format)
-              const now = new Date();
-              const aiResponseData = {
-                content: aiResponse,
-                timestamp: now.toISOString(),
-                sender: 'ai',
-                userId: userId, // Include the userId for proper routing
-                id: Date.now() + 1 // Simple ID for the response
-              };
-              
-              // Broadcast AI response only to this user's connections
-              broadcastMessage({ 
-                type: 'NEW_CHAT_MESSAGE', 
-                message: aiResponseData,
-                userId: userId  // Include userId to target specific connections
-              });
-            })
-            .catch(error => {
-              console.error(`Error processing calendar events or LLM response for user ${userId}:`, error);
-              // Send fallback response in case of error (only to this user)
-              const fallbackResponse = {
-                content: "I'm having trouble connecting to my knowledge base at the moment. Please try again in a moment.",
-                timestamp: new Date().toISOString(),
-                sender: 'ai',
-                userId: userId, // Include userId for proper routing
-                id: Date.now() + 1
-              };
-              broadcastMessage({ 
-                type: 'NEW_CHAT_MESSAGE', 
-                message: fallbackResponse,
-                userId: userId  // Include userId to target specific connections
-              });
-            });
-        } catch (aiError) {
-          console.error(`Error generating AI response for user ${userId}:`, aiError);
+          // Create AI response with timestamp as string (ISO format)
+          const now = new Date();
+          const aiResponseData = {
+            content: aiResponse,
+            timestamp: now.toISOString(),
+            sender: 'ai',
+            userId: userId, // Include the userId for proper routing
+            id: Date.now() + 1 // Simple ID for the response
+          };
+          
+          // Broadcast AI response only to this user's connections
+          broadcastMessage({ 
+            type: 'NEW_CHAT_MESSAGE', 
+            message: aiResponseData,
+            userId: userId  // Include userId to target specific connections
+          });
+        } catch (error) {
+          console.error(`Error processing calendar events or LLM response for user ${userId}:`, error);
+          // Send fallback response in case of error (only to this user)
+          const fallbackResponse = {
+            content: "I'm having trouble connecting to my knowledge base at the moment. Please try again in a moment.",
+            timestamp: new Date().toISOString(),
+            sender: 'ai',
+            userId: userId, // Include userId for proper routing
+            id: Date.now() + 1
+          };
+          broadcastMessage({ 
+            type: 'NEW_CHAT_MESSAGE', 
+            message: fallbackResponse,
+            userId: userId  // Include userId to target specific connections
+          });
         }
       }
       
