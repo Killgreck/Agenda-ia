@@ -50,34 +50,34 @@ export function generateSecureToken(length: number = 32): string {
   return crypto.randomBytes(length).toString('hex');
 }
 
-// Plantilla de correo para verificación de cuenta
+// Email template for account verification
 export function getVerificationEmailTemplate(username: string, verificationLink: string): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-      <h2 style="color: #4a5568; text-align: center;">Verificación de Cuenta</h2>
-      <p>Hola <strong>${username}</strong>,</p>
-      <p>Gracias por registrarte en AI Calendar. Por favor verifica tu cuenta haciendo clic en el siguiente enlace:</p>
+      <h2 style="color: #4a5568; text-align: center;">Account Verification</h2>
+      <p>Hello <strong>${username}</strong>,</p>
+      <p>Thank you for registering with AI Calendar. Please verify your account by clicking the link below:</p>
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${verificationLink}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Verificar mi cuenta</a>
+        <a href="${verificationLink}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Verify my account</a>
       </div>
-      <p>Si no has solicitado esta verificación, puedes ignorar este correo.</p>
-      <p>Saludos,<br>El equipo de AI Calendar</p>
+      <p>If you didn't request this verification, you can ignore this email.</p>
+      <p>Regards,<br>The AI Calendar Team</p>
     </div>
   `;
 }
 
-// Plantilla de correo para restablecimiento de contraseña
+// Email template for password reset
 export function getPasswordResetEmailTemplate(username: string, resetLink: string): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-      <h2 style="color: #4a5568; text-align: center;">Restablecimiento de Contraseña</h2>
-      <p>Hola <strong>${username}</strong>,</p>
-      <p>Hemos recibido una solicitud para restablecer tu contraseña. Haz clic en el siguiente enlace para crear una nueva contraseña:</p>
+      <h2 style="color: #4a5568; text-align: center;">Password Reset</h2>
+      <p>Hello <strong>${username}</strong>,</p>
+      <p>We received a request to reset your password. Click the link below to create a new password:</p>
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${resetLink}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Restablecer mi contraseña</a>
+        <a href="${resetLink}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset my password</a>
       </div>
-      <p>Si no has solicitado este restablecimiento, puedes ignorar este correo. Por seguridad, este enlace expirará en 1 hora.</p>
-      <p>Saludos,<br>El equipo de AI Calendar</p>
+      <p>If you didn't request this reset, you can ignore this email. For security, this link will expire in 1 hour.</p>
+      <p>Regards,<br>The AI Calendar Team</p>
     </div>
   `;
 }
