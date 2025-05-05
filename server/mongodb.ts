@@ -101,7 +101,8 @@ export async function initializeCounters() {
       'eventRecurrences',
       'eventReminders',
       'tags',
-      'integrations'
+      'integrations',
+      'chatMessages'
     ];
     
     for (const collection of collections) {

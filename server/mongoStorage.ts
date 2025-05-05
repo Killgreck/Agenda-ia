@@ -498,13 +498,65 @@ export class MongoDBStorage implements IStorage {
   
   // Chat operations
   async createChatMessage(message: any): Promise<any> {
-    log('Method not implemented in MongoDB: createChatMessage. Falling back to PostgreSQL.', 'mongodb');
-    throw new Error('Method not implemented in MongoDB: createChatMessage');
+    try {
+      const id = await getNextSequenceValue('chatMessages');
+      
+      const messageData = {
+        ...message,
+        id,
+        timestamp: new Date(message.timestamp)
+      };
+      
+      const chatMessage = new ChatMessage(messageData);
+      await chatMessage.save();
+      
+      // Create a plain object from the Mongoose document
+      const messageObj = chatMessage.toObject();
+      
+      // Remove MongoDB-specific fields for compatibility
+      // @ts-ignore
+      delete messageObj._id;
+      // @ts-ignore
+      delete messageObj.__v;
+      
+      return messageObj;
+    } catch (error) {
+      log(`MongoDB createChatMessage error: ${error}`, 'mongodb');
+      throw error;
+    }
   }
   
   async getChatMessages(limit?: number, userId?: number): Promise<any[]> {
-    log('Method not implemented in MongoDB: getChatMessages. Falling back to PostgreSQL.', 'mongodb');
-    return [];
+    try {
+      let query: any = {};
+      
+      // Filter by userId if provided
+      if (userId) {
+        query.userId = userId;
+      }
+      
+      // Execute query with limit
+      let chatQuery = ChatMessage.find(query).sort({ timestamp: -1 });
+      
+      if (limit) {
+        chatQuery = chatQuery.limit(limit);
+      }
+      
+      const messages = await chatQuery.exec();
+      
+      // Convert to plain objects and remove MongoDB-specific fields
+      return messages.map(message => {
+        const msgObj = message.toObject();
+        // @ts-ignore
+        delete msgObj._id;
+        // @ts-ignore
+        delete msgObj.__v;
+        return msgObj;
+      });
+    } catch (error) {
+      log(`MongoDB getChatMessages error: ${error}`, 'mongodb');
+      return [];
+    }
   }
   
   // AI Suggestion operations
