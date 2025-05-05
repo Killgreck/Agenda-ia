@@ -139,10 +139,12 @@ export async function callGeminiLLM(userMessage: string, userId: number = 1): Pr
     The user is currently accessing the AI assistant feature of the application. Be helpful, friendly, and proactive in suggesting improvements to their schedule. ALWAYS suggest specific available time slots based on the existing calendar.`;
 
     // Generate content
+    // Gemini no admite el rol 'system', así que combinamos el mensaje del sistema con el mensaje del usuario
+    const combinedPrompt = `${systemMessage}\n\nUser: ${userMessage}`;
+    
     const result = await model.generateContent({
       contents: [
-        { role: 'system', parts: [{ text: systemMessage }] },
-        { role: 'user', parts: [{ text: userMessage }] }
+        { role: 'user', parts: [{ text: combinedPrompt }] }
       ],
       safetySettings,
       generationConfig: {
