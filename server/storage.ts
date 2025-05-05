@@ -927,6 +927,104 @@ export const storage = {
     }
   },
   
+  getUserByEmail: async (email: string) => {
+    try {
+      if (isMongoAvailable) {
+        return await mongoStorage.getUserByEmail(email);
+      }
+      // PostgreSQL implementation might not support this function
+      log(`getUserByEmail not implemented for PostgreSQL`, 'storage');
+      return undefined;
+    } catch (err) {
+      log(`Error in getUserByEmail: ${err}`, 'storage');
+      return undefined;
+    }
+  },
+  
+  getUserByVerificationToken: async (token: string) => {
+    try {
+      if (isMongoAvailable) {
+        return await mongoStorage.getUserByVerificationToken(token);
+      }
+      // PostgreSQL implementation might not support this function
+      log(`getUserByVerificationToken not implemented for PostgreSQL`, 'storage');
+      return undefined;
+    } catch (err) {
+      log(`Error in getUserByVerificationToken: ${err}`, 'storage');
+      return undefined;
+    }
+  },
+  
+  getUserByPasswordResetToken: async (token: string) => {
+    try {
+      if (isMongoAvailable) {
+        return await mongoStorage.getUserByPasswordResetToken(token);
+      }
+      // PostgreSQL implementation might not support this function
+      log(`getUserByPasswordResetToken not implemented for PostgreSQL`, 'storage');
+      return undefined;
+    } catch (err) {
+      log(`Error in getUserByPasswordResetToken: ${err}`, 'storage');
+      return undefined;
+    }
+  },
+  
+  setEmailVerificationToken: async (userId: number, token: string, expires: Date) => {
+    try {
+      if (isMongoAvailable) {
+        return await mongoStorage.setEmailVerificationToken(userId, token, expires);
+      }
+      // PostgreSQL implementation might not support this function
+      log(`setEmailVerificationToken not implemented for PostgreSQL`, 'storage');
+      return false;
+    } catch (err) {
+      log(`Error in setEmailVerificationToken: ${err}`, 'storage');
+      return false;
+    }
+  },
+  
+  verifyEmail: async (token: string) => {
+    try {
+      if (isMongoAvailable) {
+        return await mongoStorage.verifyEmail(token);
+      }
+      // PostgreSQL implementation might not support this function
+      log(`verifyEmail not implemented for PostgreSQL`, 'storage');
+      return undefined;
+    } catch (err) {
+      log(`Error in verifyEmail: ${err}`, 'storage');
+      return undefined;
+    }
+  },
+  
+  setPasswordResetToken: async (userId: number, token: string, expires: Date) => {
+    try {
+      if (isMongoAvailable) {
+        return await mongoStorage.setPasswordResetToken(userId, token, expires);
+      }
+      // PostgreSQL implementation might not support this function
+      log(`setPasswordResetToken not implemented for PostgreSQL`, 'storage');
+      return false;
+    } catch (err) {
+      log(`Error in setPasswordResetToken: ${err}`, 'storage');
+      return false;
+    }
+  },
+  
+  resetPassword: async (token: string, newPassword: string) => {
+    try {
+      if (isMongoAvailable) {
+        return await mongoStorage.resetPassword(token, newPassword);
+      }
+      // PostgreSQL implementation might not support this function
+      log(`resetPassword not implemented for PostgreSQL`, 'storage');
+      return undefined;
+    } catch (err) {
+      log(`Error in resetPassword: ${err}`, 'storage');
+      return undefined;
+    }
+  },
+  
   createUser: async (user: InsertUser) => {
     try {
       return isMongoAvailable 
