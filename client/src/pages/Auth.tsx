@@ -42,9 +42,9 @@ const signupSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 type SignupValues = z.infer<typeof signupSchema>;
 
-// Esquema para el formulario de recuperación de contraseña
+// Schema for password recovery form
 const forgotPasswordSchema = z.object({
-  email: z.string().email('Por favor, introduce un correo electrónico válido')
+  email: z.string().email('Please enter a valid email address')
 });
 
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
@@ -55,12 +55,12 @@ export default function Auth() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   
-  // Estados para controlar la visibilidad de las contraseñas
+  // States to control password visibility
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  // Estado para el modal de recuperación de contraseña
+  // State for password recovery modal
   const [forgotPasswordModalOpen, setForgotPasswordModalOpen] = useState(false);
   const [isSubmittingReset, setIsSubmittingReset] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
@@ -156,7 +156,7 @@ export default function Auth() {
     }
   };
 
-  // Formulario de recuperación de contraseña
+  // Password recovery form
   const forgotPasswordForm = useForm<ForgotPasswordValues>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
@@ -164,7 +164,7 @@ export default function Auth() {
     }
   });
   
-  // Manejar el envío del formulario de recuperación de contraseña
+  // Handle password recovery form submission
   const onForgotPasswordSubmit = async (data: ForgotPasswordValues) => {
     setIsSubmittingReset(true);
     
@@ -182,21 +182,21 @@ export default function Auth() {
       if (response.ok) {
         setResetEmailSent(true);
         toast({
-          title: "Correo enviado",
-          description: "Si la dirección existe en nuestro sistema, recibirás un enlace para restablecer tu contraseña.",
+          title: "Email Sent",
+          description: "If the address exists in our system, you will receive a link to reset your password.",
         });
       } else {
         toast({
           title: "Error",
-          description: result.message || "No se pudo procesar tu solicitud",
+          description: result.message || "Could not process your request",
           variant: "destructive"
         });
       }
     } catch (error) {
-      console.error("Error al solicitar restablecimiento de contraseña:", error);
+      console.error("Error requesting password reset:", error);
       toast({
         title: "Error",
-        description: "Ocurrió un error al conectar con el servidor",
+        description: "Error connecting to the server",
         variant: "destructive"
       });
     } finally {
@@ -206,7 +206,7 @@ export default function Auth() {
   
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      {/* Modal de recuperación de contraseña */}
+      {/* Password Recovery Modal */}
       <Dialog open={forgotPasswordModalOpen} onOpenChange={setForgotPasswordModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

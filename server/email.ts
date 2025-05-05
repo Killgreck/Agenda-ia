@@ -1,9 +1,9 @@
 import { MailService } from '@sendgrid/mail';
 import crypto from 'crypto';
 
-// Inicializar el servicio de SendGrid
+// Initialize SendGrid service
 if (!process.env.SENDGRID_API_KEY) {
-  console.warn("ADVERTENCIA: SENDGRID_API_KEY no está configurada. Los correos no se enviarán.");
+  console.warn("WARNING: SENDGRID_API_KEY is not configured. Emails will not be sent.");
 }
 
 const mailService = new MailService();
@@ -11,7 +11,7 @@ if (process.env.SENDGRID_API_KEY) {
   mailService.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
-// Dirección de correo del remitente (cámbiala por tu dirección de correo verificada en SendGrid)
+// Sender email address (change to your verified email address in SendGrid)
 const FROM_EMAIL = 'noreply@aicalendar.com';
 
 interface EmailParams {
@@ -21,11 +21,11 @@ interface EmailParams {
   html: string;
 }
 
-// Función para enviar correo electrónico
+// Function to send email
 export async function sendEmail(params: EmailParams): Promise<boolean> {
   try {
     if (!process.env.SENDGRID_API_KEY) {
-      console.error('No se pudo enviar el correo: SENDGRID_API_KEY no está configurada');
+      console.error('Could not send email: SENDGRID_API_KEY is not configured');
       return false;
     }
 
@@ -37,15 +37,15 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
       html: params.html,
     });
     
-    console.log(`Correo enviado exitosamente a ${params.to}`);
+    console.log(`Email successfully sent to ${params.to}`);
     return true;
   } catch (error) {
-    console.error('Error al enviar correo con SendGrid:', error);
+    console.error('Error sending email with SendGrid:', error);
     return false;
   }
 }
 
-// Función para generar un token aleatorio seguro
+// Function to generate a secure random token
 export function generateSecureToken(length: number = 32): string {
   return crypto.randomBytes(length).toString('hex');
 }
