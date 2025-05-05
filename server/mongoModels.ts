@@ -361,6 +361,23 @@ const integrationSchema = new Schema<IIntegration>({
 });
 
 // Define models with collection names matching the counter names
+// Chat Message Schema
+export interface IChatMessage extends mongoose.Document {
+  id: number;
+  userId: number;
+  content: string;
+  timestamp: Date;
+  sender: string;
+}
+
+const chatMessageSchema = new Schema<IChatMessage>({
+  id: { type: Number, required: true, unique: true },
+  userId: { type: Number, required: true },
+  content: { type: String, required: true },
+  timestamp: { type: Date, required: true },
+  sender: { type: String, required: true, enum: ['user', 'ai', 'system'] }
+});
+
 export const User = mongoose.model<IUser>('User', userSchema, 'users');
 export const UserSettings = mongoose.model<IUserSettings>('UserSettings', userSettingsSchema, 'userSettings');
 export const AiPreferences = mongoose.model<IAiPreferences>('AiPreferences', aiPreferencesSchema, 'aiPreferences');
@@ -370,3 +387,4 @@ export const EventRecurrence = mongoose.model<IEventRecurrence>('EventRecurrence
 export const EventReminder = mongoose.model<IEventReminder>('EventReminder', eventReminderSchema, 'eventReminders');
 export const Tag = mongoose.model<ITag>('Tag', tagSchema, 'tags');
 export const Integration = mongoose.model<IIntegration>('Integration', integrationSchema, 'integrations');
+export const ChatMessage = mongoose.model<IChatMessage>('ChatMessage', chatMessageSchema, 'chatMessages');
