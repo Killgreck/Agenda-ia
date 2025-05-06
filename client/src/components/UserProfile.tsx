@@ -27,6 +27,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Separator } from "@/components/ui/separator";
 
+// Schema for profile form
 const profileFormSchema = z.object({
   name: z.string().optional(),
   email: z.string().email({ message: "Por favor ingresa un correo electrónico válido" }).min(1, { message: "El correo electrónico es requerido" }),
