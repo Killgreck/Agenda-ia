@@ -1223,9 +1223,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         try {
+          console.log(`Processing chat message from user ${userId}: "${messageData.content}"`);
+          
+          // Validate API key existence before calling Gemini
+          if (!process.env.GEMINI_API_KEY) {
+            throw new Error('Gemini API key is not configured');
+          }
+          
           // Our geminiLLM implementation will automatically fetch and format calendar events
           // Call Gemini LLM with user message (this will internally get calendar data)
           const aiResponse = await callGeminiLLM(messageData.content, userId);
+          console.log(`Successfully got Gemini response for user ${userId}`);
           
           // Create AI response with timestamp as string (ISO format)
           const now = new Date();
@@ -1246,10 +1254,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId: userId  // Include userId to target specific connections
           });
         } catch (error) {
-          console.error(`Error processing calendar events or LLM response for user ${userId}:`, error);
+          console.error(`Error processing LLM response for user ${userId}:`, error);
+          
+          // Create a more helpful error message based on the error type
+          let errorMessage = "I'm having trouble connecting to my knowledge base at the moment. Please try again in a moment.";
+          
+          // Check if the error is related to the Gemini API key
+          if (error instanceof Error) {
+            if (error.message.includes('API key')) {
+              errorMessage = "I'm currently unable to access my AI capabilities due to an authentication issue. The system administrator has been notified. Basic calendar functionality is still available.";
+              console.error("CRITICAL: Gemini API key issue detected:", error.message);
+            } else if (error.message.includes('network') || error.message.includes('timeout') || error.message.includes('fetch')) {
+              errorMessage = "I'm having trouble connecting to the internet right now. This might be due to network issues. Please try again in a moment when the connection is better.";
+            } else if (error.message.includes('quota') || error.message.includes('rate') || error.message.includes('limit')) {
+              errorMessage = "I've reached my usage limit for the moment. Please try again in a few minutes when my quota resets.";
+            }
+          }
+          
           // Send fallback response in case of error (only to this user)
           const fallbackResponse = {
-            content: "I'm having trouble connecting to my knowledge base at the moment. Please try again in a moment.",
+            content: errorMessage,
             timestamp: new Date().toISOString(),
             sender: 'ai',
             userId: userId // Include userId for proper routing
@@ -1315,31 +1339,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ai-suggestions/generate", async (req: Request, res: Response) => {
     try {
       const { title, description } = req.body;
+      const userId = req.body.userId || 1; // Default to user 1 for testing
       
       if (!title) {
         return res.status(400).json({ error: 'Title is required' });
       }
       
+      console.log(`Generating task suggestion for user ${userId}: "${title}"`);
+      
+      // Validate API key existence before calling Gemini
+      if (!process.env.GEMINI_API_KEY) {
+        console.error("CRITICAL: Missing Gemini API key for task suggestion");
+        throw new Error('Gemini API key is not configured');
+      }
+      
       // Call the Gemini LLM to generate a suggestion
       // We're using the imported function from our geminiLLM.ts module
       const suggestion = await generateTaskSuggestion(title, description);
+      console.log(`Successfully generated suggestion for task "${title}"`);
       
       // Return the suggestion
       res.json({ suggestion });
     } catch (error) {
       console.error('Error generating task suggestion:', error);
       
+      // Create a more helpful error message based on the error type
+      let errorMessage = 'There was an issue connecting to the AI service. Please try again later.';
+      let statusCode = 500;
+      
       // Check if the error is related to the Gemini API key
-      if (error instanceof Error && error.message && error.message.includes('API key')) {
-        return res.status(503).json({ 
-          error: 'Gemini API service unavailable',
-          message: 'The AI service is currently unavailable. Please try again later.'
-        });
+      if (error instanceof Error) {
+        if (error.message.includes('API key')) {
+          errorMessage = 'The AI service is currently unavailable due to an authentication issue. Basic task functionality is still available.';
+          statusCode = 503;
+          console.error("CRITICAL: Gemini API key issue detected in task suggestion:", error.message);
+        } else if (error.message.includes('network') || error.message.includes('timeout') || error.message.includes('fetch')) {
+          errorMessage = 'Network connectivity issues prevented AI from generating a task suggestion. Please try again later.';
+          statusCode = 503;
+        } else if (error.message.includes('quota') || error.message.includes('rate') || error.message.includes('limit')) {
+          errorMessage = 'AI service usage limits reached. Please try again in a few minutes.';
+          statusCode = 429;
+        }
       }
       
-      res.status(500).json({ 
-        error: 'Failed to generate task suggestion',
-        message: 'There was an issue connecting to the AI service. Please try again later.'
+      // Generate a simple fallback suggestion based on task title
+      const taskLower = title.toLowerCase();
+      let fallbackSuggestion;
+      
+      if (taskLower.includes('meeting') || taskLower.includes('call')) {
+        fallbackSuggestion = "Consider scheduling 15 minutes before for preparation and 10 minutes after for follow-up.";
+      } else if (taskLower.includes('deadline') || taskLower.includes('project')) {
+        fallbackSuggestion = "Break this project into smaller tasks and schedule focused work blocks in the days leading up to the deadline.";
+      } else if (taskLower.includes('gym') || taskLower.includes('exercise') || taskLower.includes('workout')) {
+        fallbackSuggestion = "Morning workouts (6-8 AM) can boost metabolism all day, while evening sessions (5-7 PM) often yield higher performance.";
+      } else {
+        fallbackSuggestion = "Schedule this task during your most productive hours of the day and set a reminder in advance.";
+      }
+      
+      return res.status(statusCode).json({ 
+        error: errorMessage,
+        suggestion: fallbackSuggestion,
+        fallback: true
       });
     }
   });
