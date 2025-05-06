@@ -147,109 +147,135 @@ export async function getCalendarEventsAsText(userId: number): Promise<string> {
  */
 export async function callGeminiLLM(userMessage: string, userId: number = 1): Promise<string> {
   if (!API_KEY) {
+    log('Error: Gemini API key is not configured', 'error');
     throw new Error('Gemini API key is not configured');
   }
 
   try {
     // Debug
     log('Gemini API call starting with message: ' + userMessage, 'gemini');
+    log('Using API key length: ' + API_KEY.length, 'gemini'); // Safer than logging the actual key
+    log('Using Model: ' + MODEL_NAME, 'gemini');
     
     // Get calendar events as text to provide context
     const calendarEvents = await getCalendarEventsAsText(userId);
+    log('Calendar events fetched successfully', 'gemini');
     
     // Get user profile as text to provide personalization
     const userProfile = await getUserProfileAsText(userId);
+    log('User profile fetched successfully', 'gemini');
     
     // Get previous conversation messages for context
     const previousMessages = await getPreviousMessagesAsText(userId, 5);
+    log('Previous messages fetched successfully', 'gemini');
     
-    // Initialize the Gemini API
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-    
-    // Set safety settings
-    const safetySettings = [
-      {
-        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-      },
-    ];
-    
-    // System message to provide context to the LLM
-    const systemMessage = `You are an intelligent AI assistant for a calendar and task management application called 'AI Calendar Assistant'.
-    
-    Your primary roles are:
-    1. Act as a COACH and FRIEND to the user, providing encouragement and guidance
-    2. You are GREAT at SCHEDULING APPOINTMENTS because you're the BEST at MANAGING TIME
-    3. ALWAYS PROACTIVELY SUGGEST SPECIFIC SCHEDULES based on the user's calendar and the task requirements
-    4. ALWAYS CHECK FOR DETAILS and specifically ask for missing information when scheduling
-    5. ALWAYS ANALYZE CALENDAR EVENTS to find optimal time slots for new events
-    
-    IMPORTANT - You MUST DECIDE on suggesting specific schedules based on the calendar events. 
-    Do not wait for the user to ask - be proactive and recommend times.
-    
-    When discussing scheduling, ALWAYS ASK FOR THESE SPECIFIC DETAILS (matching the form fields):
-    - Title: What should the event be called?
-    - Date: What day is this scheduled for?
-    - Time: What time does it start? (skip if all-day event)
-    - End time: When does it end? (skip if all-day event)
-    - Is this an all-day event?
-    - Location: Where will this take place?
-    - Description: Any additional details?
-    - Priority: Is this high, medium, or low priority?
-    - Is this a recurring event? If so:
-      - Recurrence type: Daily or weekly?
-      - Which days of the week? (for weekly recurrence)
-      - Should we skip holidays?
-    - Reminder: How many minutes before should you be reminded?
-    
-    // User Profile Information
-    ${userProfile}
-    
-    // Previous Conversation History
-    ${previousMessages}
-    
-    // Calendar Information
-    ${calendarEvents}
-    
-    The user is currently accessing the AI assistant feature of the application. Be helpful, friendly, and proactive in suggesting improvements to their schedule. 
-    
-    IMPORTANT GUIDELINES:
-    1. Address the user by their name if available
-    2. Refer to previous conversations when relevant
-    3. ALWAYS suggest specific available time slots based on the existing calendar
-    4. Be aware of the user's timezone and language preferences if provided
-    5. Be concise but helpful - don't be overly verbose`;
+    try {
+      // Initialize the Gemini API
+      log('Initializing Gemini API...', 'gemini');
+      const genAI = new GoogleGenerativeAI(API_KEY);
+      log('Getting generative model...', 'gemini');
+      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+      log('Gemini model initialized successfully', 'gemini');
+      
+      // Set safety settings
+      const safetySettings = [
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+      ];
+      
+      // System message to provide context to the LLM
+      const systemMessage = `You are an intelligent AI assistant for a calendar and task management application called 'AI Calendar Assistant'.
+      
+      Your primary roles are:
+      1. Act as a COACH and FRIEND to the user, providing encouragement and guidance
+      2. You are GREAT at SCHEDULING APPOINTMENTS because you're the BEST at MANAGING TIME
+      3. ALWAYS PROACTIVELY SUGGEST SPECIFIC SCHEDULES based on the user's calendar and the task requirements
+      4. ALWAYS CHECK FOR DETAILS and specifically ask for missing information when scheduling
+      5. ALWAYS ANALYZE CALENDAR EVENTS to find optimal time slots for new events
+      
+      IMPORTANT - You MUST DECIDE on suggesting specific schedules based on the calendar events. 
+      Do not wait for the user to ask - be proactive and recommend times.
+      
+      When discussing scheduling, ALWAYS ASK FOR THESE SPECIFIC DETAILS (matching the form fields):
+      - Title: What should the event be called?
+      - Date: What day is this scheduled for?
+      - Time: What time does it start? (skip if all-day event)
+      - End time: When does it end? (skip if all-day event)
+      - Is this an all-day event?
+      - Location: Where will this take place?
+      - Description: Any additional details?
+      - Priority: Is this high, medium, or low priority?
+      - Is this a recurring event? If so:
+        - Recurrence type: Daily or weekly?
+        - Which days of the week? (for weekly recurrence)
+        - Should we skip holidays?
+      - Reminder: How many minutes before should you be reminded?
+      
+      // User Profile Information
+      ${userProfile}
+      
+      // Previous Conversation History
+      ${previousMessages}
+      
+      // Calendar Information
+      ${calendarEvents}
+      
+      The user is currently accessing the AI assistant feature of the application. Be helpful, friendly, and proactive in suggesting improvements to their schedule. 
+      
+      IMPORTANT GUIDELINES:
+      1. Address the user by their name if available
+      2. Refer to previous conversations when relevant
+      3. ALWAYS suggest specific available time slots based on the existing calendar
+      4. Be aware of the user's timezone and language preferences if provided
+      5. Be concise but helpful - don't be overly verbose`;
 
-    // Generate content
-    // Gemini doesn't support 'system' role, so we combine system message with user message
-    const combinedPrompt = `${systemMessage}\n\nUser: ${userMessage}`;
-    
-    const result = await model.generateContent({
-      contents: [
-        { role: 'user', parts: [{ text: combinedPrompt }] }
-      ],
-      safetySettings,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 800,
+      // Generate content
+      // Gemini doesn't support 'system' role, so we combine system message with user message
+      const combinedPrompt = `${systemMessage}\n\nUser: ${userMessage}`;
+      log('Preparing to send message to Gemini...', 'gemini');
+      
+      try {
+        const result = await model.generateContent({
+          contents: [
+            { role: 'user', parts: [{ text: combinedPrompt }] }
+          ],
+          safetySettings,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 800,
+          }
+        });
+        
+        if (!result || !result.response) {
+          log('Gemini API returned empty response', 'error');
+          throw new Error('Empty response from Gemini API');
+        }
+        
+        log('Gemini API responded successfully', 'gemini');
+        const response = result.response;
+        return response.text();
+      } catch (apiError) {
+        log(`Error in Gemini API call: ${apiError}`, 'error');
+        throw apiError; // Re-throw to be caught by the outer catch block
       }
-    });
-    
-    const response = result.response;
-    return response.text();
+    } catch (initError) {
+      log(`Error initializing Gemini model: ${initError}`, 'error');
+      throw initError; // Re-throw to be caught by the outer catch block
+    }
   } catch (error) {
     log(`Error calling Gemini API: ${error}`, 'error');
     
@@ -280,39 +306,65 @@ export async function callGeminiLLM(userMessage: string, userId: number = 1): Pr
  */
 export async function generateTaskSuggestion(title: string, description?: string): Promise<string> {
   if (!API_KEY) {
+    log('Error: Gemini API key is not configured for task suggestion', 'error');
     throw new Error('Gemini API key is not configured');
   }
 
   try {
-    // Initialize the Gemini API
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    // Debug
+    log(`Generating task suggestion for: "${title}"`, 'gemini');
+    log('Using API key length: ' + API_KEY.length, 'gemini');
+    log('Using Model: ' + MODEL_NAME, 'gemini');
     
-    // Prepare the prompt for task suggestion
-    const prompt = `Generate a helpful suggestion for optimizing this task:
-    
-    Task Title: ${title}
-    ${description ? `Task Description: ${description}` : ''}
-    
-    Provide a specific suggestion that includes:
-    1. The best time to schedule this based on typical productivity patterns
-    2. How to break it down if it's complex
-    3. A recommendation for setting reminders
-    4. A tip for successful completion
-    
-    Keep your response under 150 words.`;
-
-    // Generate content
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 250,
+    try {
+      // Initialize the Gemini API
+      log('Initializing Gemini API for task suggestion...', 'gemini');
+      const genAI = new GoogleGenerativeAI(API_KEY);
+      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+      log('Gemini model initialized successfully for task suggestion', 'gemini');
+      
+      // Prepare the prompt for task suggestion
+      const prompt = `Generate a helpful suggestion for optimizing this task:
+      
+      Task Title: ${title}
+      ${description ? `Task Description: ${description}` : ''}
+      
+      Provide a specific suggestion that includes:
+      1. The best time to schedule this based on typical productivity patterns
+      2. How to break it down if it's complex
+      3. A recommendation for setting reminders
+      4. A tip for successful completion
+      
+      Keep your response under 150 words.`;
+      
+      log('Preparing to send task suggestion request to Gemini...', 'gemini');
+      
+      try {
+        // Generate content
+        const result = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 250,
+          }
+        });
+        
+        if (!result || !result.response) {
+          log('Gemini API returned empty response for task suggestion', 'error');
+          throw new Error('Empty response from Gemini API');
+        }
+        
+        log('Gemini API responded successfully with task suggestion', 'gemini');
+        const response = result.response;
+        return response.text();
+      } catch (apiError) {
+        log(`Error in Gemini API task suggestion call: ${apiError}`, 'error');
+        throw apiError;
       }
-    });
-    
-    const response = result.response;
-    return response.text();
+    } catch (initError) {
+      log(`Error initializing Gemini model for task suggestion: ${initError}`, 'error');
+      throw initError;
+    }
   } catch (error) {
     log(`Error generating task suggestion: ${error}`, 'error');
     return "I can provide scheduling suggestions for this task once my connection is restored. In the meantime, consider adding this to your calendar with a buffer time before and after.";
@@ -324,46 +376,95 @@ export async function generateTaskSuggestion(title: string, description?: string
  */
 export async function generateWeeklyReportSummary(stats: any): Promise<string> {
   if (!API_KEY) {
+    log('Error: Gemini API key is not configured for weekly report', 'error');
     throw new Error('Gemini API key is not configured');
   }
 
   try {
-    // Initialize the Gemini API
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    // Debug
+    log('Generating weekly report summary...', 'gemini');
+    log('Using API key length: ' + API_KEY.length, 'gemini');
+    log('Using Model: ' + MODEL_NAME, 'gemini');
     
-    // Prepare the prompt for weekly report
-    const prompt = `Generate a weekly productivity report based on the following statistics:
-    
-    Start Date: ${stats.startDate}
-    End Date: ${stats.endDate}
-    Productivity Score: ${stats.productivityScore}
-    Tasks Created: ${stats.tasksCreated}
-    Tasks Completed: ${stats.tasksCompleted}
-    Total Focus Time: ${stats.totalFocusTime} minutes
-    
-    Task Breakdown:
-    - Personal: ${stats.taskBreakdown.personal}
-    - Work: ${stats.taskBreakdown.work}
-    - Health: ${stats.taskBreakdown.health}
-    - Other: ${stats.taskBreakdown.other}
-    
-    Most productive day: ${stats.mostProductiveDay}
-    
-    Provide a friendly, encouraging summary of the week with 2-3 personalized suggestions for improvement.
-    Keep your response under 200 words.`;
-
-    // Generate content
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 300,
+    try {
+      // Initialize the Gemini API
+      log('Initializing Gemini API for weekly report...', 'gemini');
+      const genAI = new GoogleGenerativeAI(API_KEY);
+      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+      log('Gemini model initialized successfully for weekly report', 'gemini');
+      
+      // Check stats object to prevent undefined errors
+      if (!stats || typeof stats !== 'object') {
+        log('Invalid stats object provided for weekly report', 'error');
+        return "I can't generate a report with the data provided. Please ensure your statistics are properly recorded.";
       }
-    });
-    
-    const response = result.response;
-    return response.text();
+      
+      // Safe access to stats properties with fallbacks
+      const startDate = stats.startDate || 'Unknown';
+      const endDate = stats.endDate || 'Unknown';
+      const productivityScore = stats.productivityScore || 0;
+      const tasksCreated = stats.tasksCreated || 0;
+      const tasksCompleted = stats.tasksCompleted || 0;
+      const totalFocusTime = stats.totalFocusTime || 0;
+      
+      // Safe access to taskBreakdown
+      const taskBreakdown = stats.taskBreakdown || {};
+      const personal = taskBreakdown.personal || 0;
+      const work = taskBreakdown.work || 0;
+      const health = taskBreakdown.health || 0;
+      const other = taskBreakdown.other || 0;
+      
+      const mostProductiveDay = stats.mostProductiveDay || 'Unknown';
+      
+      // Prepare the prompt for weekly report
+      const prompt = `Generate a weekly productivity report based on the following statistics:
+      
+      Start Date: ${startDate}
+      End Date: ${endDate}
+      Productivity Score: ${productivityScore}
+      Tasks Created: ${tasksCreated}
+      Tasks Completed: ${tasksCompleted}
+      Total Focus Time: ${totalFocusTime} minutes
+      
+      Task Breakdown:
+      - Personal: ${personal}
+      - Work: ${work}
+      - Health: ${health}
+      - Other: ${other}
+      
+      Most productive day: ${mostProductiveDay}
+      
+      Provide a friendly, encouraging summary of the week with 2-3 personalized suggestions for improvement.
+      Keep your response under 200 words.`;
+      
+      log('Preparing to send weekly report request to Gemini...', 'gemini');
+      
+      try {
+        // Generate content
+        const result = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 300,
+          }
+        });
+        
+        if (!result || !result.response) {
+          log('Gemini API returned empty response for weekly report', 'error');
+          throw new Error('Empty response from Gemini API');
+        }
+        
+        log('Gemini API responded successfully with weekly report', 'gemini');
+        const response = result.response;
+        return response.text();
+      } catch (apiError) {
+        log(`Error in Gemini API weekly report call: ${apiError}`, 'error');
+        throw apiError;
+      }
+    } catch (initError) {
+      log(`Error initializing Gemini model for weekly report: ${initError}`, 'error');
+      throw initError;
+    }
   } catch (error) {
     log(`Error generating weekly report: ${error}`, 'error');
     return "I'll be able to provide detailed weekly reports when my connection is restored. From what I can see, you've made progress on your tasks this week. Keep up the good work!";
