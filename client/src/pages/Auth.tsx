@@ -65,7 +65,6 @@ const signupSchema = z.object({
   password: passwordValidation,
   confirmPassword: z.string(),
   email: z.string().email('Please enter a valid email').optional().or(z.literal('')),
-  name: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
@@ -224,7 +223,6 @@ export default function Auth() {
       password: '',
       confirmPassword: '',
       email: '',
-      name: '',
     },
   });
 
@@ -267,7 +265,7 @@ export default function Auth() {
   const onSignupSubmit = async (data: SignupValues) => {
     try {
       console.log('Starting signup process for:', data.username);
-      const success = await signup(data.username, data.password, data.email, data.name);
+      const success = await signup(data.username, data.password, data.email);
       console.log('Signup result:', success);
       
       if (success) {
@@ -615,19 +613,7 @@ export default function Auth() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={signupForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Name (Optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Your full name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" className="w-full" disabled={isLoading}>

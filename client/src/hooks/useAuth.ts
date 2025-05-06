@@ -61,7 +61,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<boolean>;
-  signup: (username: string, password: string, email?: string, name?: string) => Promise<boolean>;
+  signup: (username: string, password: string, email?: string) => Promise<boolean>;
   logout: () => void;
   checkAuthStatus: () => Promise<boolean>;
   updateProfile: (data: UpdateProfileData) => Promise<boolean>;
