@@ -95,12 +95,12 @@ export const useAuth = create<AuthState>()(
         }
       },
 
-      signup: async (username: string, password: string, email?: string) => {
+      signup: async (username, password, email, name) => {
         set({ isLoading: true });
         try {
           const response = await apiRequest<AuthResponse>('/api/auth/signup', {
             method: 'POST',
-            body: JSON.stringify({ username, password, email }),
+            body: JSON.stringify({ username, password, email, name }),
           });
 
           if (response && response.success && response.user) {
