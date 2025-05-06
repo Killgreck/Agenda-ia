@@ -4,7 +4,12 @@ import { Event, User, ChatMessage } from './mongoModels';
 
 // Initialize the Google Generative AI with the API key
 const API_KEY = process.env.GEMINI_API_KEY;
+// Use a more broadly available model as fallback
 const MODEL_NAME = 'gemini-1.5-pro';
+const FALLBACK_MODEL = 'gemini-1.0-pro';
+
+// Log API key status (without revealing the actual key)
+log(`Gemini API Key status: ${API_KEY ? 'Configured (length: ' + API_KEY.length + ')' : 'Not configured'}`, 'gemini');
 
 // Function to get user profile as text
 export async function getUserProfileAsText(userId: number): Promise<string> {
@@ -174,8 +179,11 @@ export async function callGeminiLLM(userMessage: string, userId: number = 1): Pr
       log('Initializing Gemini API...', 'gemini');
       const genAI = new GoogleGenerativeAI(API_KEY);
       log('Getting generative model...', 'gemini');
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-      log('Gemini model initialized successfully', 'gemini');
+      
+      // Try to use the main model, but have a fallback ready
+      let currentModel = MODEL_NAME;
+      let model = genAI.getGenerativeModel({ model: currentModel });
+      log(`Gemini model initialized successfully: ${currentModel}`, 'gemini');
       
       // Set safety settings
       const safetySettings = [
@@ -249,27 +257,49 @@ export async function callGeminiLLM(userMessage: string, userId: number = 1): Pr
       log('Preparing to send message to Gemini...', 'gemini');
       
       try {
-        const result = await model.generateContent({
-          contents: [
-            { role: 'user', parts: [{ text: combinedPrompt }] }
-          ],
-          safetySettings,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 800,
-          }
-        });
+        let result;
+        try {
+          // First attempt with primary model
+          result = await model.generateContent({
+            contents: [
+              { role: 'user', parts: [{ text: combinedPrompt }] }
+            ],
+            safetySettings,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 800,
+            }
+          });
+        } catch (primaryModelError) {
+          // If primary model fails, try fallback model
+          log(`Primary model ${currentModel} failed: ${primaryModelError}. Trying fallback model ${FALLBACK_MODEL}...`, 'error');
+          currentModel = FALLBACK_MODEL;
+          model = genAI.getGenerativeModel({ model: currentModel });
+          
+          // Try again with fallback model
+          result = await model.generateContent({
+            contents: [
+              { role: 'user', parts: [{ text: combinedPrompt }] }
+            ],
+            safetySettings,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 800,
+            }
+          });
+          log(`Fallback model ${FALLBACK_MODEL} succeeded`, 'gemini');
+        }
         
         if (!result || !result.response) {
           log('Gemini API returned empty response', 'error');
           throw new Error('Empty response from Gemini API');
         }
         
-        log('Gemini API responded successfully', 'gemini');
+        log(`Gemini API (${currentModel}) responded successfully`, 'gemini');
         const response = result.response;
         return response.text();
       } catch (apiError) {
-        log(`Error in Gemini API call: ${apiError}`, 'error');
+        log(`Error in Gemini API call with both models: ${apiError}`, 'error');
         throw apiError; // Re-throw to be caught by the outer catch block
       }
     } catch (initError) {
