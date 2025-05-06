@@ -561,6 +561,8 @@ export default function Auth() {
                           </div>
                         </FormControl>
                         <FormMessage />
+                        {/* Password Strength Indicator */}
+                        <PasswordStrengthIndicator password={field.value} />
                       </FormItem>
                     )}
                   />

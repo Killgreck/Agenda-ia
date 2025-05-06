@@ -363,6 +363,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
   
+  // Password validation patterns
+  const passwordLengthRegex = /.{8,}/; // At least 8 characters
+  const passwordUppercaseRegex = /[A-Z]/; // At least one uppercase letter
+  const passwordLowercaseRegex = /[a-z]/; // At least one lowercase letter
+  const passwordNumberRegex = /[0-9]/; // At least one number
+  const passwordSpecialCharRegex = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/; // At least one special character
+
+  // Function to validate password strength
+  function validatePassword(password: string): { valid: boolean; message?: string } {
+    if (!passwordLengthRegex.test(password)) {
+      return { valid: false, message: "Password must be at least 8 characters long" };
+    }
+    if (!passwordUppercaseRegex.test(password)) {
+      return { valid: false, message: "Password must contain at least one uppercase letter" };
+    }
+    if (!passwordLowercaseRegex.test(password)) {
+      return { valid: false, message: "Password must contain at least one lowercase letter" };
+    }
+    if (!passwordNumberRegex.test(password)) {
+      return { valid: false, message: "Password must contain at least one number" };
+    }
+    if (!passwordSpecialCharRegex.test(password)) {
+      return { valid: false, message: "Password must contain at least one special character" };
+    }
+    return { valid: true };
+  }
+
   // Authentication routes
   app.post("/api/auth/signup", async (req: Request, res: Response) => {
     try {
@@ -386,6 +413,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: "Email already in use"
           });
         }
+      }
+      
+      // Validate username format
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        return res.status(400).json({
+          success: false,
+          message: "Username can only contain letters, numbers, and underscores"
+        });
+      }
+      
+      // Validate password strength
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: passwordValidation.message
+        });
       }
       
       // Hash password
@@ -598,11 +642,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Verificar que la contraseña cumpla con requisitos mínimos
-      if (newPassword.length < 8) {
+      // Validate password strength
+      const passwordValidation = validatePassword(newPassword);
+      if (!passwordValidation.valid) {
         return res.status(400).json({
           success: false,
-          message: "Password must be at least 8 characters long"
+          message: passwordValidation.message
         });
       }
       
