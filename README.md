@@ -1,92 +1,159 @@
 # Agenda-IA: Intelligent Productivity Platform
 
-An intelligent productivity platform leveraging advanced AI technologies to transform task management and user engagement, with a focus on intuitive design and adaptive user experience.
+Una plataforma inteligente de productividad que aprovecha tecnologías avanzadas de IA para transformar la gestión de tareas y la participación del usuario, con un enfoque en el diseño intuitivo y una experiencia de usuario adaptativa.
 
-## 🌟 Key Features
+## 📚 Documentación
 
-- **AI-Powered Task Optimization**: Intelligent scheduling and prioritization
-- **Real-Time Productivity Tracking**: Adaptive insights based on your work patterns
-- **Personalized Task Suggestions**: AI-generated recommendations to improve productivity
-- **Dynamic Calendar Management**: Flexible event scheduling with recurrence support
-- **Comprehensive Analytics**: Track and visualize your productivity trends
-- **User-Friendly Interface**: Intuitive design for seamless interaction
+Para obtener información detallada sobre el proyecto, consulta:
 
-## 🔧 Technology Stack
+- [Guía del Usuario](USER_GUIDE.md) - Manual completo para usuarios finales
+- [Documentación Técnica](TECHNICAL_DOCUMENTATION.md) - Detalles para desarrolladores
 
-- **Frontend**: React with TypeScript, Tailwind CSS, shadcn UI components
-- **Backend**: Node.js with Express
-- **Database**: MongoDB for flexible document storage
-- **Real-Time Communication**: WebSockets for instant updates
-- **AI Integration**: Advanced AI-powered suggestions and productivity insights
-- **Form Handling**: React Hook Form with Zod validation
-- **State Management**: React Query for server state, Zustand for client state
+## 🌟 Características Principales
 
-## 🚀 Getting Started
+- **Optimización de Tareas con IA**: Programación y priorización inteligente
+- **Seguimiento de Productividad en Tiempo Real**: Información adaptativa basada en tus patrones de trabajo
+- **Sugerencias de Tareas Personalizadas**: Recomendaciones generadas por IA para mejorar la productividad
+- **Gestión Dinámica de Calendario**: Programación flexible de eventos con soporte de recurrencia
+- **Análisis Completo**: Seguimiento y visualización de tus tendencias de productividad
+- **Interfaz Amigable**: Diseño intuitivo para una interacción fluida
+- **Asistente IA Conversacional**: Tu asistente personal potenciado por Gemini AI
+- **Verificación de Correo y Recuperación de Contraseña**: Seguridad mejorada con SendGrid
 
-### Prerequisites
+## 🔧 Stack Tecnológico
 
-- Node.js (v20 or higher)
-- npm or yarn
+- **Frontend**: React con TypeScript, Tailwind CSS, componentes shadcn UI
+- **Backend**: Node.js con Express
+- **Bases de datos**: 
+  - PostgreSQL con Drizzle ORM para datos estructurados
+  - MongoDB para almacenamiento flexible de documentos
+- **Comunicación en tiempo real**: WebSockets para actualizaciones instantáneas
+- **Integración de IA**: Gemini AI para conversación inteligente y generación de sugerencias
+- **Servicio de correo**: SendGrid para verificación de email y restablecimiento de contraseñas
+- **Gestión de formularios**: React Hook Form con validación Zod
+- **Gestión de estado**: React Query para estado del servidor, Zustand para estado del cliente
 
-### Installation
+## 🚀 Primeros Pasos
 
-1. Clone the repository:
+### Requisitos Previos
+
+- Node.js (v20 o superior)
+- npm o yarn
+- PostgreSQL (opcional, se usa la versión en memoria por defecto)
+
+### Variables de Entorno
+
+Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
+
+```
+# Base de datos
+DATABASE_URL=postgres://usuario:contraseña@localhost:5432/agenda_ia
+
+# Autenticación
+SESSION_SECRET=tu_secreto_seguro_para_sesiones
+
+# SendGrid (para emails)
+SENDGRID_API_KEY=tu_clave_api_de_sendgrid
+SENDGRID_VERIFIED_SENDER=tu_email_verificado@ejemplo.com
+
+# Gemini AI
+GEMINI_API_KEY=tu_clave_api_de_gemini
+```
+
+### Instalación
+
+1. Clona el repositorio:
    ```bash
    git clone https://github.com/Killgreck/Agenda-ia.git
    cd Agenda-ia
    ```
 
-2. Install dependencies:
+2. Instala las dependencias:
    ```bash
    npm install
    ```
 
-3. Start the development server:
+3. Inicia el servidor de desarrollo:
    ```bash
    npm run dev
    ```
 
-4. Open your browser and navigate to `http://localhost:5000`
+4. Abre tu navegador y navega a `http://localhost:5000`
 
-## 📊 Project Structure
+## 📊 Estructura del Proyecto
 
 ```
 /
-├── client/                # Frontend application
+├── client/                # Aplicación frontend
 │   ├── src/
-│   │   ├── components/    # UI components
-│   │   ├── hooks/         # Custom React hooks
-│   │   ├── lib/           # Utility functions
-│   │   ├── pages/         # Application pages
-│   │   ├── App.tsx        # Main application component
-│   │   └── main.tsx       # Application entry point
-├── server/                # Backend server
-│   ├── index.ts           # Server entry point
-│   ├── routes.ts          # API routes
-│   ├── db.ts              # Database connection
-│   ├── mongodb.ts         # MongoDB configuration
-│   ├── mongoModels.ts     # MongoDB schema models
-│   └── mongoStorage.ts    # MongoDB storage interface
-├── shared/                # Shared code between frontend and backend
-│   └── schema.ts          # Data models and validation schemas
-└── public/                # Static assets
+│   │   ├── components/    # Componentes React
+│   │   │   └── ui/        # Componentes UI reutilizables
+│   │   ├── hooks/         # Hooks personalizados
+│   │   ├── lib/           # Funciones utilitarias
+│   │   ├── pages/         # Páginas de la aplicación
+│   │   ├── types/         # Definiciones de tipos
+│   │   ├── utils/         # Funciones auxiliares
+│   │   ├── App.tsx        # Componente principal
+│   │   └── main.tsx       # Punto de entrada
+│   └── index.html         # HTML principal
+├── server/                # Servidor backend
+│   ├── abacusLLM.ts       # Integración con API Abacus LLM
+│   ├── db.ts              # Conexión PostgreSQL con Drizzle
+│   ├── email.ts           # Funcionalidad de correos con SendGrid
+│   ├── geminiLLM.ts       # Integración con API Gemini
+│   ├── index.ts           # Punto de entrada del servidor
+│   ├── mongoModels.ts     # Modelos para MongoDB
+│   ├── mongoStorage.ts    # Implementación de almacenamiento MongoDB
+│   ├── mongodb.ts         # Configuración y conexión MongoDB
+│   ├── routes.ts          # Definición de rutas API
+│   ├── storage.ts         # Interfaz de almacenamiento genérica
+│   └── vite.ts            # Configuración Vite para desarrollo
+├── shared/                # Código compartido
+│   ├── mongoSchema.ts     # Esquemas MongoDB
+│   └── schema.ts          # Esquemas PostgreSQL con Drizzle/Zod
+├── scripts/               # Scripts de utilidad
+└── docs/                  # Documentación adicional
 ```
 
-## 🛠️ Development
+## 🛠️ Desarrollo
 
-- **Running the app**: `npm run dev`
-- **Building for production**: `npm run build`
-- **Starting production server**: `npm run start`
+- **Iniciar la aplicación**: `npm run dev`
+- **Construir para producción**: `npm run build`
+- **Iniciar servidor de producción**: `npm run start`
+- **Actualizar esquema de base de datos**: `npm run db:push`
 
-## 📝 License
+## 📚 Funcionalidades Principales
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+1. **Autenticación y Gestión de Usuarios**
+   - Registro con verificación de correo electrónico
+   - Inicio de sesión seguro
+   - Restablecimiento de contraseña
 
-## 👥 Contributing
+2. **Gestión de Tareas y Calendario**
+   - Creación y edición de tareas
+   - Vista de calendario interactiva
+   - Recordatorios y notificaciones
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+3. **Asistente IA**
+   - Conversación natural
+   - Sugerencias inteligentes
+   - Análisis de productividad
+   - Informes semanales generados por IA
 
-## 📞 Contact
+4. **Panel de Estadísticas**
+   - Seguimiento de productividad
+   - Análisis de tiempo
+   - Recomendaciones personalizadas
 
-- Developer: [Killgreck](https://github.com/Killgreck)
-- Project Link: [https://github.com/Killgreck/Agenda-ia](https://github.com/Killgreck/Agenda-ia)
+## 📝 Licencia
+
+Este proyecto está licenciado bajo la Licencia MIT - consulta el archivo [LICENSE](LICENSE) para más detalles.
+
+## 👥 Contribuciones
+
+¡Las contribuciones son bienvenidas! No dudes en enviar un Pull Request.
+
+## 📞 Contacto
+
+- Desarrollador: [Killgreck](https://github.com/Killgreck)
+- Enlace del proyecto: [https://github.com/Killgreck/Agenda-ia](https://github.com/Killgreck/Agenda-ia)
