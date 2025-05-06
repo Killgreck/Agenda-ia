@@ -21,23 +21,130 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+// Password validation regex patterns
+const passwordLengthRegex = /.{8,}/; // At least 8 characters
+const passwordUppercaseRegex = /[A-Z]/; // At least one uppercase letter
+const passwordLowercaseRegex = /[a-z]/; // At least one lowercase letter
+const passwordNumberRegex = /[0-9]/; // At least one number
+const passwordSpecialCharRegex = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/; // At least one special character
+
+// Custom password validation
+const passwordValidation = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .refine(
+    (password) => passwordUppercaseRegex.test(password),
+    { message: 'Password must contain at least one uppercase letter' }
+  )
+  .refine(
+    (password) => passwordLowercaseRegex.test(password),
+    { message: 'Password must contain at least one lowercase letter' }
+  )
+  .refine(
+    (password) => passwordNumberRegex.test(password),
+    { message: 'Password must contain at least one number' }
+  )
+  .refine(
+    (password) => passwordSpecialCharRegex.test(password),
+    { message: 'Password must contain at least one special character' }
+  );
+
 // Login form schema
 const loginSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string(), // For login, we don't enforce the strict rules
 });
 
 // Signup form schema
 const signupSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string().min(6, 'Password must be at least 6 characters'),
+  username: z.string()
+    .min(3, 'Username must be at least 3 characters')
+    .refine(
+      (username) => /^[a-zA-Z0-9_]+$/.test(username),
+      { message: 'Username can only contain letters, numbers, and underscores' }
+    ),
+  password: passwordValidation,
+  confirmPassword: z.string(),
   email: z.string().email('Please enter a valid email').optional().or(z.literal('')),
   name: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
 });
+
+// Component to check and display password strength requirements
+interface PasswordStrengthIndicatorProps {
+  password: string;
+}
+
+function PasswordStrengthIndicator({ password }: PasswordStrengthIndicatorProps) {
+  const hasMinLength = passwordLengthRegex.test(password);
+  const hasUppercase = passwordUppercaseRegex.test(password);
+  const hasLowercase = passwordLowercaseRegex.test(password);
+  const hasNumber = passwordNumberRegex.test(password);
+  const hasSpecialChar = passwordSpecialCharRegex.test(password);
+  
+  const strengthScore = [hasMinLength, hasUppercase, hasLowercase, hasNumber, hasSpecialChar]
+    .filter(Boolean).length;
+  
+  const strengthLevel = 
+    strengthScore === 0 ? 'Very Weak' :
+    strengthScore === 1 ? 'Weak' :
+    strengthScore === 2 ? 'Fair' :
+    strengthScore === 3 ? 'Good' :
+    strengthScore === 4 ? 'Strong' :
+    'Very Strong';
+  
+  const strengthColor = 
+    strengthScore < 2 ? 'bg-red-500' :
+    strengthScore < 4 ? 'bg-yellow-500' :
+    'bg-green-500';
+  
+  return (
+    <div className="mt-2 space-y-2">
+      <div className="text-sm">Password Strength: <span className="font-medium">{strengthLevel}</span></div>
+      
+      <div className="h-1.5 w-full bg-gray-200 rounded-full">
+        <div 
+          className={`h-1.5 rounded-full ${strengthColor}`}
+          style={{ width: `${(strengthScore / 5) * 100}%` }}
+        ></div>
+      </div>
+      
+      <ul className="space-y-1 text-xs mt-2">
+        <li className={`flex items-center ${hasMinLength ? 'text-green-600' : 'text-gray-500'}`}>
+          <span className={`mr-1 ${hasMinLength ? 'text-green-600' : 'text-gray-400'}`}>
+            {hasMinLength ? '✓' : '○'}
+          </span>
+          At least 8 characters
+        </li>
+        <li className={`flex items-center ${hasUppercase ? 'text-green-600' : 'text-gray-500'}`}>
+          <span className={`mr-1 ${hasUppercase ? 'text-green-600' : 'text-gray-400'}`}>
+            {hasUppercase ? '✓' : '○'}
+          </span>
+          At least one uppercase letter
+        </li>
+        <li className={`flex items-center ${hasLowercase ? 'text-green-600' : 'text-gray-500'}`}>
+          <span className={`mr-1 ${hasLowercase ? 'text-green-600' : 'text-gray-400'}`}>
+            {hasLowercase ? '✓' : '○'}
+          </span>
+          At least one lowercase letter
+        </li>
+        <li className={`flex items-center ${hasNumber ? 'text-green-600' : 'text-gray-500'}`}>
+          <span className={`mr-1 ${hasNumber ? 'text-green-600' : 'text-gray-400'}`}>
+            {hasNumber ? '✓' : '○'}
+          </span>
+          At least one number
+        </li>
+        <li className={`flex items-center ${hasSpecialChar ? 'text-green-600' : 'text-gray-500'}`}>
+          <span className={`mr-1 ${hasSpecialChar ? 'text-green-600' : 'text-gray-400'}`}>
+            {hasSpecialChar ? '✓' : '○'}
+          </span>
+          At least one special character
+        </li>
+      </ul>
+    </div>
+  );
+}
 
 type LoginValues = z.infer<typeof loginSchema>;
 type SignupValues = z.infer<typeof signupSchema>;

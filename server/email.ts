@@ -11,8 +11,8 @@ if (process.env.SENDGRID_API_KEY) {
   mailService.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
-// Sender email address (change to your verified email address in SendGrid)
-const FROM_EMAIL = 'noreply@aicalendar.com';
+// Sender email address (should be a verified sender in SendGrid)
+const FROM_EMAIL = 'test@example.com'; // Cambia esto a una dirección verificada en tu cuenta de SendGrid
 
 interface EmailParams {
   to: string;
@@ -28,19 +28,39 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
       console.error('Could not send email: SENDGRID_API_KEY is not configured');
       return false;
     }
-
-    await mailService.send({
-      to: params.to,
-      from: FROM_EMAIL,
-      subject: params.subject,
-      text: params.text || '',
-      html: params.html,
-    });
     
-    console.log(`Email successfully sent to ${params.to}`);
-    return true;
+    console.log(`Sending email to ${params.to} with subject: ${params.subject}`);
+    
+    try {
+      // Log the actual data being sent to help debug
+      console.log('SendGrid email data:', {
+        to: params.to,
+        from: FROM_EMAIL,
+        subject: params.subject,
+        textLength: params.text ? params.text.length : 0,
+        htmlLength: params.html.length
+      });
+      
+      await mailService.send({
+        to: params.to,
+        from: FROM_EMAIL,
+        subject: params.subject,
+        text: params.text || '',
+        html: params.html,
+      });
+      
+      console.log(`Email successfully sent to ${params.to}`);
+      return true;
+    } catch (sendgridError) {
+      // Mostrar detalles detallados del error
+      if (sendgridError.response && sendgridError.response.body && sendgridError.response.body.errors) {
+        console.error('SendGrid API error details:', JSON.stringify(sendgridError.response.body.errors, null, 2));
+      }
+      console.error('SendGrid Error:', sendgridError);
+      return false;
+    }
   } catch (error) {
-    console.error('Error sending email with SendGrid:', error);
+    console.error('General error in sendEmail function:', error);
     return false;
   }
 }
