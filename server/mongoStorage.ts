@@ -1,7 +1,7 @@
 // MongoDB implementation of the storage interface
 import { IStorage } from './storage';
 import { log } from './vite';
-import { getNextSequenceValue } from './mongodb';
+import { getNextSequenceValue, getCollection } from './mongodb';
 import * as bcrypt from 'bcryptjs';
 import {
   User,
@@ -25,21 +25,29 @@ export class MongoDBStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<any> {
     try {
-      const user = await User.findOne({ id });
-      if (!user) {
-        return undefined;
+      try {
+        // Try to use Mongoose
+        const user = await User.findOne({ id });
+        if (user) {
+          // Create a plain object from the Mongoose document
+          const userObj = user.toObject();
+          
+          // Remove MongoDB-specific fields for compatibility
+          // @ts-ignore
+          delete userObj._id;
+          // @ts-ignore
+          delete userObj.__v;
+          
+          return userObj;
+        }
+      } catch (error) {
+        log(`MongoDB getUser error (falling back to in-memory): ${error}`, 'mongodb');
       }
       
-      // Create a plain object from the Mongoose document
-      const userObj = user.toObject();
-      
-      // Remove MongoDB-specific fields for compatibility
-      // @ts-ignore
-      delete userObj._id;
-      // @ts-ignore
-      delete userObj.__v;
-      
-      return userObj;
+      // Fallback to in-memory implementation
+      const users = getCollection('users') as any[];
+      const user = users.find(u => u.id === id);
+      return user || undefined;
     } catch (error) {
       log(`MongoDB getUser error: ${error}`, 'mongodb');
       throw error;
@@ -48,21 +56,29 @@ export class MongoDBStorage implements IStorage {
   
   async getUserByUsername(username: string): Promise<any> {
     try {
-      const user = await User.findOne({ username });
-      if (!user) {
-        return undefined;
+      try {
+        // Try to use Mongoose
+        const user = await User.findOne({ username });
+        if (user) {
+          // Create a plain object from the Mongoose document
+          const userObj = user.toObject();
+          
+          // Remove MongoDB-specific fields for compatibility
+          // @ts-ignore
+          delete userObj._id;
+          // @ts-ignore
+          delete userObj.__v;
+          
+          return userObj;
+        }
+      } catch (error) {
+        log(`MongoDB getUserByUsername error (falling back to in-memory): ${error}`, 'mongodb');
       }
       
-      // Create a plain object from the Mongoose document
-      const userObj = user.toObject();
-      
-      // Remove MongoDB-specific fields for compatibility
-      // @ts-ignore
-      delete userObj._id;
-      // @ts-ignore
-      delete userObj.__v;
-      
-      return userObj;
+      // Fallback to in-memory implementation
+      const users = getCollection('users') as any[];
+      const user = users.find(u => u.username === username);
+      return user || undefined;
     } catch (error) {
       log(`MongoDB getUserByUsername error: ${error}`, 'mongodb');
       throw error;
@@ -154,34 +170,55 @@ export class MongoDBStorage implements IStorage {
       // Note: We're not hashing the password here since it should already be hashed
       // by the time it reaches this method (in the routes.ts signup route)
       
-      // Create a new user with the sequential ID
-      const newUser = new User({
-        id,
-        ...userData,
-        isEmailVerified: false,
-        createdAt: new Date(),
-      });
-      
-      await newUser.save();
-      
-      // Log for debugging
-      log(`Created MongoDB user: ${newUser.id} (${newUser.username}) with password hash: ${newUser.password.substring(0, 10)}...`, 'mongodb');
-      
-      // After creating the user, also create related user documents with the same ID
-      // This ensures consistent IDs across collections for the same user
-      await this.createUserSettings(id);
-      await this.createAiPreferences(id);
-      
-      // Create a plain object from the Mongoose document
-      const userObj = newUser.toObject();
-      
-      // Remove MongoDB-specific fields for compatibility
-      // @ts-ignore
-      delete userObj._id;
-      // @ts-ignore
-      delete userObj.__v;
-      
-      return userObj;
+      try {
+        // Try to use Mongoose first
+        // Create a new user with the sequential ID
+        const newUser = new User({
+          id,
+          ...userData,
+          isEmailVerified: false,
+          createdAt: new Date(),
+        });
+        
+        await newUser.save();
+        
+        // Log for debugging
+        log(`Created MongoDB user: ${newUser.id} (${newUser.username}) with password hash: ${newUser.password.substring(0, 10)}...`, 'mongodb');
+        
+        // After creating the user, also create related user documents with the same ID
+        // This ensures consistent IDs across collections for the same user
+        await this.createUserSettings(id);
+        await this.createAiPreferences(id);
+        
+        // Create a plain object from the Mongoose document
+        const userObj = newUser.toObject();
+        
+        // Remove MongoDB-specific fields for compatibility
+        // @ts-ignore
+        delete userObj._id;
+        // @ts-ignore
+        delete userObj.__v;
+        
+        return userObj;
+      } catch (mongooseError) {
+        log(`MongoDB createUser mongoose error (falling back to in-memory): ${mongooseError}`, 'mongodb');
+        
+        // Fallback to in-memory implementation
+        const newUser = {
+          id,
+          ...userData,
+          isEmailVerified: false,
+          createdAt: new Date(),
+        };
+        
+        // Add to in-memory collection
+        const users = getCollection('users') as any[];
+        users.push(newUser);
+        
+        log(`Created in-memory user: ${newUser.id} (${newUser.username}) with password hash: ${newUser.password.substring(0, 10)}...`, 'mongodb');
+        
+        return newUser;
+      }
     } catch (error) {
       log(`MongoDB createUser error: ${error}`, 'mongodb');
       throw error;

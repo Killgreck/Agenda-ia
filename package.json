@@ -63,7 +63,7 @@
     "input-otp": "^1.2.4",
     "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",
-    "mongodb": "^6.15.0",
+    "mongodb": "^6.16.0",
     "mongodb-memory-server": "^10.1.4",
     "mongoose": "^8.13.1",
     "node-schedule": "^2.1.1",
