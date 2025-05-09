@@ -5,30 +5,27 @@ import { MongoClient, Db } from 'mongodb';
 // MongoDB connection settings
 const dbName = 'productivity-app';
 
-// Build MongoDB URI with credentials
-const MONGODB_USERNAME = process.env.MONGODB_URI ? '' : 'Agenda';
-const MONGODB_PASSWORD = process.env.MONGODB_URI ? '' : 'iN6kazxV3HA46qPN';
-const MONGODB_DEFAULT_URI = `mongodb+srv://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@cluster0.72j4r.mongodb.net/${dbName}?retryWrites=true&w=majority&appName=Cluster0`;
-
-// Use environment variable if available, otherwise use the default URI
-const MONGODB_URI = process.env.MONGODB_URI || MONGODB_DEFAULT_URI;
+// MongoDB connection URI with enhanced parameters for Replit
+const MONGODB_URI = 'mongodb+srv://Agenda:iN6kazxV3HA46qPN@cluster0.72j4r.mongodb.net/productivity-app?retryWrites=true&w=majority&connectTimeoutMS=15000&socketTimeoutMS=45000&appName=Cluster0';
 
 // In-memory MongoDB implementation (instead of MongoMemoryServer)
 let mongoClient: MongoClient | null = null;
 let mongoDb: Db | null = null;
 
-// Connection Options - Increased timeouts for better stability
+// Connection Options - Simplificadas y actualizadas para mejor compatibilidad
 const options = {
-  // Set longer timeouts to prevent connection issues
-  connectTimeoutMS: 10000,
-  serverSelectionTimeoutMS: 10000,
-  socketTimeoutMS: 30000,
-  // Use a more stable connection pool
+  // Aumentar timeouts para evitar problemas de conexión
+  connectTimeoutMS: 15000,
+  serverSelectionTimeoutMS: 15000,
+  socketTimeoutMS: 45000,
+  // Pool de conexiones
   maxPoolSize: 10,
   minPoolSize: 2,
-  // Add retry mechanism
+  // Mecanismo de reintentos
   retryWrites: true,
-  retryReads: true
+  retryReads: true,
+  // Opciones de seguridad
+  ssl: true
 } as mongoose.ConnectOptions;
 
 // In-memory data storage
