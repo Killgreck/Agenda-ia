@@ -3,8 +3,8 @@ import { log } from './vite';
 import { Event, User, ChatMessage } from './mongoModels';
 
 // Initialize the Google Generative AI with the API key directly as requested by the user
-const API_KEY = 'AIzaSyDO3CjlAqqtDfRt9LPRHwGDcUx0T0pFZZc'; // API key directamente en código como solicitado por el usuario
-// Use more widely available models that are guaranteed to work
+const API_KEY = 'AIzaSyD2IlrOxYhMs6aP9DwuDQph1ra8HAAhB3s'; // API key gratuita proporcionada por el usuario
+// Para versiones gratuitas, solo hay acceso a gemini-pro, no a las versiones flash/pro-latest
 const MODEL_NAME = 'gemini-pro';
 const FALLBACK_MODEL = 'gemini-pro';
 
