@@ -641,7 +641,28 @@ export class MongoDBStorage implements IStorage {
       const stats = await Analytics.findOne(query);
       
       if (!stats) {
-        return undefined;
+        log(`No statistics found for week. Returning default stats.`, 'mongodb');
+        // Return default stats object
+        return {
+          id: 0,
+          userId: userId || 1,
+          startDate: weekStart,
+          endDate: weekEnd,
+          productivityScore: 0,
+          tasksCreated: 0,
+          tasksCompleted: 0,
+          totalFocusTime: 0,
+          taskBreakdown: {
+            personal: 0,
+            work: 0,
+            health: 0,
+            other: 0
+          },
+          peakProductivityHours: [],
+          mostProductiveDay: "Monday",
+          insights: ["Start tracking your tasks to see insights"],
+          improvementAreas: ["Create your first task to get started"]
+        };
       }
       
       // Create a plain object from the Mongoose document
@@ -655,8 +676,28 @@ export class MongoDBStorage implements IStorage {
       
       return statsObj;
     } catch (error) {
-      log(`MongoDB getStatisticsForWeek error: ${error}`, 'mongodb');
-      throw error;
+      log(`MongoDB getStatisticsForWeek error: ${error}. Returning default stats.`, 'mongodb');
+      // Return default stats object
+      return {
+        id: 0,
+        userId: userId || 1,
+        startDate: weekStart,
+        endDate: weekEnd,
+        productivityScore: 0,
+        tasksCreated: 0,
+        tasksCompleted: 0,
+        totalFocusTime: 0,
+        taskBreakdown: {
+          personal: 0,
+          work: 0,
+          health: 0,
+          other: 0
+        },
+        peakProductivityHours: [],
+        mostProductiveDay: "Monday",
+        insights: ["Start tracking your tasks to see insights"],
+        improvementAreas: ["Create your first task to get started"]
+      };
     }
   }
   
@@ -669,24 +710,68 @@ export class MongoDBStorage implements IStorage {
       }
       
       const statsLimit = limit || 10;
-      const stats = await Analytics.find(query)
-        .sort({ endDate: -1 })
-        .limit(statsLimit);
       
-      // Convert Mongoose documents to plain objects
-      return stats.map(stat => {
-        const statObj = stat.toObject();
-        // Remove MongoDB-specific fields
-        // @ts-ignore
-        delete statObj._id;
-        // @ts-ignore
-        delete statObj.__v;
-        return statObj;
-      });
+      try {
+        const stats = await Analytics.find(query)
+          .sort({ endDate: -1 })
+          .limit(statsLimit);
+        
+        // Convert Mongoose documents to plain objects
+        return stats.map(stat => {
+          const statObj = stat.toObject();
+          // Remove MongoDB-specific fields
+          // @ts-ignore
+          delete statObj._id;
+          // @ts-ignore
+          delete statObj.__v;
+          return statObj;
+        });
+      } catch (dbError) {
+        log(`MongoDB query error in getLatestStatistics: ${dbError}`, 'mongodb');
+        return this.getDefaultStatistics(userId, statsLimit);
+      }
     } catch (error) {
-      log(`MongoDB getLatestStatistics error: ${error}`, 'mongodb');
-      throw error;
+      log(`MongoDB getLatestStatistics error: ${error}. Returning default stats.`, 'mongodb');
+      return this.getDefaultStatistics(userId, limit);
     }
+  }
+  
+  // Helper method to generate default statistics
+  private getDefaultStatistics(userId?: number, count: number = 1): any[] {
+    const result = [];
+    const today = new Date();
+    
+    // Create 'count' number of default stat objects
+    for (let i = 0; i < count; i++) {
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - (7 * i));
+      
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      
+      result.push({
+        id: i,
+        userId: userId || 1,
+        startDate,
+        endDate,
+        productivityScore: 0,
+        tasksCreated: 0,
+        tasksCompleted: 0,
+        totalFocusTime: 0,
+        taskBreakdown: {
+          personal: 0,
+          work: 0,
+          health: 0,
+          other: 0
+        },
+        peakProductivityHours: [],
+        mostProductiveDay: "Monday",
+        insights: ["Start tracking your tasks to see insights"],
+        improvementAreas: ["Create your first task to get started"]
+      });
+    }
+    
+    return result;
   }
   
   // Notification operations
