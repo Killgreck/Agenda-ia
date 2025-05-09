@@ -10,7 +10,12 @@ import {
 import { eq, and, gte, lte, desc, asc, count } from "drizzle-orm";
 import { db } from "./db";
 
+import session from "express-session";
+
 export interface IStorage {
+  // Almacén de sesiones para autenticación
+  sessionStore: session.Store;
+  
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -59,6 +64,9 @@ export interface IStorage {
   markAllNotificationsAsRead(userId: number): Promise<void>;
 }
 
+import createMemoryStore from "memorystore";
+const MemoryStore = createMemoryStore(session);
+
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private tasks: Map<number, Task>;
@@ -75,6 +83,9 @@ export class MemStorage implements IStorage {
   private currentAiSuggestionIds: number;
   private currentStatisticsIds: number;
   private currentNotificationIds: number;
+  
+  // Session store
+  public sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
@@ -92,6 +103,11 @@ export class MemStorage implements IStorage {
     this.currentAiSuggestionIds = 1;
     this.currentStatisticsIds = 1;
     this.currentNotificationIds = 1;
+    
+    // Inicializar el session store
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // Limpiar sesiones expiradas cada 24 horas
+    });
   }
 
   // User operations
@@ -429,7 +445,23 @@ export class MemStorage implements IStorage {
   }
 }
 
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
+
+const PostgresSessionStore = connectPg(session);
+
 export class DatabaseStorage implements IStorage {
+  // Session store para autenticación
+  public sessionStore: session.Store;
+  
+  constructor() {
+    // Inicializar el almacén de sesiones PostgreSQL
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true
+    });
+  }
+  
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;

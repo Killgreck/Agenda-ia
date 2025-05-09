@@ -3,6 +3,8 @@ import { IStorage } from './storage';
 import { log } from './vite';
 import { getNextSequenceValue, getCollection } from './mongodb';
 import * as bcrypt from 'bcryptjs';
+import session from 'express-session';
+import createMemoryStore from 'memorystore';
 import {
   User,
   UserSettings,
@@ -16,10 +18,20 @@ import {
   ChatMessage
 } from './mongoModels';
 
+const MemoryStore = createMemoryStore(session);
+
 // MongoDB storage adapter implementing the IStorage interface
 export class MongoDBStorage implements IStorage {
+  // Session store para autenticación
+  public sessionStore: session.Store;
+  
   constructor() {
     log('MongoDB storage adapter initialized', 'mongodb');
+    
+    // Inicializar el session store en memoria
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // Limpiar sesiones expiradas cada 24 horas
+    });
   }
 
   // User operations
