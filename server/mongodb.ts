@@ -71,9 +71,14 @@ export async function connectToDatabase() {
           await mongoose.connect(MONGODB_URI, options);
           log('Connected to MongoDB successfully using environment variable!', 'mongodb');
           return mongoose.connection;
-        } catch (connErr) {
+        } catch (connErr: any) {
           log(`Failed to connect to MongoDB: ${connErr}`, 'mongodb');
-          // Continue with in-memory implementation
+          // Si el error es por IP no autorizada, no reintentes - vamos a fallback directamente
+          if (typeof connErr === 'object' && connErr !== null && 'message' in connErr && typeof connErr.message === 'string' && connErr.message.includes('IP whitelist')) {
+            log('IP not whitelisted in MongoDB Atlas. Falling back to in-memory implementation.', 'mongodb');
+            break;
+          }
+          // Continue with retry or in-memory implementation for other errors
         }
       }
       

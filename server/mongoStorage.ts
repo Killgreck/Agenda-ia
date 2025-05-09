@@ -29,8 +29,11 @@ export class MongoDBStorage implements IStorage {
     log('MongoDB storage adapter initialized', 'mongodb');
     
     // Inicializar el session store en memoria
+    // Usamos MemoryStore porque no tenemos acceso a MongoDB desde Replit
+    // En un entorno de producción, usaríamos MongoStore para persistir sesiones
     this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000 // Limpiar sesiones expiradas cada 24 horas
+      checkPeriod: 86400000, // Limpiar sesiones expiradas cada 24 horas
+      stale: false // No eliminar sesiones inactivas para mantener las sesiones durante el desarrollo
     });
   }
 
