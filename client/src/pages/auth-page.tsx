@@ -142,12 +142,28 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Contraseña</FormLabel>
                           <FormControl>
-                            <Input
-                              type="password"
-                              placeholder="••••••••"
-                              {...field}
-                              disabled={loginMutation.isPending}
-                            />
+                            <div className="relative">
+                              <Input
+                                type={showLoginPassword ? "text" : "password"}
+                                placeholder="••••••••"
+                                {...field}
+                                disabled={loginMutation.isPending}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                onClick={() => setShowLoginPassword(!showLoginPassword)}
+                                tabIndex={-1}
+                              >
+                                {showLoginPassword ? (
+                                  <EyeOff className="h-4 w-4 text-gray-500" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-gray-500" />
+                                )}
+                              </Button>
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -254,12 +270,28 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Contraseña</FormLabel>
                           <FormControl>
-                            <Input
-                              type="password"
-                              placeholder="••••••••"
-                              {...field}
-                              disabled={registerMutation.isPending}
-                            />
+                            <div className="relative">
+                              <Input
+                                type={showRegisterPassword ? "text" : "password"}
+                                placeholder="••••••••"
+                                {...field}
+                                disabled={registerMutation.isPending}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                                tabIndex={-1}
+                              >
+                                {showRegisterPassword ? (
+                                  <EyeOff className="h-4 w-4 text-gray-500" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-gray-500" />
+                                )}
+                              </Button>
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
