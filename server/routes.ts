@@ -276,26 +276,18 @@ function generateRecurringTasks(taskData: any): any[] {
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
-  // Initialize session store
-  const SessionStore = MemoryStore(session);
-  
-  // Setup session middleware
-  app.use(session({
-    secret: process.env.SESSION_SECRET || randomBytes(32).toString('hex'),
-    resave: false,
-    saveUninitialized: false,
-    cookie: { 
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    },
-    store: new SessionStore({
-      checkPeriod: 86400000 // prune expired entries every 24h
-    })
-  }));
+  // Import and setup authentication
+  try {
+    const { setupAuth } = await import('./auth');
+    setupAuth(app);
+    console.log("Authentication setup completed successfully");
+  } catch (error) {
+    console.error("Failed to setup authentication:", error);
+  }
   
   // Authentication Middleware
   const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-    if (req.session && req.session.userId) {
+    if (req.isAuthenticated()) {
       return next();
     }
     
