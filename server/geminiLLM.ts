@@ -2,14 +2,14 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/ge
 import { log } from './vite';
 import { Event, User, ChatMessage } from './mongoModels';
 
-// Initialize the Google Generative AI with the API key
-const API_KEY = process.env.GEMINI_API_KEY;
+// Initialize the Google Generative AI with the API key (disabled for now)
+const API_KEY = undefined; // Desactivamos la API key temporalmente
 // Use a more broadly available model as fallback
 const MODEL_NAME = 'gemini-1.5-pro';
 const FALLBACK_MODEL = 'gemini-1.0-pro';
 
 // Log API key status (without revealing the actual key)
-log(`Gemini API Key status: ${API_KEY ? 'Configured (length: ' + API_KEY.length + ')' : 'Not configured'}`, 'gemini');
+log(`Gemini API Key status: Intentionally disabled for fallback testing`, 'gemini');
 
 // Function to get user profile as text
 export async function getUserProfileAsText(userId: number): Promise<string> {
@@ -152,14 +152,82 @@ export async function getCalendarEventsAsText(userId: number): Promise<string> {
  */
 export async function callGeminiLLM(userMessage: string, userId: number = 1): Promise<string> {
   if (!API_KEY) {
-    log('Error: Gemini API key is not configured', 'error');
-    throw new Error('Gemini API key is not configured');
+    log('Error: Gemini API key is not configured. Using fallback responses.', 'error');
+    
+    // Get information about the user's context
+    let calendarInfo = "";
+    let userInfo = "";
+    
+    try {
+      calendarInfo = await getCalendarEventsAsText(userId);
+      userInfo = await getUserProfileAsText(userId);
+    } catch (contextError) {
+      log(`Error getting context for fallback response: ${contextError}`, 'error');
+    }
+    
+    // Detect language (simple detection for English vs Spanish)
+    const userMessageLower = userMessage.toLowerCase();
+    const isSpanish = userMessageLower.includes('quiero') || 
+                      userMessageLower.includes('agendar') || 
+                      userMessageLower.includes('calendario') ||
+                      userMessageLower.includes('lunes') ||
+                      userMessageLower.includes('martes') || 
+                      userMessageLower.includes('miércoles') || 
+                      userMessageLower.includes('jueves') || 
+                      userMessageLower.includes('viernes');
+                      
+    // Create a more intelligent fallback response based on the user's message
+    if (userMessageLower.includes('agenda') || userMessageLower.includes('schedule') || 
+        userMessageLower.includes('calendar') || userMessageLower.includes('eventos') || 
+        userMessageLower.includes('events')) {
+      
+      if (calendarInfo && calendarInfo !== "You don't have any upcoming events scheduled in your calendar for the next week.") {
+        return isSpanish ? 
+          `Aquí está tu agenda para los próximos días:\n\n${calendarInfo}\n\n¿Hay algo específico que te gustaría agregar a tu calendario?` : 
+          `Here's your schedule for the upcoming days:\n\n${calendarInfo}\n\nIs there anything specific you'd like to add to your calendar?`;
+      } else {
+        return isSpanish ? 
+          "Parece que no tienes eventos programados para la próxima semana. ¿Te gustaría que te ayude a crear un nuevo evento?" : 
+          "It looks like you don't have any events scheduled for the next week. Would you like me to help you create a new event?";
+      }
+    } else if (userMessageLower.includes('tarea') || userMessageLower.includes('task') || 
+               userMessageLower.includes('recordatorio') || userMessageLower.includes('reminder')) {
+      
+      return isSpanish ? 
+        "Puedo ayudarte a crear tareas y recordatorios. ¿Qué tarea necesitas agregar a tu lista? Por favor, proporciona un título, fecha límite y cualquier detalle importante." : 
+        "I can help you create tasks and reminders. What task do you need to add to your list? Please provide a title, deadline, and any important details.";
+    } else if (userMessageLower.includes('hola') || userMessageLower.includes('hello') || 
+               userMessageLower.includes('hi') || userMessageLower.includes('buenos días') ||
+               userMessageLower.includes('buenas tardes') || userMessageLower.includes('buenas noches')) {
+      
+      const userName = userInfo && userInfo.includes('Name:') ? 
+                       userInfo.split('Name:')[1].split('\n')[0].trim() : 
+                       (userInfo && userInfo.includes('Username:') ? 
+                       userInfo.split('Username:')[1].split('\n')[0].trim() : '');
+      
+      const greeting = userName ? 
+        (isSpanish ? `¡Hola ${userName}!` : `Hello ${userName}!`) : 
+        (isSpanish ? "¡Hola!" : "Hello!");
+      
+      return isSpanish ? 
+        `${greeting} Soy tu asistente de calendario. Puedo ayudarte a administrar tu agenda, crear tareas y optimizar tu tiempo. ¿En qué puedo ayudarte hoy?` : 
+        `${greeting} I'm your calendar assistant. I can help you manage your schedule, create tasks, and optimize your time. How can I assist you today?`;
+    } else if (userMessageLower.includes('gracias') || userMessageLower.includes('thank')) {
+      
+      return isSpanish ? 
+        "¡De nada! Estoy aquí para ayudarte con tu agenda y productividad. ¿Hay algo más en lo que pueda asistirte hoy?" : 
+        "You're welcome! I'm here to help with your schedule and productivity. Is there anything else I can assist you with today?";
+    } else {
+      // Generic response
+      return isSpanish ? 
+        "Soy tu asistente de calendario y productividad. Puedo ayudarte a programar eventos, crear tareas, y optimizar tu tiempo. ¿En qué te gustaría que te ayude hoy?" : 
+        "I'm your calendar and productivity assistant. I can help you schedule events, create tasks, and optimize your time. What would you like me to help you with today?";
+    }
   }
 
   try {
     // Debug
     log('Gemini API call starting with message: ' + userMessage, 'gemini');
-    log('Using API key length: ' + API_KEY.length, 'gemini'); // Safer than logging the actual key
     log('Using Model: ' + MODEL_NAME, 'gemini');
     
     // Get calendar events as text to provide context
@@ -336,14 +404,50 @@ export async function callGeminiLLM(userMessage: string, userId: number = 1): Pr
  */
 export async function generateTaskSuggestion(title: string, description?: string): Promise<string> {
   if (!API_KEY) {
-    log('Error: Gemini API key is not configured for task suggestion', 'error');
-    throw new Error('Gemini API key is not configured');
+    log('Error: Gemini API key is not configured for task suggestion. Using fallback response.', 'error');
+    
+    // Create a basic task suggestion based on the title and description
+    const titleLower = title.toLowerCase();
+    
+    // Detect if the task might be work-related
+    const isWorkRelated = titleLower.includes('meeting') || 
+                          titleLower.includes('project') || 
+                          titleLower.includes('deadline') ||
+                          titleLower.includes('presentation') ||
+                          titleLower.includes('email') ||
+                          titleLower.includes('report');
+    
+    // Detect if the task might be personal
+    const isPersonal = titleLower.includes('gym') || 
+                       titleLower.includes('exercise') || 
+                       titleLower.includes('shopping') ||
+                       titleLower.includes('family') ||
+                       titleLower.includes('friend') ||
+                       titleLower.includes('birthday');
+    
+    // Detect if it's health-related
+    const isHealth = titleLower.includes('doctor') || 
+                     titleLower.includes('appointment') || 
+                     titleLower.includes('medication') ||
+                     titleLower.includes('exercise') ||
+                     titleLower.includes('workout') ||
+                     titleLower.includes('health');
+    
+    // Generate suggestion based on task type
+    if (isWorkRelated) {
+      return `For your task "${title}", consider scheduling it during your peak productivity hours in the morning. Break it down into smaller milestones and set reminders at 1 day and 1 hour before the deadline. To complete it successfully, allocate focused work blocks with no distractions and prepare all necessary resources beforehand.`;
+    } else if (isHealth) {
+      return `For your health-related task "${title}", schedule it at a consistent time to build a habit. Set a reminder 30 minutes before to prepare. Success tip: Track your progress in a journal or app to stay motivated and see your improvement over time.`;
+    } else if (isPersonal) {
+      return `For your personal task "${title}", find a time when you typically have more energy for personal activities, often in the evening or weekend. Set a reminder a few hours before to mentally prepare. Success tip: Combine this with something you enjoy to make it more rewarding.`;
+    } else {
+      return `For your task "${title}", I recommend scheduling it during a time when you have fewer other commitments. Break it down into manageable steps, set a reminder for 1 hour before you start, and consider using the Pomodoro technique (25 minutes of focus, 5-minute break) for optimal productivity.`;
+    }
   }
 
   try {
     // Debug
     log(`Generating task suggestion for: "${title}"`, 'gemini');
-    log('Using API key length: ' + API_KEY.length, 'gemini');
     log('Using Model: ' + MODEL_NAME, 'gemini');
     
     try {
@@ -406,14 +510,80 @@ export async function generateTaskSuggestion(title: string, description?: string
  */
 export async function generateWeeklyReportSummary(stats: any): Promise<string> {
   if (!API_KEY) {
-    log('Error: Gemini API key is not configured for weekly report', 'error');
-    throw new Error('Gemini API key is not configured');
+    log('Error: Gemini API key is not configured for weekly report. Using fallback response.', 'error');
+    
+    // Check if stats object is valid
+    if (!stats || typeof stats !== 'object') {
+      return "I can't generate a report with the data provided. Please ensure your statistics are properly recorded.";
+    }
+    
+    // Safe access to stats properties with fallbacks
+    const productivityScore = stats.productivityScore || 0;
+    const tasksCreated = stats.tasksCreated || 0;
+    const tasksCompleted = stats.tasksCompleted || 0;
+    const totalFocusTime = stats.totalFocusTime || 0;
+    
+    // Generate a basic report based on the stats
+    let report = "Weekly Productivity Report\n\n";
+    
+    // Productivity assessment
+    let productivityAssessment = "";
+    if (productivityScore > 70) {
+      productivityAssessment = "Great job this week! Your productivity score is excellent.";
+    } else if (productivityScore > 40) {
+      productivityAssessment = "You had a productive week with a solid performance.";
+    } else {
+      productivityAssessment = "This week had some challenges, but every step counts toward progress.";
+    }
+    
+    // Task completion rate
+    const completionRate = tasksCreated > 0 ? Math.round((tasksCompleted / tasksCreated) * 100) : 0;
+    let completionAssessment = "";
+    if (completionRate >= 80) {
+      completionAssessment = `Impressive task completion rate of ${completionRate}%! You're excellent at following through on your commitments.`;
+    } else if (completionRate >= 50) {
+      completionAssessment = `You completed ${completionRate}% of your tasks, showing good progress toward your goals.`;
+    } else {
+      completionAssessment = `You completed ${completionRate}% of your tasks. Consider breaking down tasks into smaller, more manageable pieces.`;
+    }
+    
+    // Focus time assessment
+    let focusAssessment = "";
+    if (totalFocusTime > 1200) {  // More than 20 hours
+      focusAssessment = "You logged an impressive amount of focus time this week!";
+    } else if (totalFocusTime > 600) {  // More than 10 hours
+      focusAssessment = "You maintained a good amount of focused work time this week.";
+    } else {
+      focusAssessment = "Consider setting aside more dedicated focus time to boost your productivity.";
+    }
+    
+    // Suggestions
+    const suggestions = [
+      "Try the Pomodoro Technique (25 minutes of focus followed by a 5-minute break) to maintain high productivity.",
+      "Schedule your most important tasks during your peak energy hours.",
+      "Set clear boundaries between work and personal time to avoid burnout.",
+      "Break larger tasks into smaller, actionable steps to make them less overwhelming.",
+      "Review your task list at the end of each day and prioritize for tomorrow."
+    ];
+    
+    // Randomly select 2 suggestions
+    const selectedSuggestions = suggestions
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 2);
+    
+    // Compile the report
+    report += `${productivityAssessment}\n\n${completionAssessment}\n\n${focusAssessment}\n\n`;
+    report += "Suggestions for next week:\n";
+    report += `1. ${selectedSuggestions[0]}\n`;
+    report += `2. ${selectedSuggestions[1]}\n\n`;
+    report += "Keep up the good work and remember that consistency is key to long-term productivity!";
+    
+    return report;
   }
 
   try {
     // Debug
     log('Generating weekly report summary...', 'gemini');
-    log('Using API key length: ' + API_KEY.length, 'gemini');
     log('Using Model: ' + MODEL_NAME, 'gemini');
     
     try {
