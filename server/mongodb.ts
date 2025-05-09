@@ -5,8 +5,13 @@ import { MongoClient, Db } from 'mongodb';
 // MongoDB connection settings
 const dbName = 'productivity-app';
 
-// We'll use a separate environment variable for MongoDB to avoid conflicts with PostgreSQL
-const MONGODB_URI = process.env.MONGODB_URI || '';
+// Build MongoDB URI with credentials
+const MONGODB_USERNAME = process.env.MONGODB_URI ? '' : 'Agenda';
+const MONGODB_PASSWORD = process.env.MONGODB_URI ? '' : 'iN6kazxV3HA46qPN';
+const MONGODB_DEFAULT_URI = `mongodb+srv://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@cluster0.72j4r.mongodb.net/${dbName}?retryWrites=true&w=majority&appName=Cluster0`;
+
+// Use environment variable if available, otherwise use the default URI
+const MONGODB_URI = process.env.MONGODB_URI || MONGODB_DEFAULT_URI;
 
 // In-memory MongoDB implementation (instead of MongoMemoryServer)
 let mongoClient: MongoClient | null = null;
