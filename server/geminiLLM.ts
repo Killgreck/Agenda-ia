@@ -3,10 +3,10 @@ import { log } from './vite';
 import { Event, User, ChatMessage } from './mongoModels';
 
 // Initialize the Google Generative AI with the API key directly as requested by the user
-const API_KEY = 'AIzaSyBbfSXSU_Bvdoq6V-N1_Q7ulfzKHxDTM0c'; // API key directamente en código como solicitado por el usuario
-// Use a more broadly available model as fallback
-const MODEL_NAME = 'gemini-1.5-flash';
-const FALLBACK_MODEL = 'gemini-1.0-pro';
+const API_KEY = 'AIzaSyDO3CjlAqqtDfRt9LPRHwGDcUx0T0pFZZc'; // API key directamente en código como solicitado por el usuario
+// Use more widely available models that are guaranteed to work
+const MODEL_NAME = 'gemini-pro';
+const FALLBACK_MODEL = 'gemini-pro';
 
 // Log API key status (without revealing the actual key)
 if (API_KEY) {
@@ -405,8 +405,54 @@ export async function callGeminiLLM(userMessage: string, userId: number = 1): Pr
  * Generate task suggestions using Gemini
  */
 export async function generateTaskSuggestion(title: string, description?: string): Promise<string> {
-  if (!API_KEY) {
-    log('Error: Gemini API key is not configured. Using fallback task suggestions.', 'error');
+  log(`Generando sugerencia de tarea para: "${title}" usando Gemini API`, 'gemini');
+  log('Using Model: ' + MODEL_NAME, 'gemini');
+  
+  try {
+    // Initialize the Gemini API
+    log('Initializing Gemini API for task suggestion...', 'gemini');
+    const genAI = new GoogleGenerativeAI(API_KEY);
+    log('Getting generative model...', 'gemini');
+    
+    // Use the model
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    log(`Gemini model initialized successfully: ${MODEL_NAME}`, 'gemini');
+    
+    // Prepare the prompt for task suggestion
+    const prompt = `Generate a helpful suggestion for optimizing this task:
+    
+    Task Title: ${title}
+    ${description ? `Task Description: ${description}` : ''}
+    
+    Provide a specific suggestion that includes:
+    1. The best time to schedule this based on typical productivity patterns
+    2. How to break it down if it's complex
+    3. A recommendation for setting reminders
+    4. A tip for successful completion
+    
+    Keep your response under 150 words.`;
+    
+    log('Preparing to send task suggestion request to Gemini...', 'gemini');
+    
+    // Generate content
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 250,
+      }
+    });
+    
+    if (!result || !result.response) {
+      log('Gemini API returned empty response for task suggestion', 'error');
+      throw new Error('Empty response from Gemini API');
+    }
+    
+    log('Gemini API responded successfully with task suggestion', 'gemini');
+    const response = result.response;
+    return response.text();
+  } catch (error) {
+    log(`Error generating task suggestion with Gemini: ${error}`, 'error');
     
     // Detect language (simple detection for Spanish keywords in title or description)
     const isSpanish = (title + (description || "")).toLowerCase().includes('reunión') || 
@@ -433,73 +479,60 @@ export async function generateTaskSuggestion(title: string, description?: string
 Would you like me to add this to your calendar?`;
     }
   }
-
-  try {
-    // Debug
-    log(`Generating task suggestion for: "${title}"`, 'gemini');
-    log('Using Model: ' + MODEL_NAME, 'gemini');
-    
-    try {
-      // Initialize the Gemini API
-      log('Initializing Gemini API for task suggestion...', 'gemini');
-      const genAI = new GoogleGenerativeAI(API_KEY);
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-      log('Gemini model initialized successfully for task suggestion', 'gemini');
-      
-      // Prepare the prompt for task suggestion
-      const prompt = `Generate a helpful suggestion for optimizing this task:
-      
-      Task Title: ${title}
-      ${description ? `Task Description: ${description}` : ''}
-      
-      Provide a specific suggestion that includes:
-      1. The best time to schedule this based on typical productivity patterns
-      2. How to break it down if it's complex
-      3. A recommendation for setting reminders
-      4. A tip for successful completion
-      
-      Keep your response under 150 words.`;
-      
-      log('Preparing to send task suggestion request to Gemini...', 'gemini');
-      
-      try {
-        // Generate content
-        const result = await model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 250,
-          }
-        });
-        
-        if (!result || !result.response) {
-          log('Gemini API returned empty response for task suggestion', 'error');
-          throw new Error('Empty response from Gemini API');
-        }
-        
-        log('Gemini API responded successfully with task suggestion', 'gemini');
-        const response = result.response;
-        return response.text();
-      } catch (apiError) {
-        log(`Error in Gemini API task suggestion call: ${apiError}`, 'error');
-        throw apiError;
-      }
-    } catch (initError) {
-      log(`Error initializing Gemini model for task suggestion: ${initError}`, 'error');
-      throw initError;
-    }
-  } catch (error) {
-    log(`Error generating task suggestion: ${error}`, 'error');
-    return "I can provide scheduling suggestions for this task once my connection is restored. In the meantime, consider adding this to your calendar with a buffer time before and after to ensure you have enough time to complete it.";
-  }
 }
 
 /**
  * Generate a weekly report summary using Gemini
  */
 export async function generateWeeklyReportSummary(stats: any): Promise<string> {
-  if (!API_KEY) {
-    log('Error: Gemini API key is not configured. Using fallback weekly report.', 'error');
+  log('Generating weekly report summary...', 'gemini');
+  log('Using Model: ' + MODEL_NAME, 'gemini');
+  
+  try {
+    // Initialize the Gemini API
+    log('Initializing Gemini API for weekly report...', 'gemini');
+    const genAI = new GoogleGenerativeAI(API_KEY);
+    log('Getting generative model...', 'gemini');
+    
+    // Use the model
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    log(`Gemini model initialized successfully: ${MODEL_NAME}`, 'gemini');
+    
+    // Prepare the prompt for weekly report
+    const prompt = `Generate a motivational and informative weekly productivity report based on these statistics:
+    
+    Tasks completed: ${stats.tasksCompleted || 0} out of ${stats.tasksTotal || 0} total tasks
+    Average productivity score: ${stats.avgProductivity || 0} out of 10
+    AI suggestions accepted: ${stats.aiSuggestionsAccepted || 0} out of ${stats.aiSuggestionsTotal || 0} suggested
+    
+    Structure the report as:
+    1. A friendly greeting
+    2. A summary of this week's performance
+    3. 2-3 specific suggestions for improving productivity next week
+    
+    Keep the tone encouraging even if the stats are low. Limit to 150 words maximum.`;
+    
+    log('Preparing to send weekly report request to Gemini...', 'gemini');
+    
+    // Generate content
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 300,
+      }
+    });
+    
+    if (!result || !result.response) {
+      log('Gemini API returned empty response for weekly report', 'error');
+      throw new Error('Empty response from Gemini API');
+    }
+    
+    log('Gemini API responded successfully with weekly report', 'gemini');
+    const response = result.response;
+    return response.text();
+  } catch (error) {
+    log(`Error generating weekly report with Gemini: ${error}`, 'error');
     
     return `Weekly Report Summary:
 
@@ -508,64 +541,5 @@ Average productivity: ${stats.avgProductivity || 0}/10
 AI suggestions used: ${stats.aiSuggestionsAccepted || 0}/${stats.aiSuggestionsTotal || 0}
 
 Remember to schedule focused time blocks next week to improve overall productivity.`;
-  }
-
-  try {
-    // Debug
-    log('Generating weekly report summary...', 'gemini');
-    log('Using Model: ' + MODEL_NAME, 'gemini');
-    
-    try {
-      // Initialize the Gemini API
-      log('Initializing Gemini API for weekly report...', 'gemini');
-      const genAI = new GoogleGenerativeAI(API_KEY);
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-      log('Gemini model initialized successfully for weekly report', 'gemini');
-      
-      // Prepare the prompt for weekly report
-      const prompt = `Generate a motivational and informative weekly productivity report based on these statistics:
-      
-      Tasks completed: ${stats.tasksCompleted || 0} out of ${stats.tasksTotal || 0} total tasks
-      Average productivity score: ${stats.avgProductivity || 0} out of 10
-      AI suggestions accepted: ${stats.aiSuggestionsAccepted || 0} out of ${stats.aiSuggestionsTotal || 0} suggested
-      
-      Structure the report as:
-      1. A friendly greeting
-      2. A summary of this week's performance
-      3. 2-3 specific suggestions for improving productivity next week
-      
-      Keep the tone encouraging even if the stats are low. Limit to 150 words maximum.`;
-      
-      log('Preparing to send weekly report request to Gemini...', 'gemini');
-      
-      try {
-        // Generate content
-        const result = await model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 300,
-          }
-        });
-        
-        if (!result || !result.response) {
-          log('Gemini API returned empty response for weekly report', 'error');
-          throw new Error('Empty response from Gemini API');
-        }
-        
-        log('Gemini API responded successfully with weekly report', 'gemini');
-        const response = result.response;
-        return response.text();
-      } catch (apiError) {
-        log(`Error in Gemini API weekly report call: ${apiError}`, 'error');
-        throw apiError;
-      }
-    } catch (initError) {
-      log(`Error initializing Gemini model for weekly report: ${initError}`, 'error');
-      throw initError;
-    }
-  } catch (error) {
-    log(`Error generating weekly report: ${error}`, 'error');
-    return "I'll be able to provide detailed weekly reports when my connection is restored. From what I can see, you've made progress on your tasks this week. Keep up the good work!";
   }
 }
