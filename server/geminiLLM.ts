@@ -2,8 +2,8 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/ge
 import { log } from './vite';
 import { Event, User, ChatMessage } from './mongoModels';
 
-// Initialize the Google Generative AI with the API key from environment variable
-const API_KEY = process.env.GEMINI_API_KEY || '';
+// Initialize the Google Generative AI with the API key directly (as requested by user)
+const API_KEY = 'AIzaSyDdu7mBGwrVUF-SokHQQ39BXh6-brG_ep0'; // Direct API key implementation
 // Use a more broadly available model as fallback
 const MODEL_NAME = 'gemini-1.5-flash';
 const FALLBACK_MODEL = 'gemini-1.0-pro';
