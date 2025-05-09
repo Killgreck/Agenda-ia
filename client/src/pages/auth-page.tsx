@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Eye, EyeOff } from "lucide-react";
 
 // Esquema de validación para el formulario de login
 const loginSchema = z.object({
@@ -44,6 +45,10 @@ export default function AuthPage() {
   const [, navigate] = useLocation();
   const { user, loginMutation, registerMutation, initialAuthCheckComplete } = useAuth();
   const [activeTab, setActiveTab] = useState("login");
+  
+  // Estados para mostrar/ocultar contraseñas
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
 
   // Si el usuario ya está autenticado, redirigir a la página principal
   useEffect(() => {
