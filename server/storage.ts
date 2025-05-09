@@ -937,6 +937,10 @@ export const setMongoAvailability = (available: boolean) => {
 // Export MongoDB storage as the default storage, with a fallback to PostgreSQL
 // During the transition period, we'll use this approach to ensure stable operation
 export const storage = {
+  // Exportar el almacén de sesiones según la disponibilidad de MongoDB
+  get sessionStore() {
+    return isMongoAvailable ? mongoStorage.sessionStore : dbStorage.sessionStore;
+  },
   getUser: async (id: number) => {
     try {
       return isMongoAvailable 
