@@ -2,14 +2,14 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/ge
 import { log } from './vite';
 import { Event, User, ChatMessage } from './mongoModels';
 
-// Initialize the Google Generative AI with the API key (disabled for now)
-const API_KEY = undefined; // Desactivamos la API key temporalmente
+// Initialize the Google Generative AI with the API key
+const API_KEY = 'AIzaSyAl1R8DPcnA-SiMa6fLatItOQAfEp4jhTg';
 // Use a more broadly available model as fallback
-const MODEL_NAME = 'gemini-1.5-pro';
+const MODEL_NAME = 'gemini-1.5-flash';
 const FALLBACK_MODEL = 'gemini-1.0-pro';
 
 // Log API key status (without revealing the actual key)
-log(`Gemini API Key status: Intentionally disabled for fallback testing`, 'gemini');
+log(`Gemini API Key status: Configured and active`, 'gemini');
 
 // Function to get user profile as text
 export async function getUserProfileAsText(userId: number): Promise<string> {
