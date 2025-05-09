@@ -23,6 +23,7 @@ import {
   getVerificationEmailTemplate, 
   getPasswordResetEmailTemplate 
 } from "./email";
+import { log } from "./vite";
 import { WebSocketServer } from "ws";
 import schedule from "node-schedule";
 import session from "express-session";
@@ -1509,29 +1510,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Start and end dates are required" });
       }
       
-      // Get tasks for the week
+      // Get tasks for the week with error handling
       const start = new Date(startDate);
       const end = new Date(endDate);
-      const tasks = await storage.getTasks({ startDate: start, endDate: end, userId });
+      let tasks = [];
+      try {
+        tasks = await storage.getTasks({ startDate: start, endDate: end, userId });
+      } catch (error) {
+        log(`Error getting tasks for weekly report: ${error}. Using empty array.`, 'error');
+        tasks = [];
+      }
       
-      // Get check-ins for the week
-      const checkIns = await storage.getCheckIns(start, end, userId);
+      // Get check-ins for the week with error handling
+      let checkIns = [];
+      try {
+        checkIns = await storage.getCheckIns(start, end, userId);
+      } catch (error) {
+        log(`Error getting check-ins for weekly report: ${error}. Using empty array.`, 'error');
+        checkIns = [];
+      }
       
-      // Calculate statistics
-      const completedTasks = tasks.filter(task => task.completed);
-      const avgProductivity = checkIns.length > 0 
-        ? Math.round(checkIns.reduce((sum, ci) => sum + ci.productivityRating, 0) / checkIns.length)
+      // Calculate statistics with fallbacks
+      const completedTasks = tasks ? tasks.filter(task => task.completed) : [];
+      const avgProductivity = checkIns && checkIns.length > 0 
+        ? Math.round(checkIns.reduce((sum, ci) => 
+            sum + (typeof ci.productivityRating === 'number' ? ci.productivityRating : 0)
+          , 0) / checkIns.length)
         : 0;
       
-      // Get AI suggestions for the week
-      const allSuggestions = await storage.getAiSuggestions(undefined, userId);
-      const weekSuggestions = allSuggestions.filter(
-        s => new Date(s.timestamp) >= start && new Date(s.timestamp) <= end
-      );
+      // Get AI suggestions with error handling
+      let allSuggestions = [];
+      try {
+        allSuggestions = await storage.getAiSuggestions(undefined, userId) || [];
+      } catch (error) {
+        log(`Error getting AI suggestions for weekly report: ${error}. Using empty array.`, 'error');
+        allSuggestions = [];
+      }
+      
+      const weekSuggestions = allSuggestions.filter(s => {
+        try {
+          const suggestionDate = new Date(s.timestamp);
+          return suggestionDate >= start && suggestionDate <= end;
+        } catch (e) {
+          return false;
+        }
+      });
+      
       const acceptedSuggestions = weekSuggestions.filter(s => s.accepted);
       
-      // Create or update weekly statistics
-      const existingStats = await storage.getStatisticsForWeek(start, end, userId);
+      // Get existing statistics with error handling
+      let existingStats;
+      try {
+        existingStats = await storage.getStatisticsForWeek(start, end, userId);
+      } catch (error) {
+        log(`Error getting existing statistics for weekly report: ${error}`, 'error');
+        existingStats = null;
+      }
       
       let statistics;
       const statsData = {
@@ -1545,19 +1579,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiSuggestionsTotal: weekSuggestions.length
       };
       
-      if (existingStats) {
-        // Instead of using the existing stats document, we'll create a new one
-        // Note: we're not actually keeping the ID, as createStatistics will create a new record
-        // This is a workaround for not having an updateStatistics method
-        console.log("Existing stats found, updating with new data:", statsData);
-        
-        // Here we'll just create a new statistics record with the latest data
-        statistics = await storage.createStatistics(statsData);
-        
-        console.log("Created new statistics record to replace existing one:", statistics);
-      } else {
-        console.log("No existing stats found, creating new record:", statsData);
-        statistics = await storage.createStatistics(statsData);
+      // Create statistics with error handling
+      try {
+        if (existingStats) {
+          log("Existing stats found, updating with new data", 'info');
+          
+          // Here we'll just create a new statistics record with the latest data
+          statistics = await storage.createStatistics(statsData);
+          
+          log("Created new statistics record to replace existing one", 'info');
+        } else {
+          log("No existing stats found, creating new record", 'info');
+          statistics = await storage.createStatistics(statsData);
+        }
+      } catch (statsError) {
+        log(`Error creating statistics record: ${statsError}. Using input data as fallback.`, 'error');
+        statistics = statsData;
       }
       
       // Use Gemini LLM to generate a personalized weekly report
@@ -1568,7 +1605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           report
         });
       } catch (reportError) {
-        console.error('Error generating AI weekly report:', reportError);
+        log(`Error generating AI weekly report: ${reportError}. Using fallback report generator.`, 'error');
         // Fallback to the static report if AI fails
         res.json({ 
           statistics,
