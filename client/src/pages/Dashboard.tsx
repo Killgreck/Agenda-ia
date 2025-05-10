@@ -6,6 +6,7 @@ import AIAssistant from "@/components/AIAssistant";
 import DetailedReport from "@/components/DetailedReport";
 import TaskModal from "@/components/TaskModal";
 import PostponeModal from "@/components/PostponeModal";
+import ScheduleSuggestions from "@/components/ScheduleSuggestions";
 import { Task, InsertTask } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
