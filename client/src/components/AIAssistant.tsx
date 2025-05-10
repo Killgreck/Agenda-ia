@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useTasks } from "@/hooks/useTaskManager";
 import { type ChatMessage } from "@/types/chat";
 import { useLocalMessages } from "@/hooks/useLocalMessages";
+import { callGeminiDirectly } from "@/lib/directGeminiRequest";
 import TaskModal from "@/components/TaskModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -59,6 +60,7 @@ const adaptMessage = (message: any): ChatMessage => {
 export default function AIAssistant() {
   const [message, setMessage] = useState("");
   const [apiError, setApiError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showHelpDialog, setShowHelpDialog] = useState(false);
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
@@ -198,8 +200,7 @@ export default function AIAssistant() {
     }
   }, [isVoiceActive, addAIMessage, sendMessage]);
 
-  // Importación para llamada directa a Gemini
-  import { callGeminiDirectly } from "@/lib/directGeminiRequest";
+  // Función para llamar directamente a Gemini desde el frontend
   
   const handleSendMessage = async () => {
     if (!message.trim()) return;
