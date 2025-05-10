@@ -4,18 +4,14 @@ import { InsertChatMessage, InsertAiSuggestion } from "@shared/schema";
 /**
  * Send a message to the AI assistant
  */
-export async function sendChatMessage(message: string): Promise<void> {
-  const messageData: InsertChatMessage = {
-    content: message,
-    timestamp: new Date().toISOString(),
-    sender: 'user',
-    userId: 1 // Default to user 1 if not authenticated
-  };
-  
-  await apiRequest('/api/chat-messages', {
+export async function sendChatMessage(message: string): Promise<any> {
+  // Enviar la solicitud a la API privada de chat
+  const response = await apiRequest('/api/chat', {
     method: 'POST',
-    body: JSON.stringify(messageData)
+    body: JSON.stringify({ message })
   });
+  
+  return response;
 }
 
 /**
