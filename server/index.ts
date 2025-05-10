@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeDatabase } from "./db";
-import { registerPublicChatRoute } from "./publicChat";
+import { registerPrivateChatRoute } from "./privateChat";
 import { registerScheduleSuggestionsRoute } from "./scheduleSuggestions";
 
 const app = express();
@@ -48,8 +48,8 @@ app.use((req, res, next) => {
     log(`Failed to initialize MongoDB: ${error}`, 'mongodb');
   }
   
-  // Registrar rutas sin autenticación
-  registerPublicChatRoute(app);
+  // Registrar rutas de chat (ahora requiere autenticación)
+  registerPrivateChatRoute(app);
   registerScheduleSuggestionsRoute(app);
   
   const server = await registerRoutes(app);

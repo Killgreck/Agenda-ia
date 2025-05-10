@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Send, Lock } from "lucide-react";
 import axios from "axios";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 
 // Interface para los mensajes
