@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Send, Lock } from "lucide-react";
 import axios from "axios";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
@@ -29,15 +29,15 @@ export default function PrivateChat() {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
 
   // Redirigir al login si no está autenticado
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate("/auth");
+      setLocation("/auth");
     }
-  }, [authLoading, user, navigate]);
+  }, [authLoading, user, setLocation]);
 
   // Función para enviar un mensaje al endpoint
   const sendMessage = async () => {
@@ -98,7 +98,7 @@ export default function PrivateChat() {
         setMessages((prev) => [...prev, authErrorMessage]);
         
         // Redirigir al login después de un breve retraso
-        setTimeout(() => navigate("/auth"), 2000);
+        setTimeout(() => setLocation("/auth"), 2000);
       } else {
         // Mensaje de error en caso de falla general
         const errorMessage: ChatMessage = {
@@ -144,7 +144,7 @@ export default function PrivateChat() {
             </CardDescription>
           </CardHeader>
           <CardFooter className="flex justify-center">
-            <Button onClick={() => navigate("/auth")}>
+            <Button onClick={() => setLocation("/auth")}>
               Ir a Iniciar Sesión
             </Button>
           </CardFooter>

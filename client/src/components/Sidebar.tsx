@@ -1,4 +1,4 @@
-import { CheckCircle, BarChart, CheckSquare } from "lucide-react";
+import { CheckCircle, BarChart, CheckSquare, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useStats } from "@/hooks/useStats";
 import { Task } from "@shared/schema";
 import { useTasks } from "@/hooks/useTaskManager";
 import { TaskMenu } from "@/components/ui/task-menu";
+import { Link } from "wouter";
 
 export default function Sidebar() {
   const { toast } = useToast();
@@ -23,7 +24,8 @@ export default function Sidebar() {
     submitCheckin({
       date: new Date().toISOString(),
       productivityRating: rating,
-      notes: ""
+      notes: "",
+      userId: 1 // Assuming the current user has ID 1 for now
     });
     
     toast({
@@ -151,6 +153,22 @@ export default function Sidebar() {
           </div>
         </div>
 
+        {/* AI Assistant Chat */}
+        <div className="mb-6">
+          <h2 className="font-medium text-gray-700 flex items-center">
+            <MessageSquare className="mr-2 h-5 w-5 text-primary" />
+            AI Assistant
+          </h2>
+          <Link href="/chat">
+            <Button 
+              variant="outline" 
+              className="mt-3 w-full text-sm border-primary/30 text-primary hover:bg-primary/10"
+            >
+              Conversar con el asistente
+            </Button>
+          </Link>
+        </div>
+        
         {/* Upcoming Tasks */}
         <div>
           <h2 className="font-medium text-gray-700 flex items-center">
