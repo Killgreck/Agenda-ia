@@ -226,6 +226,9 @@ export default function Dashboard() {
           {/* Home Tab - Shows statistics, upcoming tasks, and daily check-in */}
           <TabsContent value="home" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Sugerencias de Horarios */}
+              <ScheduleSuggestions />
+              
               {/* Daily Check-in */}
               <Card>
                 <CardHeader className="pb-2">
@@ -468,25 +471,8 @@ export default function Dashboard() {
           taskToEdit={isEditMode && taskToEdit 
             ? {
                 ...taskToEdit,
-                date: typeof taskToEdit.date === 'string' 
-                  ? taskToEdit.date 
-                  : taskToEdit.date.toISOString(),
-                endDate: taskToEdit.endDate 
-                  ? (typeof taskToEdit.endDate === 'string'
-                    ? taskToEdit.endDate
-                    : taskToEdit.endDate.toISOString())
-                  : undefined,
-                // Convert Date objects to strings for recurrence dates
-                recurrenceStartDate: taskToEdit.recurrenceStartDate
-                  ? (typeof taskToEdit.recurrenceStartDate === 'string'
-                    ? taskToEdit.recurrenceStartDate
-                    : taskToEdit.recurrenceStartDate.toISOString())
-                  : undefined,
-                recurrenceEndDate: taskToEdit.recurrenceEndDate
-                  ? (typeof taskToEdit.recurrenceEndDate === 'string'
-                    ? taskToEdit.recurrenceEndDate
-                    : taskToEdit.recurrenceEndDate.toISOString())
-                  : undefined
+                // We don't need to convert anything, just pass the task as is
+                // The TaskModal component will handle the date conversion
               }
             : selectedDate 
               ? { 
