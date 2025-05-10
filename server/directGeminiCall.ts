@@ -7,8 +7,8 @@ const API_KEY = 'AIzaSyD2IlrOxYhMs6aP9DwuDQph1ra8HAAhB3s';
 // Función para hacer una llamada directa a la API de Gemini versión gratuita usando Axios
 export async function callGeminiDirectly(prompt: string): Promise<string> {
   try {
-    // URL para la versión v1 (no v1beta) de la API
-    const url = 'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent';
+    // Usar el modelo gemini-1.5-flash que está disponible en la versión gratuita
+    const url = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent';
     
     // Los parámetros para la solicitud
     const data = {
@@ -20,11 +20,18 @@ export async function callGeminiDirectly(prompt: string): Promise<string> {
             }
           ]
         }
-      ]
+      ],
+      // Configuraciones recomendadas para gemini-1.5-flash
+      generationConfig: {
+        temperature: 0.9,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 2048
+      }
     };
     
     // Hacer la solicitud HTTP
-    log('Enviando solicitud directa a Gemini API v1...', 'gemini');
+    log('Enviando solicitud directa a Gemini API v1 con modelo gemini-1.5-flash...', 'gemini');
     const response = await axios.post(
       `${url}?key=${API_KEY}`,
       data,

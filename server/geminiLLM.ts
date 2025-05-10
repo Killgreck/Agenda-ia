@@ -5,7 +5,7 @@ import { callGeminiDirectly } from './directGeminiCall';
 // La API key ya está definida en directGeminiCall.ts
 // Mantenemos estos valores para compatibilidad con el código existente
 const API_KEY = 'AIzaSyD2IlrOxYhMs6aP9DwuDQph1ra8HAAhB3s'; // API key gratuita proporcionada por el usuario
-const MODEL_NAME = 'gemini-pro';
+const MODEL_NAME = 'gemini-1.5-flash'; // Cambiado a un modelo disponible en la versión gratuita
 
 // Log API key status (without revealing the actual key)
 if (API_KEY) {
