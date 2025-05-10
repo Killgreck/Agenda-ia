@@ -1,10 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { log } from './vite';
 import { Event, User, ChatMessage } from './mongoModels';
+import { callGeminiDirectly } from './directGeminiCall';
 
-// Initialize the Google Generative AI with the API key directly as requested by the user
+// La API key ya está definida en directGeminiCall.ts
+// Mantenemos estos valores para compatibilidad con el código existente
 const API_KEY = 'AIzaSyD2IlrOxYhMs6aP9DwuDQph1ra8HAAhB3s'; // API key gratuita proporcionada por el usuario
-// Para la versión gratuita de la API de Gemini
 const MODEL_NAME = 'gemini-pro';
 
 // Log API key status (without revealing the actual key)
@@ -152,6 +152,7 @@ export async function getCalendarEventsAsText(userId: number): Promise<string> {
 
 /**
  * Make a request to the Gemini API with a simple prompt format for the free version
+ * Using direct axios call instead of the library to avoid version issues
  */
 export async function callGeminiLLM(userMessage: string, userId: number = 1): Promise<string> {
   if (!API_KEY) {
@@ -176,14 +177,6 @@ export async function callGeminiLLM(userMessage: string, userId: number = 1): Pr
     log('Previous messages fetched successfully', 'gemini');
     
     try {
-      // Initialize the Gemini API con la forma más simple posible
-      log('Inicializando API de Gemini...', 'gemini');
-      const genAI = new GoogleGenerativeAI(API_KEY);
-      
-      // Usar el modelo básico de la API gratuita
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-      log(`Modelo Gemini inicializado correctamente: ${MODEL_NAME}`, 'gemini');
-      
       // Crear un prompt simple para la versión gratuita de la API
       const prompt = `Eres un asistente inteligente para una aplicación de calendario y productividad llamada "AI Calendar Assistant".
 
@@ -202,22 +195,16 @@ Mensaje del usuario: ${userMessage}
 
 Tu respuesta:`;
 
-      log('Preparando para enviar un mensaje simple a Gemini...', 'gemini');
+      log('Preparando para enviar mensaje directo a Gemini API v1...', 'gemini');
       
-      // Generar contenido con la forma más simple posible para la API gratuita
-      const result = await model.generateContent(prompt);
+      // Usar la implementación directa con axios para evitar problemas de versión
+      const respuesta = await callGeminiDirectly(prompt);
       
-      if (!result || !result.response) {
-        log('Gemini API devolvió una respuesta vacía', 'error');
-        throw new Error('Respuesta vacía de la API de Gemini');
-      }
-      
-      log('Gemini API respondió exitosamente', 'gemini');
-      const response = result.response;
-      return response.text();
+      log('Gemini API respondió exitosamente con llamada directa', 'gemini');
+      return respuesta;
       
     } catch (error) {
-      log(`Error en llamada a Gemini API: ${error}`, 'error');
+      log(`Error en llamada directa a Gemini API: ${error}`, 'error');
       throw error;
     }
   } catch (error) {
@@ -269,14 +256,6 @@ export async function generateTaskSuggestion(title: string, description?: string
   log(`Generando sugerencia de tarea para: "${title}" usando Gemini API`, 'gemini');
   
   try {
-    // Initialize the Gemini API
-    log('Initializing Gemini API for task suggestion...', 'gemini');
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    
-    // Use the model
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-    log(`Gemini model initialized successfully: ${MODEL_NAME}`, 'gemini');
-    
     // Prepare the prompt for task suggestion
     const prompt = `Generate a helpful suggestion for optimizing this task:
     
@@ -293,17 +272,11 @@ export async function generateTaskSuggestion(title: string, description?: string
     
     log('Preparing to send task suggestion request to Gemini...', 'gemini');
     
-    // Generate content with simplified approach for free API
-    const result = await model.generateContent(prompt);
-    
-    if (!result || !result.response) {
-      log('Gemini API returned empty response for task suggestion', 'error');
-      throw new Error('Empty response from Gemini API');
-    }
+    // Usar la implementación directa con axios para evitar problemas de versión
+    const respuesta = await callGeminiDirectly(prompt);
     
     log('Gemini API responded successfully with task suggestion', 'gemini');
-    const response = result.response;
-    return response.text();
+    return respuesta;
   } catch (error) {
     log(`Error generating task suggestion with Gemini: ${error}`, 'error');
     
@@ -341,14 +314,6 @@ export async function generateWeeklyReportSummary(stats: any): Promise<string> {
   log('Generating weekly report summary...', 'gemini');
   
   try {
-    // Initialize the Gemini API
-    log('Initializing Gemini API for weekly report...', 'gemini');
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    
-    // Use the model
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-    log(`Gemini model initialized successfully: ${MODEL_NAME}`, 'gemini');
-    
     // Prepare the prompt for weekly report
     const prompt = `Generate a motivational and informative weekly productivity report based on these statistics:
     
@@ -365,17 +330,11 @@ export async function generateWeeklyReportSummary(stats: any): Promise<string> {
     
     log('Preparing to send weekly report request to Gemini...', 'gemini');
     
-    // Generate content with simplified approach for free API
-    const result = await model.generateContent(prompt);
-    
-    if (!result || !result.response) {
-      log('Gemini API returned empty response for weekly report', 'error');
-      throw new Error('Empty response from Gemini API');
-    }
+    // Usar la implementación directa con axios para evitar problemas de versión
+    const respuesta = await callGeminiDirectly(prompt);
     
     log('Gemini API responded successfully with weekly report', 'gemini');
-    const response = result.response;
-    return response.text();
+    return respuesta;
   } catch (error) {
     log(`Error generating weekly report with Gemini: ${error}`, 'error');
     
