@@ -54,6 +54,10 @@ Tu respuesta:`;
 export function registerScheduleSuggestionsRoute(app: Express) {
   app.get('/api/schedule-suggestions', async (req: Request, res: Response) => {
     try {
+      // Opcional: Verificar si el usuario está autenticado
+      // para obtener sugerencias personalizadas en el futuro
+      
+      // Por ahora, generamos sugerencias generales
       const suggestions = await getScheduleSuggestions();
       
       res.status(200).json({

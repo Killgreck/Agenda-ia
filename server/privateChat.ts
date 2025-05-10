@@ -8,7 +8,8 @@ export function registerPrivateChatRoute(app: Express) {
   app.post("/api/chat", async (req: Request, res: Response) => {
     try {
       // Verificar si el usuario está autenticado
-      if (!req.isAuthenticated()) {
+      // Temporal: En esta implementación, como no tenemos req.isAuthenticated(), verificaremos la sesión directamente
+      if (!req.session || !req.session.userId) {
         return res.status(401).json({ 
           success: false, 
           message: "No autenticado" 
@@ -16,7 +17,19 @@ export function registerPrivateChatRoute(app: Express) {
       }
       
       const { message } = req.body;
-      const user = req.user;
+      
+      // Obtener el usuario de la sesión
+      const userId = req.session.userId;
+      // Temporal: Necesitamos obtener los datos del usuario para el prompt
+      const user = await storage.getUser(userId);
+      
+      // Verificar que el usuario existe
+      if (!user) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Usuario no encontrado" 
+        });
+      }
       
       if (!message) {
         return res.status(400).json({ 
