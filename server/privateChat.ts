@@ -30,7 +30,7 @@ export function registerPrivateChatRoute(app: Express) {
       
       // Obtener las últimas conversaciones para contexto (si existen)
       const recentMessages = await storage.getChatMessages(5, user.id);
-      const conversationHistory = recentMessages.map(msg => 
+      const conversationHistory = recentMessages.map((msg: any) => 
         `${msg.sender === 'user' ? 'Usuario' : 'Asistente'}: ${msg.content}`
       ).join('\n');
       

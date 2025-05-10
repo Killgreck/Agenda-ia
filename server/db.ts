@@ -1,15 +1,7 @@
-// This file now acts as a bridge between the old PostgreSQL setup and the new MongoDB setup
-import * as schema from "@shared/schema";
+// Este archivo ahora solo usa MongoDB
 import { log } from './vite';
 import { connectToDatabase, initializeCounters } from './mongodb';
 import { setMongoAvailability } from './storage';
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-
-// PostgreSQL connection setup - we'll still need this for our fallback
-const connectionString = process.env.DATABASE_URL;
-export const pool = postgres(connectionString, { max: 10 });
-export const db = drizzle(pool, { schema });
 
 // Initialize MongoDB connection and set up counters
 export const initializeDatabase = async () => {
@@ -29,9 +21,8 @@ export const initializeDatabase = async () => {
           setMongoAvailability(true);
           return true;
         } else {
-          log('MongoDB connection returned null, falling back to PostgreSQL', 'mongodb');
-          // Set MongoDB as unavailable - will use PostgreSQL for storage operations
-          setMongoAvailability(false);
+          log('MongoDB connection failed', 'mongodb');
+          setMongoAvailability(true); // Mantener MongoDB como disponible
           return false;
         }
       }),
@@ -41,9 +32,7 @@ export const initializeDatabase = async () => {
     return result;
   } catch (error) {
     log(`Failed to initialize MongoDB: ${error}`, 'mongodb');
-    log('Falling back to PostgreSQL database', 'mongodb');
-    // Set MongoDB as unavailable - will use PostgreSQL for storage operations
-    setMongoAvailability(false);
+    setMongoAvailability(true); // Mantener MongoDB como disponible
     return false;
   }
 };
