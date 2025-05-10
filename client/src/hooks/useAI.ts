@@ -90,21 +90,53 @@ export function useAI() {
   // Mutation to send message
   const { mutateAsync: sendMessageMutation } = useMutation({
     mutationFn: async (content: string) => {
-      // Get user ID from auth storage
-      const userId = authStorage?.state?.user?.id || 1; // Fallback to id 1 if not found
+      // Check if user is authenticated
+      if (!isAuthenticated) {
+        throw new Error("Must be logged in to use chat");
+      }
       
-      const messageData: InsertChatMessage = {
-        content,
+      // Send the message to our new private chat endpoint
+      const response = await apiRequest('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message: content })
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || "Error sending message");
+      }
+      
+      // If request succeeded, add the user message to the local state first
+      const userMessage: ChatMessage = {
+        id: Date.now(),
+        content: content,
         timestamp: new Date().toISOString(),
         sender: 'user',
-        userId
+        userId: authStorage?.state?.user?.id
       };
       
-      await apiRequest('/api/chat-messages', {
-        method: 'POST',
-        body: JSON.stringify(messageData)
-      });
-      return content;
+      setMessages(prev => [...prev, userMessage]);
+      
+      // Return the AI's response to be handled
+      return data.message;
+    },
+    onSuccess: (aiResponseContent) => {
+      // AI response message
+      const aiMessage: ChatMessage = {
+        id: Date.now() + 1, // Ensure different ID from user message
+        content: aiResponseContent,
+        timestamp: new Date().toISOString(),
+        sender: 'ai',
+        userId: authStorage?.state?.user?.id
+      };
+      
+      // Simulate typing effect before adding AI response
+      setIsTyping(true);
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages(prev => [...prev, aiMessage]);
+      }, 1000);
     },
     onError: (error) => {
       toast({
@@ -128,26 +160,8 @@ export function useAI() {
   // Function to send a message
   const sendMessage = useCallback(async (content: string) => {
     try {
+      // The sendMessageMutation now handles adding messages to the UI
       await sendMessageMutation(content);
-      
-      // After a short delay, check if the AI responded
-      setTimeout(() => {
-        const lastMessage = messages[messages.length - 1];
-        
-        // If the last message is from the user (not AI), it may indicate an API issue
-        if (lastMessage && lastMessage.sender === 'user') {
-          // Add a helpful fallback message
-          const fallbackMessage: ChatMessage = {
-            id: Date.now(), // Use timestamp as ID
-            content: "I'm having trouble connecting to my knowledge base right now. I've recorded your message and will process it as soon as I'm back online. In the meantime, you can still use all calendar features.",
-            timestamp: new Date().toISOString(),
-            sender: 'ai'
-          };
-          
-          setMessages(prev => [...prev, fallbackMessage]);
-        }
-      }, 8000); // Wait 8 seconds for response before showing error
-      
     } catch (error) {
       console.error('Error sending message:', error);
       
@@ -161,7 +175,7 @@ export function useAI() {
       
       setMessages(prev => [...prev, errorMessage]);
     }
-  }, [sendMessageMutation, messages]);
+  }, [sendMessageMutation]);
   
   // Function to ask AI for task suggestion
   const { mutateAsync: askAiForTaskSuggestion, isPending: isAskingAi } = useMutation({

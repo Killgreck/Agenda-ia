@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Send } from "lucide-react";
+import { Send, Lock } from "lucide-react";
 import axios from "axios";
+import { useNavigate } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { Loader2 } from "lucide-react";
 
 // Interface para los mensajes
 interface ChatMessage {
@@ -15,7 +18,7 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-export default function PublicChat() {
+export default function PrivateChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 1,
@@ -26,10 +29,19 @@ export default function PublicChat() {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuth();
+
+  // Redirigir al login si no está autenticado
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [authLoading, user, navigate]);
 
   // Función para enviar un mensaje al endpoint
   const sendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isLoading || !user) return;
 
     // Crear nuevo mensaje del usuario
     const userMessage: ChatMessage = {
@@ -45,8 +57,8 @@ export default function PublicChat() {
     setIsLoading(true);
 
     try {
-      // Enviar solicitud al nuevo endpoint público
-      const response = await axios.post('/api/public-chat', {
+      // Enviar solicitud al endpoint privado que requiere autenticación
+      const response = await axios.post('/api/chat', {
         message: inputValue
       });
 
@@ -75,14 +87,28 @@ export default function PublicChat() {
     } catch (error) {
       console.error("Error al enviar mensaje:", error);
       
-      // Mensaje de error en caso de falla
-      const errorMessage: ChatMessage = {
-        id: messages.length + 2,
-        content: "Lo siento, estoy experimentando problemas para conectarme. Por favor, intenta de nuevo más tarde.",
-        sender: "bot",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      // Verificar si es un error de autenticación
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        const authErrorMessage: ChatMessage = {
+          id: messages.length + 2,
+          content: "Necesitas iniciar sesión para usar el chat. Serás redirigido a la página de inicio de sesión.",
+          sender: "bot",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, authErrorMessage]);
+        
+        // Redirigir al login después de un breve retraso
+        setTimeout(() => navigate("/auth"), 2000);
+      } else {
+        // Mensaje de error en caso de falla general
+        const errorMessage: ChatMessage = {
+          id: messages.length + 2,
+          content: "Lo siento, estoy experimentando problemas para conectarme. Por favor, intenta de nuevo más tarde.",
+          sender: "bot",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -95,13 +121,45 @@ export default function PublicChat() {
     }
   };
 
+  // Mostrar pantalla de carga mientras se verifica la autenticación
+  if (authLoading) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-sm text-muted-foreground">Verificando autenticación...</p>
+      </div>
+    );
+  }
+
+  // Si no hay usuario autenticado, mostrar mensaje de redireccionamiento
+  if (!user) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center p-4 bg-background">
+        <Card className="w-full max-w-md p-6 text-center">
+          <CardHeader>
+            <Lock className="mx-auto h-12 w-12 text-primary" />
+            <CardTitle className="mt-4">Acceso Restringido</CardTitle>
+            <CardDescription>
+              Necesitas iniciar sesión para acceder al chat con el asistente.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="flex justify-center">
+            <Button onClick={() => navigate("/auth")}>
+              Ir a Iniciar Sesión
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-2xl h-[80vh] flex flex-col">
         <CardHeader className="pb-3">
           <CardTitle className="text-xl">Chat con Asistente AI</CardTitle>
           <CardDescription>
-            Este es un chat de demostración usando la API de Gemini 1.5 Flash
+            Asistente personal de calendario usando Gemini 1.5 Flash
           </CardDescription>
           <Separator />
         </CardHeader>
