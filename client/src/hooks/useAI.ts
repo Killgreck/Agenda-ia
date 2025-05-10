@@ -101,10 +101,9 @@ export function useAI() {
         body: JSON.stringify({ message: content })
       });
       
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.message || "Error sending message");
+      // Nueva API devuelve directamente el objeto JSON, no necesitamos llamar a response.json()
+      if (!response.success) {
+        throw new Error(response.message || "Error sending message");
       }
       
       // If request succeeded, add the user message to the local state first
@@ -118,8 +117,8 @@ export function useAI() {
       
       setMessages(prev => [...prev, userMessage]);
       
-      // Return the AI's response to be handled
-      return data.message;
+      // Return the AI's response message to be handled
+      return response.message;
     },
     onSuccess: (aiResponseContent) => {
       // AI response message
