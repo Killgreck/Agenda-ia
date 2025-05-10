@@ -7,6 +7,7 @@ import Dashboard from "@/pages/Dashboard";
 import AuthPage from "@/pages/auth-page";
 import Profile from "@/pages/Profile";
 import ResetPassword from "@/pages/ResetPassword";
+import PublicChat from "@/pages/PublicChat";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useAuth, AuthProvider } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
@@ -46,6 +47,9 @@ function Router() {
       <ProtectedRoute path="/profile" component={Profile} />
       <Route path="/reset-password/:token">
         <ResetPassword />
+      </Route>
+      <Route path="/public-chat">
+        <PublicChat />
       </Route>
       <Route path="/">
         <Redirect to={isAuthenticated ? "/dashboard" : "/auth"} />
