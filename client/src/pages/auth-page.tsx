@@ -41,7 +41,18 @@ const registerSchema = z.object({
   name: z.string().optional(),
 });
 
+// Función auxiliar para aplicar el tema púrpura
+const applyTheme = () => {
+  // Establecer tema púrpura en caso de que el tema del sistema no se aplique correctamente
+  document.documentElement.style.setProperty('--primary', '265 89% 66%');
+  document.documentElement.style.setProperty('--primary-foreground', '0 0% 100%');
+};
+
 export default function AuthPage() {
+  // Aplicar tema al cargar el componente
+  React.useEffect(() => {
+    applyTheme();
+  }, []);
   const [, navigate] = useLocation();
   const { user, loginMutation, registerMutation, initialAuthCheckComplete } = useAuth();
   const [activeTab, setActiveTab] = useState("login");
