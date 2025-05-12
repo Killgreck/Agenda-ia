@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Task, InsertTask, InsertCheckIn, CheckIn } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { startOfMonth, endOfMonth, format, addDays } from "date-fns";
+import { useAuth } from '@/hooks/use-auth';
 
 interface UseTasksOptions {
   month?: number;
@@ -10,18 +11,30 @@ interface UseTasksOptions {
 
 export function useTaskManager() {
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
   
   // Fetch all tasks
-  const { data: tasks = [] } = useQuery({
+  const { data: tasks = [], isLoading, error } = useQuery({
     queryKey: ['/api/tasks'],
     queryFn: async () => {
-      const response = await fetch('/api/tasks');
+      console.log('Fetching tasks with auth status:', isAuthenticated);
+      const response = await fetch('/api/tasks', {
+        credentials: 'include' // Importante para enviar cookies de sesión
+      });
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch tasks');
+        // Si recibimos un 401, el usuario no está autenticado
+        if (response.status === 401) {
+          console.warn('User not authenticated when fetching tasks');
+          return [];
+        }
+        throw new Error(`Failed to fetch tasks: ${response.status}`);
       }
+      
       const data = await response.json();
-      return data.tasks || [];
-    }
+      return data || [];
+    },
+    enabled: isAuthenticated // Solo ejecutar la consulta si el usuario está autenticado
   });
   
   // Create a new task
@@ -76,6 +89,7 @@ export function useTaskManager() {
 export function useTasks(options?: UseTasksOptions) {
   const queryClient = useQueryClient();
   const today = new Date();
+  const { isAuthenticated, user } = useAuth();
   
   // Set up month and year, defaulting to current month/year if not specified
   const month = options?.month !== undefined ? options.month : today.getMonth();
@@ -89,22 +103,27 @@ export function useTasks(options?: UseTasksOptions) {
   const startDate = format(monthStart, 'yyyy-MM-dd');
   const endDate = format(monthEnd, 'yyyy-MM-dd');
   
-  // Check if authentication has been verified - fetch the auth status from localStorage
-  const authStorageStr = localStorage.getItem('auth-storage');
-  const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { isAuthenticated: false } };
-  const isAuthenticated = authStorage?.state?.isAuthenticated;
-  
   // Query tasks for the specified month - only run when authenticated
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey: ['/api/tasks', startDate, endDate],
     queryFn: async () => {
-      const response = await fetch(`/api/tasks?startDate=${startDate}&endDate=${endDate}`);
+      console.log('Fetching tasks for month with auth status:', isAuthenticated);
+      const response = await fetch(`/api/tasks?startDate=${startDate}&endDate=${endDate}`, {
+        credentials: 'include' // Importante para enviar cookies de sesión
+      });
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch tasks');
+        // Si recibimos un 401, el usuario no está autenticado
+        if (response.status === 401) {
+          console.warn('User not authenticated when fetching tasks for month');
+          return [];
+        }
+        throw new Error(`Failed to fetch tasks: ${response.status}`);
       }
+      
       return response.json();
     },
-    enabled: isAuthenticated // Only run query if authenticated
+    enabled: isAuthenticated // Solo ejecutar la consulta si el usuario está autenticado
   });
   
   // Create a separate upcoming tasks query to ensure it's always up-to-date

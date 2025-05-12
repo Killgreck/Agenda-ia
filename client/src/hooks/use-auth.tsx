@@ -38,6 +38,8 @@ interface AuthContextType {
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<User, Error, RegisterData>;
   initialAuthCheckComplete: boolean;
+  isAuthenticated: boolean;
+  checkAuthStatus: () => Promise<boolean>;
 }
 
 // Crear contexto para la autenticación
@@ -177,6 +179,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, isSuccess]);
 
+  // Función para verificar el estado de autenticación del usuario
+  const checkAuthStatus = async (): Promise<boolean> => {
+    try {
+      console.log('Checking auth status from API...');
+      const response = await fetch('/api/auth/status', {
+        credentials: 'include' // Importante para enviar cookies
+      });
+      
+      if (!response.ok) {
+        console.error('Auth status check failed', response.status);
+        return false;
+      }
+      
+      const data = await response.json();
+      console.log('Auth status response:', data);
+      
+      // Si hay cambios en el estado de autenticación, actualizar la caché
+      if (data.isAuthenticated && !user) {
+        // Si el servidor dice que estamos autenticados pero no tenemos usuario,
+        // intentar obtener los datos del usuario actual
+        try {
+          const userResponse = await apiRequest('GET', '/api/user');
+          const userData = await userResponse.json();
+          queryClient.setQueryData(['/api/user'], userData);
+        } catch (error) {
+          console.error('Error fetching user data after auth check:', error);
+        }
+      } else if (!data.isAuthenticated && user) {
+        // Si el servidor dice que no estamos autenticados pero tenemos datos de usuario,
+        // limpiar la caché
+        queryClient.setQueryData(['/api/user'], null);
+      }
+      
+      return data.isAuthenticated;
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -187,6 +229,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logoutMutation,
         registerMutation,
         initialAuthCheckComplete: isSuccess,
+        isAuthenticated: !!user,
+        checkAuthStatus,
       }}
     >
       {children}
