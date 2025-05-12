@@ -135,13 +135,23 @@ export function useTasks(options?: UseTasksOptions) {
   const { data: upcomingTasksData = [] } = useQuery({
     queryKey: ['/api/tasks/upcoming', todayFormatted, fiveDaysFromNowFormatted],
     queryFn: async () => {
-      const response = await fetch(`/api/tasks?startDate=${todayFormatted}&endDate=${fiveDaysFromNowFormatted}`);
+      console.log('Fetching upcoming tasks with auth status:', isAuthenticated);
+      const response = await fetch(`/api/tasks?startDate=${todayFormatted}&endDate=${fiveDaysFromNowFormatted}`, {
+        credentials: 'include' // Importante para enviar cookies de sesión
+      });
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch upcoming tasks');
+        // Si recibimos un 401, el usuario no está autenticado
+        if (response.status === 401) {
+          console.warn('User not authenticated when fetching upcoming tasks');
+          return [];
+        }
+        throw new Error(`Failed to fetch upcoming tasks: ${response.status}`);
       }
+      
       return response.json();
     },
-    enabled: isAuthenticated // Only run query if authenticated
+    enabled: isAuthenticated // Solo ejecutar la consulta si el usuario está autenticado
   });
   
   // Filter upcoming tasks that aren't completed and sort by date
@@ -153,48 +163,81 @@ export function useTasks(options?: UseTasksOptions) {
   // Create a new task
   const { mutateAsync: createTask, isPending: isCreatingTask } = useMutation({
     mutationFn: async (newTask: InsertTask) => {
+      console.log('Creating task with auth status:', isAuthenticated);
+      
+      if (!isAuthenticated) {
+        throw new Error('User is not authenticated. Please log in first.');
+      }
+      
       return await apiRequest<Task>('/api/tasks', {
         method: 'POST',
-        body: JSON.stringify(newTask)
+        body: JSON.stringify(newTask),
+        credentials: 'include' // Importante para enviar cookies de sesión
       });
     },
     onSuccess: () => {
+      console.log('Task created successfully, invalidating queries');
       // Invalidate all task queries to refresh data across all components
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       // Specifically invalidate upcoming tasks to ensure sidebar is updated
       queryClient.invalidateQueries({ queryKey: ['/api/tasks/upcoming'] });
+    },
+    onError: (error) => {
+      console.error('Error creating task:', error);
     }
   });
   
   // Update a task
   const { mutateAsync: updateTask, isPending: isUpdatingTask } = useMutation({
     mutationFn: async ({ id, ...updates }: { id: number } & Partial<InsertTask>) => {
+      console.log('Updating task with auth status:', isAuthenticated);
+      
+      if (!isAuthenticated) {
+        throw new Error('User is not authenticated. Please log in first.');
+      }
+      
       return await apiRequest<Task>(`/api/tasks/${id}`, {
         method: 'PATCH',
-        body: JSON.stringify(updates)
+        body: JSON.stringify(updates),
+        credentials: 'include' // Importante para enviar cookies de sesión
       });
     },
     onSuccess: () => {
+      console.log('Task updated successfully, invalidating queries');
       // Invalidate all task queries to refresh data across all components
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       // Specifically invalidate upcoming tasks to ensure sidebar is updated
       queryClient.invalidateQueries({ queryKey: ['/api/tasks/upcoming'] });
+    },
+    onError: (error) => {
+      console.error('Error updating task:', error);
     }
   });
   
   // Delete a task
   const { mutateAsync: deleteTask, isPending: isDeletingTask } = useMutation({
     mutationFn: async (id: number) => {
+      console.log('Deleting task with auth status:', isAuthenticated);
+      
+      if (!isAuthenticated) {
+        throw new Error('User is not authenticated. Please log in first.');
+      }
+      
       await apiRequest(`/api/tasks/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include' // Importante para enviar cookies de sesión
       });
       return id;
     },
     onSuccess: () => {
+      console.log('Task deleted successfully, invalidating queries');
       // Invalidate all task queries to refresh data across all components
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       // Specifically invalidate upcoming tasks to ensure sidebar is updated
       queryClient.invalidateQueries({ queryKey: ['/api/tasks/upcoming'] });
+    },
+    onError: (error) => {
+      console.error('Error deleting task:', error);
     }
   });
   
@@ -214,18 +257,20 @@ export function useTasks(options?: UseTasksOptions) {
 
 export function useCheckin() {
   const queryClient = useQueryClient();
+  const { isAuthenticated, user } = useAuth();
   
-  // Check if authentication has been verified - fetch the auth status from localStorage
-  const authStorageStr = localStorage.getItem('auth-storage');
-  const authStorage = authStorageStr ? JSON.parse(authStorageStr) : { state: { isAuthenticated: false } };
-  const isAuthenticated = authStorage?.state?.isAuthenticated;
-  
-  // Get user ID from localStorage for API calls
-  const userId = authStorage?.state?.user?.id || 0;
+  // Get user ID from auth context
+  const userId = user?.id || 0;
   
   // Submit a new check-in
   const { mutateAsync: submitCheckin, isPending: isCheckingIn } = useMutation({
     mutationFn: async (checkIn: InsertCheckIn) => {
+      console.log('Submitting check-in with auth status:', isAuthenticated);
+      
+      if (!isAuthenticated) {
+        throw new Error('User is not authenticated. Please log in first.');
+      }
+      
       // Make sure we include the userId in the check-in data
       const checkInWithUser = {
         ...checkIn,
@@ -234,12 +279,17 @@ export function useCheckin() {
       
       return await apiRequest<CheckIn>('/api/check-ins', {
         method: 'POST',
-        body: JSON.stringify(checkInWithUser)
+        body: JSON.stringify(checkInWithUser),
+        credentials: 'include' // Importante para enviar cookies de sesión
       });
     },
     onSuccess: () => {
+      console.log('Check-in submitted successfully, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['/api/check-ins'] });
       queryClient.invalidateQueries({ queryKey: ['/api/check-ins/latest'] });
+    },
+    onError: (error) => {
+      console.error('Error submitting check-in:', error);
     }
   });
   
@@ -247,15 +297,28 @@ export function useCheckin() {
   const { data: latestCheckIn, isLoading: isLoadingLatest, refetch: refetchLatestCheckIn } = useQuery({
     queryKey: ['/api/check-ins/latest', userId],
     queryFn: async () => {
+      console.log('Fetching latest check-in with auth status:', isAuthenticated);
+      
       // Add userId as a query parameter to get the correct user's data
-      const response = await fetch(`/api/check-ins/latest?userId=${userId}`);
+      const response = await fetch(`/api/check-ins/latest?userId=${userId}`, {
+        credentials: 'include' // Importante para enviar cookies de sesión
+      });
+      
       if (!response.ok) {
+        // Si recibimos un 401, el usuario no está autenticado
+        if (response.status === 401) {
+          console.warn('User not authenticated when fetching latest check-in');
+          return null;
+        }
+        
         if (response.status === 404) {
           // No check-ins yet, return null instead of throwing an error
           return null;
         }
-        throw new Error('Failed to fetch latest check-in');
+        
+        throw new Error(`Failed to fetch latest check-in: ${response.status}`);
       }
+      
       return response.json();
     },
     enabled: isAuthenticated && userId > 0 // Only enable when authenticated and have a valid userId
