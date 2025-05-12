@@ -562,15 +562,34 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
       };
       
       console.log("Attempting to create task:", taskData);
-      const result = await createTask(taskData);
-      console.log("Task creation result:", result);
+      setIsCreatingTask(true);
       
-      toast({
-        title: "Success",
-        description: "Task created successfully!",
-      });
-      
-      onClose();
+      try {
+        const result = await createTask(taskData);
+        console.log("Task creation result:", result);
+        
+        toast({
+          title: "Success",
+          description: "Task created successfully!",
+        });
+        
+        onClose();
+      } catch (error) {
+        console.error("Error creating task:", error);
+        let errorMessage = "An unexpected error occurred. Please try again.";
+        
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
+        setIsCreatingTask(false);
+      }
     } catch (error) {
       console.error("Error creating task:", error);
       let errorMessage = "An unexpected error occurred. Please try again.";

@@ -953,9 +953,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log date format to debug timezone issues
       console.log("Date format check - includes Z?", req.body.date?.includes('Z'));
       
+      // Primero verificamos que userId exista en body, si no, usamos el de la sesión
+      const clientUserId = req.body.userId;
+      
+      if (!clientUserId) {
+        console.log("No se encontró userId en la petición, usando el de la sesión:", userId);
+      } else {
+        console.log("userId encontrado en la petición:", clientUserId);
+      }
+      
       const rawData = {
         ...req.body,
-        userId, // Include the user ID from session
+        // Respetamos el userId proporcionado por el cliente si existe, de lo contrario usamos el de la sesión
+        userId: clientUserId || userId,
         // Use the dates exactly as received from client, which now include the 'Z' to indicate UTC
         // This preserves the exact date and time as entered by the user without timezone conversion
         date: req.body.date,
