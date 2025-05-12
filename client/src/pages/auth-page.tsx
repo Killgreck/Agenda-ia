@@ -99,270 +99,252 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="flex min-h-screen">
       {/* Formulario - Lado izquierdo */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-2" style={{background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>
-              AgendaIA
-            </h1>
-            <p className="text-gray-600">Tu asistente inteligente personal</p>
-          </div>
-          
-          <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="w-full"
-            >
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login" className="text-sm font-medium">Iniciar Sesión</TabsTrigger>
-                <TabsTrigger value="register" className="text-sm font-medium">Registrarse</TabsTrigger>
-              </TabsList>
+      <div className="w-full md:w-1/2 flex items-center justify-center p-4">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full max-w-md"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
+            <TabsTrigger value="register">Registrarse</TabsTrigger>
+          </TabsList>
 
-              {/* Contenido de Login */}
-              <TabsContent value="login">
-                <Card>
-                  <CardHeader className="space-y-1">
-                    <CardTitle className="text-2xl font-bold">
-                      Iniciar Sesión
-                    </CardTitle>
-                    <CardDescription>
-                      Ingresa tus credenciales para acceder a tu cuenta
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Form {...loginForm}>
-                      <form
-                        onSubmit={loginForm.handleSubmit(onLoginSubmit)}
-                        className="space-y-4"
-                      >
-                        <FormField
-                          control={loginForm.control}
-                          name="username"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Usuario</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="usuario"
-                                  {...field}
-                                  disabled={loginMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={loginForm.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Contraseña</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Input
-                                    type={showLoginPassword ? "text" : "password"}
-                                    placeholder="••••••••"
-                                    {...field}
-                                    disabled={loginMutation.isPending}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                    onClick={() => setShowLoginPassword(!showLoginPassword)}
-                                    tabIndex={-1}
-                                  >
-                                    {showLoginPassword ? (
-                                      <EyeOff className="h-4 w-4 text-gray-500" />
-                                    ) : (
-                                      <Eye className="h-4 w-4 text-gray-500" />
-                                    )}
-                                  </Button>
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button
-                          type="submit"
-                          className="w-full bg-[#8B5CF6] text-white hover:bg-[#7C3AED]"
-                          disabled={loginMutation.isPending}
-                        >
-                          {loginMutation.isPending ? "Iniciando sesión..." : "Iniciar Sesión"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                  <CardFooter className="flex flex-col">
-                    <div className="text-sm text-center mt-2">
-                      ¿No tienes una cuenta?{" "}
-                      <Button
-                        variant="link"
-                        className="p-0"
-                        onClick={() => setActiveTab("register")}
-                      >
-                        Regístrate
-                      </Button>
-                    </div>
-                  </CardFooter>
-                </Card>
-              </TabsContent>
+          {/* Contenido de Login */}
+          <TabsContent value="login">
+            <Card>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-2xl font-bold">
+                  Iniciar Sesión
+                </CardTitle>
+                <CardDescription>
+                  Ingresa tus credenciales para acceder a tu cuenta
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...loginForm}>
+                  <form
+                    onSubmit={loginForm.handleSubmit(onLoginSubmit)}
+                    className="space-y-4"
+                  >
+                    <FormField
+                      control={loginForm.control}
+                      name="username"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Usuario</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="usuario"
+                              {...field}
+                              disabled={loginMutation.isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={loginForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contraseña</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                type={showLoginPassword ? "text" : "password"}
+                                placeholder="••••••••"
+                                {...field}
+                                disabled={loginMutation.isPending}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                onClick={() => setShowLoginPassword(!showLoginPassword)}
+                                tabIndex={-1}
+                              >
+                                {showLoginPassword ? (
+                                  <EyeOff className="h-4 w-4 text-gray-500" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-gray-500" />
+                                )}
+                              </Button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="submit"
+                      className="w-full bg-[#8B5CF6] text-white hover:bg-[#7C3AED]"
+                      disabled={loginMutation.isPending}
+                    >
+                      {loginMutation.isPending ? "Iniciando sesión..." : "Iniciar Sesión"}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+              <CardFooter className="flex flex-col">
+                <div className="text-sm text-center mt-2">
+                  ¿No tienes una cuenta?{" "}
+                  <Button
+                    variant="link"
+                    className="p-0"
+                    onClick={() => setActiveTab("register")}
+                  >
+                    Regístrate
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
+          </TabsContent>
 
-              {/* Contenido de Registro */}
-              <TabsContent value="register">
-                <Card>
-                  <CardHeader className="space-y-1">
-                    <CardTitle className="text-2xl font-bold">
-                      Crear Cuenta
-                    </CardTitle>
-                    <CardDescription>
-                      Ingresa los datos para registrarte en AgendaIA
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Form {...registerForm}>
-                      <form
-                        onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
-                        className="space-y-4"
-                      >
-                        <FormField
-                          control={registerForm.control}
-                          name="username"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Usuario</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="usuario"
-                                  {...field}
-                                  disabled={registerMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={registerForm.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Email (opcional)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="email"
-                                  placeholder="email@ejemplo.com"
-                                  {...field}
-                                  disabled={registerMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={registerForm.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Nombre (opcional)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Tu nombre"
-                                  {...field}
-                                  disabled={registerMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={registerForm.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Contraseña</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Input
-                                    type={showRegisterPassword ? "text" : "password"}
-                                    placeholder="••••••••"
-                                    {...field}
-                                    disabled={registerMutation.isPending}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                    onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                                    tabIndex={-1}
-                                  >
-                                    {showRegisterPassword ? (
-                                      <EyeOff className="h-4 w-4 text-gray-500" />
-                                    ) : (
-                                      <Eye className="h-4 w-4 text-gray-500" />
-                                    )}
-                                  </Button>
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button
-                          type="submit"
-                          className="w-full bg-[#8B5CF6] text-white hover:bg-[#7C3AED]"
-                          disabled={registerMutation.isPending}
-                        >
-                          {registerMutation.isPending ? "Registrando..." : "Registrarse"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                  <CardFooter className="flex flex-col">
-                    <div className="text-sm text-center mt-2">
-                      ¿Ya tienes una cuenta?{" "}
-                      <Button
-                        variant="link"
-                        className="p-0"
-                        onClick={() => setActiveTab("login")}
-                      >
-                        Inicia sesión
-                      </Button>
-                    </div>
-                  </CardFooter>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
+          {/* Contenido de Registro */}
+          <TabsContent value="register">
+            <Card>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-2xl font-bold">
+                  Crear Cuenta
+                </CardTitle>
+                <CardDescription>
+                  Ingresa los datos para registrarte en AgendaIA
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...registerForm}>
+                  <form
+                    onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
+                    className="space-y-4"
+                  >
+                    <FormField
+                      control={registerForm.control}
+                      name="username"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Usuario</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="usuario"
+                              {...field}
+                              disabled={registerMutation.isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email (opcional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="email"
+                              placeholder="email@ejemplo.com"
+                              {...field}
+                              disabled={registerMutation.isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nombre (opcional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Tu nombre"
+                              {...field}
+                              disabled={registerMutation.isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contraseña</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                type={showRegisterPassword ? "text" : "password"}
+                                placeholder="••••••••"
+                                {...field}
+                                disabled={registerMutation.isPending}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                                tabIndex={-1}
+                              >
+                                {showRegisterPassword ? (
+                                  <EyeOff className="h-4 w-4 text-gray-500" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-gray-500" />
+                                )}
+                              </Button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="submit"
+                      className="w-full bg-[#8B5CF6] text-white hover:bg-[#7C3AED]"
+                      disabled={registerMutation.isPending}
+                    >
+                      {registerMutation.isPending ? "Registrando..." : "Registrarse"}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+              <CardFooter className="flex flex-col">
+                <div className="text-sm text-center mt-2">
+                  ¿Ya tienes una cuenta?{" "}
+                  <Button
+                    variant="link"
+                    className="p-0"
+                    onClick={() => setActiveTab("login")}
+                  >
+                    Inicia sesión
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Hero - Lado derecho */}
-      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-[#8B5CF6] to-[#4F46E5] text-white p-10 flex-col justify-center relative overflow-hidden">
-        {/* Círculos decorativos */}
-        <div className="absolute top-10 right-10 w-64 h-64 bg-white opacity-5 rounded-full"></div>
-        <div className="absolute bottom-10 left-10 w-80 h-80 bg-white opacity-5 rounded-full"></div>
-        <div className="absolute top-1/2 left-1/4 w-40 h-40 bg-white opacity-5 rounded-full"></div>
-        
-        <div className="max-w-xl relative z-10">
-          <div className="mb-2 text-purple-200">PLATAFORMA DE PRODUCTIVIDAD</div>
-          <h1 className="text-5xl font-bold mb-6 leading-tight">Bienvenido a AgendaIA</h1>
-          <p className="text-xl mb-10 text-purple-100">
+      <div className="hidden md:flex md:w-1/2 bg-gradient-to-r from-blue-500 to-purple-600 text-white p-8 flex-col justify-center">
+        <div className="max-w-xl">
+          <h1 className="text-4xl font-bold mb-6">Bienvenido a AgendaIA</h1>
+          <p className="text-xl mb-8">
             Tu asistente inteligente para la gestión diaria de tareas y productividad.
           </p>
-          
-          <div className="space-y-6">
-            <div className="flex items-start bg-white/10 p-4 rounded-xl backdrop-blur-sm transition-all duration-300 hover:bg-white/20">
-              <div className="bg-white/30 p-3 rounded-lg mr-4 shadow-inner">
+          <div className="space-y-4">
+            <div className="flex items-start">
+              <div className="bg-white/20 p-2 rounded-full mr-4">
                 <svg
                   className="h-6 w-6"
                   fill="none"
@@ -379,12 +361,11 @@ export default function AuthPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Organiza tus tareas</h3>
-                <p className="text-purple-100">Gestiona tu tiempo de forma inteligente con ayuda de IA</p>
+                <p>Gestiona tu tiempo de forma inteligente con ayuda de IA</p>
               </div>
             </div>
-            
-            <div className="flex items-start bg-white/10 p-4 rounded-xl backdrop-blur-sm transition-all duration-300 hover:bg-white/20">
-              <div className="bg-white/30 p-3 rounded-lg mr-4 shadow-inner">
+            <div className="flex items-start">
+              <div className="bg-white/20 p-2 rounded-full mr-4">
                 <svg
                   className="h-6 w-6"
                   fill="none"
@@ -401,12 +382,11 @@ export default function AuthPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Optimiza tu rendimiento</h3>
-                <p className="text-purple-100">Recibe sugerencias personalizadas para mejorar tu productividad</p>
+                <p>Recibe sugerencias personalizadas para mejorar tu productividad</p>
               </div>
             </div>
-            
-            <div className="flex items-start bg-white/10 p-4 rounded-xl backdrop-blur-sm transition-all duration-300 hover:bg-white/20">
-              <div className="bg-white/30 p-3 rounded-lg mr-4 shadow-inner">
+            <div className="flex items-start">
+              <div className="bg-white/20 p-2 rounded-full mr-4">
                 <svg
                   className="h-6 w-6"
                   fill="none"
@@ -423,7 +403,7 @@ export default function AuthPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold">No pierdas el tiempo</h3>
-                <p className="text-purple-100">Configuración de recordatorios y seguimiento de tus objetivos</p>
+                <p>Configuración de recordatorios y seguimiento de tus objetivos</p>
               </div>
             </div>
           </div>
