@@ -37,17 +37,36 @@ export function useTaskManager() {
     enabled: isAuthenticated // Solo ejecutar la consulta si el usuario está autenticado
   });
   
-  // Create a new task
+  // Create a new task with improved error handling
   const { mutateAsync: createTask } = useMutation({
     mutationFn: async (taskData: InsertTask) => {
-      const response = await apiRequest('/api/tasks', {
-        method: 'POST',
-        body: JSON.stringify(taskData)
-      });
-      return response;
+      console.log("CreateTask in useTaskManager called with data:", taskData);
+      
+      // Verificar explícitamente que userId está presente
+      if (!taskData.userId) {
+        console.error("No userId provided in task data");
+        throw new Error("User ID is required for creating tasks. Please login and try again.");
+      }
+      
+      try {
+        const response = await apiRequest('/api/tasks', {
+          method: 'POST',
+          body: JSON.stringify(taskData),
+          credentials: 'include' // Asegurar que las cookies de sesión son enviadas
+        });
+        console.log("Task creation successful:", response);
+        return response;
+      } catch (error) {
+        console.error("Error in createTask mutation:", error);
+        throw error; // Re-lanzar para que sea capturado por el componente
+      }
     },
     onSuccess: () => {
+      console.log("Task created successfully, invalidating queries");
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+    },
+    onError: (error) => {
+      console.error("Error in task creation:", error);
     }
   });
   
@@ -160,23 +179,48 @@ export function useTasks(options?: UseTasksOptions) {
     .sort((a: Task, b: Task) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 3); // Get only the first 3 upcoming tasks
   
-  // Create a new task
+  // Create a new task with improved validation and error handling
   const { mutateAsync: createTask, isPending: isCreatingTask } = useMutation({
     mutationFn: async (newTask: InsertTask) => {
       console.log('Creating task with auth status:', isAuthenticated);
       
+      // Verificar autenticación
       if (!isAuthenticated) {
         throw new Error('User is not authenticated. Please log in first.');
       }
       
-      return await apiRequest<Task>('/api/tasks', {
-        method: 'POST',
-        body: JSON.stringify(newTask),
-        credentials: 'include' // Importante para enviar cookies de sesión
-      });
+      // Verificar que newTask tenga userId
+      if (!newTask.userId) {
+        console.error("No userId provided in task data");
+        
+        // Si el usuario está autenticado pero no se proporciona userId, añadirlo
+        if (user?.id) {
+          console.log('Adding missing userId from authenticated user:', user.id);
+          newTask.userId = user.id;
+        } else {
+          throw new Error('User ID is required for creating tasks. Please login and try again.');
+        }
+      }
+      
+      // Añadir más logs para debugging
+      console.log('Task data to be sent:', JSON.stringify(newTask, null, 2));
+      
+      try {
+        const result = await apiRequest<Task>('/api/tasks', {
+          method: 'POST',
+          body: JSON.stringify(newTask),
+          credentials: 'include' // Importante para enviar cookies de sesión
+        });
+        
+        console.log('Task creation response:', result);
+        return result;
+      } catch (error) {
+        console.error('Error in task creation API request:', error);
+        throw error; // Re-lanzar para que sea capturado por el componente
+      }
     },
-    onSuccess: () => {
-      console.log('Task created successfully, invalidating queries');
+    onSuccess: (data) => {
+      console.log('Task created successfully, task ID:', data.id);
       // Invalidate all task queries to refresh data across all components
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       // Specifically invalidate upcoming tasks to ensure sidebar is updated
