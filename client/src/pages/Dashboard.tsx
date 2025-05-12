@@ -230,7 +230,7 @@ export default function Dashboard() {
               <ScheduleSuggestions />
               
               {/* Daily Check-in */}
-              <Card>
+              <Card className="hover:shadow-md transition-all duration-300 border-t-4 border-blue-500">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
                     <CheckCircle className="mr-2 h-5 w-5 text-blue-600" />
@@ -291,10 +291,10 @@ export default function Dashboard() {
               </Card>
               
               {/* Weekly Statistics */}
-              <Card>
+              <Card className="hover:shadow-md transition-all duration-300 border-t-4 border-purple-500">
                 <CardHeader className="pb-2 flex justify-between items-center">
                   <CardTitle className="text-lg flex items-center">
-                    <BarChart className="mr-2 h-5 w-5 text-primary" />
+                    <BarChart className="mr-2 h-5 w-5 text-purple-600" />
                     Weekly Statistics
                   </CardTitle>
                   {refreshAllStats && (
@@ -371,10 +371,10 @@ export default function Dashboard() {
               </Card>
               
               {/* Upcoming Tasks */}
-              <Card className="md:col-span-1">
+              <Card className="md:col-span-1 hover:shadow-md transition-all duration-300 border-t-4 border-green-500">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
-                    <CheckSquare className="mr-2 h-5 w-5 text-primary" />
+                    <CheckSquare className="mr-2 h-5 w-5 text-green-600" />
                     Upcoming Tasks
                   </CardTitle>
                 </CardHeader>
