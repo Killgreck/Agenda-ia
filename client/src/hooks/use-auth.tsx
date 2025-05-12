@@ -52,28 +52,42 @@ async function apiRequest(
   url: string,
   data?: Record<string, any>
 ) {
+  console.log(`Making ${method} request to ${url}`, data ? { data } : '');
+  
   const options: RequestInit = {
     method,
     headers: {
       "Content-Type": "application/json",
     },
-    credentials: "include", // Importante para cookies/sesiones
+    credentials: "include", // Importante para cookies/sesiones - permite enviar cookies cross-site
   };
 
   if (data) {
     options.body = JSON.stringify(data);
   }
 
-  const response = await fetch(url, options);
+  try {
+    console.log(`Request options:`, options);
+    const response = await fetch(url, options);
+    console.log(`Response status:`, response.status, response.statusText);
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({
-      message: "Error en la solicitud",
-    }));
-    throw new Error(errorData.message || "Error en la solicitud");
+    if (!response.ok) {
+      let errorMessage = `Error ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        console.error('API error response data:', errorData);
+        errorMessage = errorData.message || errorMessage;
+      } catch (parseError) {
+        console.error('Could not parse error response as JSON:', parseError);
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response;
+  } catch (error) {
+    console.error(`API request to ${url} failed:`, error);
+    throw error;
   }
-
-  return response;
 }
 
 // Componente proveedor de autenticación
