@@ -40,6 +40,7 @@ interface AuthContextType {
   initialAuthCheckComplete: boolean;
   isAuthenticated: boolean;
   checkAuthStatus: () => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
 }
 
 // Crear contexto para la autenticación
@@ -219,6 +220,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Método simplificado para iniciar sesión
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      console.log('Logging in user:', username);
+      const credentials: LoginData = { username, password };
+      
+      // Utilizar la mutation pero manualmente para tener más control
+      const userData = await loginMutation.mutateAsync(credentials);
+      console.log('Login successful, user data:', userData);
+      
+      // Si llegamos aquí, el inicio de sesión fue exitoso
+      return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -231,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         initialAuthCheckComplete: isSuccess,
         isAuthenticated: !!user,
         checkAuthStatus,
+        login,
       }}
     >
       {children}

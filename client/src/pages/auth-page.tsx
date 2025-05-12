@@ -68,6 +68,16 @@ export default function AuthPage() {
     }
   }, [user, navigate, initialAuthCheckComplete]);
 
+  // Mostrar registro de consola para la depuración de la autenticación
+  useEffect(() => {
+    console.log('AuthPage - Auth State:', { 
+      isAuthenticated: !!user, 
+      isLoginPending: loginMutation.isPending,
+      isRegisterPending: registerMutation.isPending,
+      user 
+    });
+  }, [user, loginMutation.isPending, registerMutation.isPending]);
+
   // Configuración del formulario de login
   const loginForm = useForm({
     resolver: zodResolver(loginSchema),
@@ -88,9 +98,27 @@ export default function AuthPage() {
     },
   });
 
+  // Obtener la función login desde el hook
+  const { login } = useAuth();
+  
   // Manejar envío del formulario de login
-  const onLoginSubmit = (values: z.infer<typeof loginSchema>) => {
-    loginMutation.mutate(values);
+  const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
+    try {
+      console.log('Attempting login with:', values.username);
+      
+      // Utilizar credenciales seguras (importante para CORS y autenticación)
+      const success = await login(values.username, values.password);
+      
+      if (success) {
+        console.log('Login successful, navigating to dashboard');
+        navigate("/dashboard");
+      } else {
+        console.error('Login failed');
+        // Podríamos mostrar un toast aquí
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+    }
   };
 
   // Manejar envío del formulario de registro
