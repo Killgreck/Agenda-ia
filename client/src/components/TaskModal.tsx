@@ -18,6 +18,7 @@ import { isHoliday } from '@/utils/holidays';
 import { findPostponeSuggestions } from '@/utils/postponeSuggestions';
 import { useTaskManager } from '@/hooks/useTaskManager';
 import { useAI } from '@/hooks/useAI';
+import { useAuth } from '@/hooks/use-auth';
 
 // Create a schema for task form validation
 const taskFormSchema = z.object({
@@ -82,6 +83,7 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
   const { toast } = useToast();
   const { createTask, updateTask, tasks: allTasks } = useTaskManager();
   const { askAiForTaskSuggestion } = useAI();
+  const { user } = useAuth(); // Obtener el usuario actual
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [isAskingAi, setIsAskingAi] = useState(false);
   
@@ -530,10 +532,19 @@ export default function TaskModal({ open, onClose, taskToEdit, viewOnly = false 
         return date.toISOString();
       };
       
+      if (!user || !user.id) {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in to create tasks. Please log in and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const taskData: InsertTask = {
         title: data.title,
         description: data.description || "",
-        userId: 0, // This will be populated by the server based on the session
+        userId: user.id, // Usar el ID del usuario autenticado
         date: formatDateToPreserveLocalDay(dateObj), // Format date to preserve local time 
         endDate: endDateObj ? formatDateToPreserveLocalDay(endDateObj) : undefined,
         priority: data.priority,
