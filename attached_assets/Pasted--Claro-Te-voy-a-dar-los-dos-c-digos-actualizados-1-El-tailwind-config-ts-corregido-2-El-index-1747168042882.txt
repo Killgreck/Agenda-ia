@@ -1,0 +1,239 @@
+¡Claro!
+Te voy a dar los dos códigos actualizados:
+	1.	El tailwind.config.ts corregido.
+	2.	El index.css corregido (tu archivo global de CSS).
+
+Ambos bien hechos para que:
+	•	Tus botones sí se vean.
+	•	El sistema de variables en HSL funcione perfecto.
+	•	Puedas hacer modo claro/oscuro fácilmente luego.
+
+⸻
+
+1. Código actualizado de tailwind.config.ts
+
+import type { Config } from "tailwindcss";
+
+export default {
+  darkMode: ["class"],
+  content: ["./client/index.html", "./client/src//*.{js,jsx,ts,tsx}"],
+  theme: {
+    extend: {
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+      colors: {
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        chart: {
+          "1": "hsl(var(--chart-1))",
+          "2": "hsl(var(--chart-2))",
+          "3": "hsl(var(--chart-3))",
+          "4": "hsl(var(--chart-4))",
+          "5": "hsl(var(--chart-5))",
+        },
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar-background))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          primary: "hsl(var(--sidebar-primary))",
+          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
+          accent: "hsl(var(--sidebar-accent))",
+          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
+          border: "hsl(var(--sidebar-border))",
+          ring: "hsl(var(--sidebar-ring))",
+        },
+      },
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+} satisfies Config;
+
+Este archivo queda igual que el tuyo, porque el error estaba en las variables del CSS, no aquí.
+
+⸻
+
+2. Código actualizado de index.css (archivo global de CSS)
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-family: system-ui;
+    --font-size-base: 1rem;
+    --radius: 0.5rem;
+
+    --primary: 217 91% 60%; /* Azul */
+    --primary-foreground: 0 0% 100%; /* Blanco */
+
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    /* Chart colors */
+    --chart-1: 0 100% 67%;
+    --chart-2: 30 100% 50%;
+    --chart-3: 60 100% 50%;
+    --chart-4: 90 100% 50%;
+    --chart-5: 120 100% 40%;
+
+    /* Sidebar colors */
+    --sidebar-background: 240 5% 96%;
+    --sidebar-foreground: 222.2 47.4% 11.2%;
+    --sidebar-primary: 240 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 34.9 100% 58.6%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 80%;
+    --sidebar-ring: 0 0% 60%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html, body {
+    @apply antialiased bg-background text-foreground h-full overflow-auto;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+  }
+
+  #root {
+    @apply h-full overflow-auto;
+  }
+
+  /* High contrast mode */
+  html.high-contrast {
+    --contrast-multiplier: 1.3;
+    filter: contrast(var(--contrast-multiplier));
+  }
+
+  /* Compact mode */
+  html.compact-mode {
+    --spacing-multiplier: 0.75;
+  }
+
+  html.compact-mode .p-4 {
+    padding: calc(1rem * var(--spacing-multiplier));
+  }
+
+  html.compact-mode .py-4 {
+    padding-top: calc(1rem * var(--spacing-multiplier));
+    padding-bottom: calc(1rem * var(--spacing-multiplier));
+  }
+
+  html.compact-mode .space-y-4 > * + * {
+    margin-top: calc(1rem * var(--spacing-multiplier));
+  }
+
+  /* No animations mode */
+  html.no-animations *, 
+  html.no-animations *::before, 
+  html.no-animations *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+@layer utilities {
+  /* Scrollbar */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 9999px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(107, 114, 128, 0.7);
+  }
+}
+
+
+⸻
+
+✅ Resultado
+	•	Ahora tus botones sí se ven (con bg-primary y text-primary-foreground reales).
+	•	Tus variables funcionan bien.
+	•	Tu modo oscuro/claro será fácil de activar luego.
+	•	Tus scrollbars personalizados siguen activos.
+
+⸻
+
+¿Quieres que también te pase el pequeño theme-switcher.js para poder alternar entre claro y oscuro dinámicamente con un botón? 🌑☀
+(Es muy fácil, y en 20 líneas lo tienes funcionando).
+¿Te lo preparo? 🚀
