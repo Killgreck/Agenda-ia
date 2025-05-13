@@ -913,10 +913,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error('WebSocket server error:', error);
   });
   
-  // Broadcast a message to specific user's connections (actualizada para mayor privacidad)
+  // Broadcast a message to specific user's connections (actualizada para mayor privacidad y soporte de chat)
   const broadcastMessage = (message: any) => {
     // Extraer el userId del mensaje
     const userId = message.userId || (message.message && message.message.userId) || (message.task && message.task.userId);
+    
+    // Detectar si el mensaje es del sistema o del chat AI
+    const isSystemOrChat = message.type === 'NEW_CHAT_MESSAGE' && message.message?.sender === 'ai';
     
     // Si tenemos un userId y hay conexiones para ese usuario
     if (userId && userConnections.has(userId)) {
@@ -927,13 +930,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       console.log(`Mensaje enviado al usuario ID: ${userId}, conexiones: ${userConnections.get(userId).size}`);
+    } else if (isSystemOrChat) {
+      // Si es un mensaje del sistema o del chat AI, enviar a todos los clientes
+      // Esto permite que los mensajes de chat sigan funcionando incluso cuando no tenemos un userId específico
+      console.log('Enviando mensaje del sistema o chat AI a todas las conexiones');
+      let messagesSent = 0;
+      wss.clients.forEach((client: any) => {
+        if (client.readyState === 1) { // OPEN
+          client.send(JSON.stringify(message));
+          messagesSent++;
+        }
+      });
+      console.log(`Mensaje del sistema o chat AI enviado a ${messagesSent} conexiones`);
     } else if (userId) {
       // Si hay userId pero no hay conexiones activas para ese usuario
       console.log(`No hay conexiones activas para el usuario ID: ${userId}, mensaje no enviado`);
     } else {
       // Si el mensaje no tiene userId (como mensajes del sistema o del chat), enviar a todos los clientes
-      // Este cambio permite que los mensajes del chat AI vuelvan a funcionar
-      console.log('Enviando mensaje de sistema o chat (no incluye userId específico)');
+      console.log('Enviando mensaje de sistema (no incluye userId específico)');
       let messagesSent = 0;
       wss.clients.forEach((client: any) => {
         if (client.readyState === 1) { // OPEN
@@ -1081,21 +1095,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/tasks", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
-      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      // Más información para depuración de conversión de fechas
+      const rawStartDate = req.query.startDate as string;
+      const rawEndDate = req.query.endDate as string;
+      
+      console.log('Fechas recibidas (raw):', rawStartDate, rawEndDate);
+      
+      const startDate = rawStartDate ? new Date(rawStartDate) : undefined;
+      const endDate = rawEndDate ? new Date(rawEndDate) : undefined;
+      
+      // Registrar fechas convertidas para verificar conversión correcta
+      if (startDate) console.log('startDate convertida:', startDate.toISOString());
+      if (endDate) console.log('endDate convertida:', endDate.toISOString());
+      
       // Asegurarse de que siempre tenemos el userId del usuario autenticado
       const userId = req.session.userId;
       
       if (!userId) {
+        console.warn('Intento de acceso a tareas sin userId válido en la sesión');
         return res.status(401).json({ message: "No autenticado o sesión inválida" });
       }
       
-      console.log(`Obteniendo tareas para el usuario ${userId} (rango de fechas: ${startDate} - ${endDate})`);
+      console.log(`Obteniendo tareas para el usuario ${userId} (rango de fechas: ${startDate ? startDate.toLocaleDateString() : 'todas'} - ${endDate ? endDate.toLocaleDateString() : 'todas'})`);
       
       // userId es obligatorio aquí para garantizar que solo se obtienen las tareas del usuario actual
       const tasks = await storage.getTasks({ startDate, endDate, userId });
       
       console.log(`${tasks.length} tareas encontradas para el usuario ${userId}`);
+      
+      // Para depuración, mostrar las primeras tareas
+      if (tasks.length > 0) {
+        const sampleTasks = tasks.slice(0, Math.min(3, tasks.length));
+        console.log('Muestra de tareas:', JSON.stringify(sampleTasks, null, 2));
+      } else {
+        console.log('No se encontraron tareas para el usuario en el rango de fechas especificado');
+      }
+      
       res.json(tasks);
     } catch (error: any) {
       console.error("Error al obtener tareas:", error);
