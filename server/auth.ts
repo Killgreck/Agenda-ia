@@ -40,6 +40,8 @@ export function setupAuth(app: Express) {
     cookie: {
       secure: process.env.NODE_ENV === "production",
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 semana
+      httpOnly: true,
+      sameSite: 'lax'
     }
   };
 
@@ -164,8 +166,17 @@ export function setupAuth(app: Express) {
   // Ruta para verificar estado de autenticación
   app.get("/api/auth/status", (req, res) => {
     const isAuthenticated = req.isAuthenticated();
-    log(`Auth status check: ${isAuthenticated ? "Authenticated" : "Not authenticated"}`, "express");
-    res.json({ isAuthenticated });
+    const userId = req.session?.userId;
+    
+    log(`Auth status check: ${isAuthenticated ? "Authenticated" : "Not authenticated"}, User ID: ${userId || 'none'}`, "express");
+    
+    // Proporcionar más información para depuración
+    res.json({ 
+      isAuthenticated: isAuthenticated,
+      userId: isAuthenticated ? userId : null,
+      sessionActive: !!req.session,
+      sessionId: req.session?.id || null
+    });
   });
   
   log("Authentication setup completed successfully", "express");

@@ -13,28 +13,43 @@ export function useTaskManager() {
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
   
-  // Fetch all tasks
+  // Fetch all tasks with improved error handling and authentication checks
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey: ['/api/tasks'],
     queryFn: async () => {
       console.log('Fetching tasks with auth status:', isAuthenticated);
-      const response = await fetch('/api/tasks', {
-        credentials: 'include' // Importante para enviar cookies de sesión
-      });
       
-      if (!response.ok) {
-        // Si recibimos un 401, el usuario no está autenticado
-        if (response.status === 401) {
-          console.warn('User not authenticated when fetching tasks');
-          return [];
-        }
-        throw new Error(`Failed to fetch tasks: ${response.status}`);
+      // Verificar autenticación primero
+      if (!isAuthenticated) {
+        console.warn('Attempted to fetch tasks without authentication');
+        return [];
       }
       
-      const data = await response.json();
-      return data || [];
+      try {
+        const response = await fetch('/api/tasks', {
+          credentials: 'include' // Importante para enviar cookies de sesión
+        });
+        
+        if (!response.ok) {
+          // Si recibimos un 401, el usuario no está autenticado
+          if (response.status === 401) {
+            console.warn('User not authenticated when fetching tasks - API returned 401');
+            return [];
+          }
+          throw new Error(`Failed to fetch tasks: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Tasks fetched successfully:', data.length);
+        return data || [];
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        return [];
+      }
     },
-    enabled: isAuthenticated // Solo ejecutar la consulta si el usuario está autenticado
+    enabled: isAuthenticated, // Solo ejecutar la consulta si el usuario está autenticado
+    refetchOnMount: true, // Refrescar los datos cuando el componente se monta
+    refetchOnWindowFocus: true // Refrescar los datos cuando la ventana vuelve a tener foco
   });
   
   // Create a new task with improved error handling
@@ -127,22 +142,40 @@ export function useTasks(options?: UseTasksOptions) {
     queryKey: ['/api/tasks', startDate, endDate],
     queryFn: async () => {
       console.log('Fetching tasks for month with auth status:', isAuthenticated);
-      const response = await fetch(`/api/tasks?startDate=${startDate}&endDate=${endDate}`, {
-        credentials: 'include' // Importante para enviar cookies de sesión
-      });
+      console.log('Date range:', startDate, 'to', endDate);
       
-      if (!response.ok) {
-        // Si recibimos un 401, el usuario no está autenticado
-        if (response.status === 401) {
-          console.warn('User not authenticated when fetching tasks for month');
-          return [];
-        }
-        throw new Error(`Failed to fetch tasks: ${response.status}`);
+      // Verificar autenticación primero
+      if (!isAuthenticated) {
+        console.warn('Attempted to fetch tasks for month without authentication');
+        return [];
       }
       
-      return response.json();
+      try {
+        const response = await fetch(`/api/tasks?startDate=${startDate}&endDate=${endDate}`, {
+          credentials: 'include' // Importante para enviar cookies de sesión
+        });
+        
+        if (!response.ok) {
+          // Si recibimos un 401, el usuario no está autenticado
+          if (response.status === 401) {
+            console.warn('User not authenticated when fetching tasks for month - API returned 401');
+            return [];
+          }
+          throw new Error(`Failed to fetch tasks: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Calendar tasks fetched successfully:', data.length, 'tasks for', startDate, 'to', endDate);
+        return data || [];
+      } catch (error) {
+        console.error('Error fetching tasks for calendar:', error);
+        return [];
+      }
     },
-    enabled: isAuthenticated // Solo ejecutar la consulta si el usuario está autenticado
+    enabled: isAuthenticated, // Solo ejecutar la consulta si el usuario está autenticado
+    refetchOnMount: true, // Refrescar los datos cuando el componente se monta
+    refetchOnWindowFocus: true, // Refrescar los datos cuando la ventana vuelve a tener foco
+    staleTime: 30000 // Los datos se consideran actualizados durante 30 segundos
   });
   
   // Create a separate upcoming tasks query to ensure it's always up-to-date
