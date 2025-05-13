@@ -913,26 +913,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error('WebSocket server error:', error);
   });
   
-  // Broadcast a message to specific user's connections or all connections if no userId provided
+  // Broadcast a message to specific user's connections (actualizada para mayor privacidad)
   const broadcastMessage = (message: any) => {
-    // If the message contains a userId, send only to that user's connections
-    const userId = message.userId || (message.message && message.message.userId);
+    // Extraer el userId del mensaje
+    const userId = message.userId || (message.message && message.message.userId) || (message.task && message.task.userId);
     
+    // Si tenemos un userId y hay conexiones para ese usuario
     if (userId && userConnections.has(userId)) {
-      // Send to specific user's connections
-      userConnections.get(userId).forEach(client => {
+      // Enviar solo a las conexiones de ese usuario específico
+      userConnections.get(userId).forEach((client: any) => {
         if (client.readyState === 1) { // OPEN
           client.send(JSON.stringify(message));
         }
       });
-      console.log(`Broadcasted message to user ID: ${userId}, connections: ${userConnections.get(userId).size}`);
+      console.log(`Mensaje enviado al usuario ID: ${userId}, conexiones: ${userConnections.get(userId).size}`);
+    } else if (userId) {
+      // Si hay userId pero no hay conexiones activas para ese usuario
+      console.log(`No hay conexiones activas para el usuario ID: ${userId}, mensaje no enviado`);
     } else {
-      // Fallback: broadcast to all connections
-      wss.clients.forEach(client => {
-        if (client.readyState === 1) { // OPEN
+      // Si el mensaje no tiene userId (como mensajes del sistema), solo enviar a clientes autenticados
+      console.log('Enviando mensaje de sistema (no incluye userId)');
+      let messagesSent = 0;
+      wss.clients.forEach((client: any) => {
+        // Solo enviar a los clientes que tienen un userId asignado (están autenticados)
+        if (client.readyState === 1 && client.userId) { // OPEN y autenticado
           client.send(JSON.stringify(message));
+          messagesSent++;
         }
       });
+      console.log(`Mensaje de sistema enviado a ${messagesSent} conexiones autenticadas`);
     }
   };
   
@@ -953,19 +962,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log date format to debug timezone issues
       console.log("Date format check - includes Z?", req.body.date?.includes('Z'));
       
-      // Primero verificamos que userId exista en body, si no, usamos el de la sesión
-      const clientUserId = req.body.userId;
+      // Siempre usamos el userId de la sesión para mayor seguridad
+      if (!userId) {
+        return res.status(401).json({ message: "No autenticado o sesión inválida" });
+      }
       
-      if (!clientUserId) {
-        console.log("No se encontró userId en la petición, usando el de la sesión:", userId);
-      } else {
-        console.log("userId encontrado en la petición:", clientUserId);
+      // Ignoramos el userId que pueda venir en el body (por seguridad)
+      if (req.body.userId && req.body.userId !== userId) {
+        console.log(`Intento de crear tarea con userId diferente: ${req.body.userId}, usando el de la sesión: ${userId}`);
       }
       
       const rawData = {
         ...req.body,
-        // Respetamos el userId proporcionado por el cliente si existe, de lo contrario usamos el de la sesión
-        userId: clientUserId || userId,
+        // Siempre usamos el userId de la sesión autenticada, ignorando cualquier valor proporcionado por el cliente
+        userId: userId,
         // Use the dates exactly as received from client, which now include the 'Z' to indicate UTC
         // This preserves the exact date and time as entered by the user without timezone conversion
         date: req.body.date,
@@ -1022,8 +1032,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const createdTask = await storage.createTask(task);
           createdTasks.push(createdTask);
           
-          // Broadcast new task to connected clients
-          broadcastMessage({ type: 'NEW_TASK', task: createdTask });
+          // Broadcast new task solo a las conexiones del usuario
+          broadcastMessage({ 
+            type: 'NEW_TASK', 
+            task: createdTask,
+            userId: userId // Incluir el userId para enviar solo a este usuario
+          });
           
           // Schedule reminder if applicable
           scheduleTaskReminders(createdTask, broadcastMessage);
@@ -1037,8 +1051,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For non-recurring tasks, create a single task
       const createdTask = await storage.createTask(taskData);
       
-      // Broadcast new task to connected clients
-      broadcastMessage({ type: 'NEW_TASK', task: createdTask });
+      // Broadcast new task solo a las conexiones del usuario
+      broadcastMessage({ 
+        type: 'NEW_TASK', 
+        task: createdTask,
+        userId: userId // Incluir el userId para enviar solo a este usuario
+      });
       
       // Schedule reminder if applicable
       scheduleTaskReminders(createdTask, broadcastMessage);
@@ -1113,9 +1131,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/tasks/:id", async (req: Request, res: Response) => {
+  app.patch("/api/tasks/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const taskId = parseInt(req.params.id);
+      const userId = req.session.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "No autenticado o sesión inválida" });
+      }
+      
+      // Verificar que la tarea existe y pertenece al usuario autenticado
+      const existingTask = await storage.getTask(taskId);
+      if (!existingTask) {
+        return res.status(404).json({ message: "Tarea no encontrada" });
+      }
+      
+      // Verificar que la tarea pertenece al usuario autenticado
+      if (existingTask.userId !== userId) {
+        console.log(`Intento de modificación no autorizado: Usuario ${userId} intentó modificar la tarea ${taskId} del usuario ${existingTask.userId}`);
+        return res.status(403).json({ message: "No tienes permiso para modificar esta tarea" });
+      }
       
       // Important: Preserve date strings EXACTLY as received from client to maintain local day
       console.log("PATCH task date from client:", req.body.date);
@@ -1133,32 +1168,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedTask = await storage.updateTask(taskId, taskUpdate);
       
       if (!updatedTask) {
-        return res.status(404).json({ message: "Task not found" });
+        return res.status(404).json({ message: "Tarea no encontrada" });
       }
       
-      // Broadcast task update
-      broadcastMessage({ type: 'UPDATE_TASK', task: updatedTask });
+      // Broadcast task update solo para el usuario propietario
+      broadcastMessage({ 
+        type: 'UPDATE_TASK', 
+        task: updatedTask,
+        userId: userId // Incluir el userId para que solo los clientes del mismo usuario reciban la actualización
+      });
       
       res.json(updatedTask);
     } catch (error: any) {
+      console.error("Error al actualizar tarea:", error);
       res.status(500).json({ message: error.message });
     }
   });
   
-  app.delete("/api/tasks/:id", async (req: Request, res: Response) => {
+  app.delete("/api/tasks/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const taskId = parseInt(req.params.id);
+      const userId = req.session.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "No autenticado o sesión inválida" });
+      }
+      
+      // Verificar que la tarea existe y pertenece al usuario autenticado
+      const existingTask = await storage.getTask(taskId);
+      if (!existingTask) {
+        return res.status(404).json({ message: "Tarea no encontrada" });
+      }
+      
+      // Verificar que la tarea pertenece al usuario autenticado
+      if (existingTask.userId !== userId) {
+        console.log(`Intento de eliminación no autorizado: Usuario ${userId} intentó eliminar la tarea ${taskId} del usuario ${existingTask.userId}`);
+        return res.status(403).json({ message: "No tienes permiso para eliminar esta tarea" });
+      }
+      
       const success = await storage.deleteTask(taskId);
       
       if (!success) {
-        return res.status(404).json({ message: "Task not found" });
+        return res.status(404).json({ message: "Tarea no encontrada" });
       }
       
-      // Broadcast task deletion
-      broadcastMessage({ type: 'DELETE_TASK', taskId });
+      // Broadcast task deletion solo a los clientes del mismo usuario
+      broadcastMessage({ 
+        type: 'DELETE_TASK', 
+        taskId,
+        userId: userId // Incluir el userId para que solo los clientes del mismo usuario reciban la actualización
+      });
       
       res.status(204).send();
     } catch (error: any) {
+      console.error("Error al eliminar tarea:", error);
       res.status(500).json({ message: error.message });
     }
   });
