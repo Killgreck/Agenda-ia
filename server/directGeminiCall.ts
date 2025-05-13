@@ -7,7 +7,7 @@ let isGeminiQuotaExceeded = false;
 let quotaResetTimeEstimate: Date | null = null;
 
 // La API key directamente en código como solicitado por el usuario
-const API_KEY = 'AIzaSyD2IlrOxYhMs6aP9DwuDQph1ra8HAAhB3s';
+const API_KEY = 'AIzaSyAJqi6JeOP58Ze46PRCJstujUz-4qrDl6s';
 
 // Función para extraer el tiempo de espera sugerido desde el error de la API
 function extractRetryDelayFromError(errorData: any): number {
