@@ -931,17 +931,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Si hay userId pero no hay conexiones activas para ese usuario
       console.log(`No hay conexiones activas para el usuario ID: ${userId}, mensaje no enviado`);
     } else {
-      // Si el mensaje no tiene userId (como mensajes del sistema), solo enviar a clientes autenticados
-      console.log('Enviando mensaje de sistema (no incluye userId)');
+      // Si el mensaje no tiene userId (como mensajes del sistema o del chat), enviar a todos los clientes
+      // Este cambio permite que los mensajes del chat AI vuelvan a funcionar
+      console.log('Enviando mensaje de sistema o chat (no incluye userId específico)');
       let messagesSent = 0;
       wss.clients.forEach((client: any) => {
-        // Solo enviar a los clientes que tienen un userId asignado (están autenticados)
-        if (client.readyState === 1 && client.userId) { // OPEN y autenticado
+        if (client.readyState === 1) { // OPEN
           client.send(JSON.stringify(message));
           messagesSent++;
         }
       });
-      console.log(`Mensaje de sistema enviado a ${messagesSent} conexiones autenticadas`);
+      console.log(`Mensaje de sistema enviado a ${messagesSent} conexiones`);
     }
   };
   
