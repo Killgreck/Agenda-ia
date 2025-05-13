@@ -1721,16 +1721,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         statistics = statsData;
       }
       
-      // Use Gemini LLM to generate a personalized weekly report
+      // Importar módulo de respuestas simuladas
+      const { getMockWeeklyReport } = await import('./mockAssistantResponses');
+      
+      // Use Gemini LLM to generate a personalized weekly report, but fall back to mock responses if needed
       try {
-        const report = await generateWeeklyReportSummary(statsData);
+        let report = '';
+        
+        // Intentar primero con Gemini si está disponible
+        if (process.env.GEMINI_API_KEY) {
+          try {
+            report = await generateWeeklyReportSummary(statsData);
+            log('Successfully generated weekly report with Gemini API', 'info');
+          } catch (geminiError) {
+            log(`Using mock weekly report due to Gemini error: ${geminiError.message}`, 'warn');
+            report = getMockWeeklyReport(statsData);
+          }
+        } else {
+          log('Using mock weekly report as Gemini API key is not configured', 'info');
+          report = getMockWeeklyReport(statsData);
+        }
+        
         res.json({ 
           statistics,
           report
         });
       } catch (reportError) {
-        log(`Error generating AI weekly report: ${reportError}. Using fallback report generator.`, 'error');
-        // Fallback to the static report if AI fails
+        log(`Error generating weekly report: ${reportError}. Using simple fallback report.`, 'error');
+        // Fallback to a very simple static report if all else fails
         res.json({ 
           statistics,
           report: generateWeeklyReport(statsData)
