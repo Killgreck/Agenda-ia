@@ -1,6 +1,7 @@
 import { log } from './vite';
 import { Event, User, ChatMessage } from './mongoModels';
 import { callGeminiDirectly } from './directGeminiCall';
+import { getMockResponse, getMockWeeklyReport, getMockTaskSuggestion } from './mockAssistantResponses';
 
 // La API key ya está definida en directGeminiCall.ts
 // Mantenemos estos valores para compatibilidad con el código existente
@@ -273,37 +274,16 @@ export async function generateTaskSuggestion(title: string, description?: string
     log('Preparing to send task suggestion request to Gemini...', 'gemini');
     
     // Usar la implementación directa con axios para evitar problemas de versión
-    const respuesta = await callGeminiDirectly(prompt);
+    // Indicar que es una sugerencia de tarea para el fallback adecuado
+    const respuesta = await callGeminiDirectly(prompt, true);
     
     log('Gemini API responded successfully with task suggestion', 'gemini');
     return respuesta;
   } catch (error) {
     log(`Error generating task suggestion with Gemini: ${error}`, 'error');
     
-    // Detect language (simple detection for Spanish keywords in title or description)
-    const isSpanish = (title + (description || "")).toLowerCase().includes('reunión') || 
-                      (title + (description || "")).toLowerCase().includes('cita') || 
-                      (title + (description || "")).toLowerCase().includes('proyecto');
-    
-    if (isSpanish) {
-      return `Para optimizar esta tarea, te recomiendo:
-
-1. Programarla en la mañana cuando tu energía es probablemente mayor
-2. Dividirla en pasos más pequeños si es compleja
-3. Configurar un recordatorio una hora antes para prepararte
-4. Establecer un límite de tiempo específico para mantener el enfoque
-
-¿Te gustaría que agregue esto a tu calendario?`;
-    } else {
-      return `To optimize this task, I recommend:
-
-1. Schedule it in the morning when your energy is likely higher
-2. Break it down into smaller steps if it's complex
-3. Set a reminder one hour before to prepare
-4. Establish a specific time limit to maintain focus
-
-Would you like me to add this to your calendar?`;
-    }
+    // Usar la función de respuestas simuladas para tareas
+    return getMockTaskSuggestion(title, description);
   }
 }
 
@@ -331,19 +311,15 @@ export async function generateWeeklyReportSummary(stats: any): Promise<string> {
     log('Preparing to send weekly report request to Gemini...', 'gemini');
     
     // Usar la implementación directa con axios para evitar problemas de versión
-    const respuesta = await callGeminiDirectly(prompt);
+    // Pasar el flag de que es un informe semanal y las estadísticas para fallback
+    const respuesta = await callGeminiDirectly(prompt, false, true, stats);
     
     log('Gemini API responded successfully with weekly report', 'gemini');
     return respuesta;
   } catch (error) {
     log(`Error generating weekly report with Gemini: ${error}`, 'error');
     
-    return `Weekly Report Summary:
-
-Tasks completed: ${stats.tasksCompleted || 0} out of ${stats.tasksTotal || 0}
-Average productivity: ${stats.avgProductivity || 0}/10
-AI suggestions used: ${stats.aiSuggestionsAccepted || 0}/${stats.aiSuggestionsTotal || 0}
-
-Remember to schedule focused time blocks next week to improve overall productivity.`;
+    // Usar la respuesta simulada en caso de error
+    return getMockWeeklyReport(stats);
   }
 }
