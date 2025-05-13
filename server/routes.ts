@@ -1065,26 +1065,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      // Asegurarse de que siempre tenemos el userId del usuario autenticado
       const userId = req.session.userId;
       
+      if (!userId) {
+        return res.status(401).json({ message: "No autenticado o sesión inválida" });
+      }
+      
+      console.log(`Obteniendo tareas para el usuario ${userId} (rango de fechas: ${startDate} - ${endDate})`);
+      
+      // userId es obligatorio aquí para garantizar que solo se obtienen las tareas del usuario actual
       const tasks = await storage.getTasks({ startDate, endDate, userId });
+      
+      console.log(`${tasks.length} tareas encontradas para el usuario ${userId}`);
       res.json(tasks);
     } catch (error: any) {
+      console.error("Error al obtener tareas:", error);
       res.status(500).json({ message: error.message });
     }
   });
   
-  app.get("/api/tasks/:id", async (req: Request, res: Response) => {
+  app.get("/api/tasks/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const taskId = parseInt(req.params.id);
+      const userId = req.session.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "No autenticado o sesión inválida" });
+      }
+      
       const task = await storage.getTask(taskId);
       
       if (!task) {
-        return res.status(404).json({ message: "Task not found" });
+        return res.status(404).json({ message: "Tarea no encontrada" });
+      }
+      
+      // Verificar que la tarea pertenece al usuario autenticado
+      if (task.userId !== userId) {
+        console.log(`Intento de acceso no autorizado: Usuario ${userId} intentó acceder a la tarea ${taskId} del usuario ${task.userId}`);
+        return res.status(403).json({ message: "No tienes permiso para acceder a esta tarea" });
       }
       
       res.json(task);
     } catch (error: any) {
+      console.error("Error al obtener tarea específica:", error);
       res.status(500).json({ message: error.message });
     }
   });
