@@ -11,14 +11,17 @@
 ### Creación de Cuenta
 
 1. Visita la página principal de la aplicación
-2. Haz clic en el botón "Registrarse" en la pantalla de inicio de sesión
-3. Completa el formulario con tu información personal:
+   ![WhatsApp Image 2025-05-26 at 12 35 37 AM](https://github.com/user-attachments/assets/4c027d79-38a1-448d-83b1-2b5b2257882e)
+   
+3. Haz clic en el botón "Registrarse" en la pantalla de inicio de sesión
+   ![WhatsApp Image 2025-05-26 at 12 35 38 AM](https://github.com/user-attachments/assets/3ed88a1d-8223-4ae8-880e-b0a294c0f249)
+   
+5. Completa el formulario con tu información personal:
    - Nombre de usuario
    - Correo electrónico
    - Contraseña (debe incluir al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial)
-4. Haz clic en "Crear cuenta"
-5. Recibirás un correo electrónico de verificación en la dirección proporcionada
-6. Haz clic en el enlace de verificación para activar tu cuenta
+6. Haz clic en "Crear cuenta"
+
 
 ### Iniciar Sesión
 
@@ -40,10 +43,11 @@ Si olvidaste tu contraseña:
 ## Panel Principal
 
 Después de iniciar sesión, llegarás al panel principal que muestra:
+![image](https://github.com/user-attachments/assets/33459b96-7ae1-444c-98a7-74df3608beac)
 
 - **Resumen de Tareas**: Visión general de tus tareas pendientes y completadas
 - **Calendario**: Vista de tus próximos eventos y tareas programadas
-- **Estadísticas**: Análisis de tu productividad y patrones de trabajo
+- **Reportes**: Análisis de tu productividad y patrones de trabajo
 - **Asistente de IA**: Tu asistente personal inteligente
 
 ## Gestión de Tareas
@@ -59,6 +63,9 @@ Después de iniciar sesión, llegarás al panel principal que muestra:
    - Categoría
    - Etiquetas
 3. Haz clic en "Guardar"
+
+![WhatsApp Image 2025-05-26 at 12 35 38 AM (5)](https://github.com/user-attachments/assets/76e4bc7a-ad3f-4449-a341-a83120497b95)
+![WhatsApp Image 2025-05-26 at 12 35 39 AM (3)](https://github.com/user-attachments/assets/bcb283d1-97cc-4f1a-9829-c74dd46137b1)
 
 ### Editar una Tarea
 
@@ -78,14 +85,22 @@ Después de iniciar sesión, llegarás al panel principal que muestra:
 2. Haz clic en el ícono de eliminación (papelera)
 3. Confirma la eliminación
 
+![WhatsApp Image 2025-05-26 at 12 35 40 AM](https://github.com/user-attachments/assets/0c812699-eb42-46bc-9b1d-9be64abaa4cb)
+
 ## Calendario
 
 ### Vistas del Calendario
 
 Puedes alternar entre diferentes vistas:
 - **Día**: Vista detallada del día actual
+  ![WhatsApp Image 2025-05-26 at 12 35 39 AM](https://github.com/user-attachments/assets/c2104617-87ac-45e1-92f3-3f3f76c49158)
+
 - **Semana**: Vista de la semana actual
+  ![WhatsApp Image 2025-05-26 at 12 35 39 AM (1)](https://github.com/user-attachments/assets/8b9924ee-bdc1-480b-a8f5-03e79d8b7298)
+
 - **Mes**: Vista mensual con todas tus tareas y eventos
+  ![WhatsApp Image 2025-05-26 at 12 35 38 AM (2)](https://github.com/user-attachments/assets/7d6d2689-aa16-41e3-b3d3-735c854d6a45)
+
 
 ### Navegar por el Calendario
 
@@ -105,6 +120,8 @@ Puedes alternar entre diferentes vistas:
 1. Haz clic en el ícono del asistente en la barra lateral
 2. Escribe tu pregunta o solicitud en la caja de texto
 3. Presiona "Enviar" o la tecla Enter
+
+![WhatsApp Image 2025-05-26 at 12 35 38 AM (3)](https://github.com/user-attachments/assets/83bd7f6c-9409-4fa0-a814-3553f83e333d)
 
 ### Qué Puede Hacer el Asistente
 
@@ -126,6 +143,8 @@ Tu asistente de IA puede:
 - "¿Qué eventos tengo programados para mañana?"
 
 ## Análisis de Productividad
+
+![WhatsApp Image 2025-05-26 at 12 35 38 AM (4)](https://github.com/user-attachments/assets/d9e28bd9-44c9-4158-84de-c57fb46c0589)
 
 ### Informe Semanal
 
